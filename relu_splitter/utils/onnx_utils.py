@@ -10,11 +10,13 @@ logger = logging.getLogger(__name__)
 
 
 def check_model_closeness(m1, m2, input_shape, n=50, **kwargs):
-    for _ in range(n):
+    for i in range(n):
         x = torch.randn(input_shape)
         y1,y2 = m1.forward(x), m2.forward(x)
         if not torch.allclose(y1, y2, **kwargs):
             logger.error(f"Outputs are not the same for input {x}\n{y1}\n{y2}")
+            logger.error(f"Diff: {torch.abs(y1-y2).max()}")
+            logger.error(f"{i}/{n} tests passed")
             return False
     return True
 

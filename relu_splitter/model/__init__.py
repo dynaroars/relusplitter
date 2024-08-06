@@ -42,9 +42,9 @@ class WarppedOnnxModel():
             for i, node in enumerate(model.graph.node):
                 node.name = f"{node.op_type}_{i}"
                 # print(f"Assigned name '{node.name}' to node of type '{node.op_type}'")
-        for node in model.graph.node:
+        # for node in model.graph.node:
             # each node only produce one output
-            assert len(node.output) == 1, f"Node {node.name} produces more than one output"
+            # assert len(node.output) == 1, f"Node {node.name} produces more than one output"
             # allowed op_types
             # ...
 
@@ -103,9 +103,20 @@ class WarppedOnnxModel():
     def get_gemm_wb(self, node):
         # Get the weights and bias for a GEMM node
         assert node.op_type == "Gemm"
+        
+        attr_dict = {attr.name: attr for attr in node.attribute}
+        alpha = attr_dict['alpha'].f if 'alpha' in attr_dict else 1.0
+        beta = attr_dict['beta'].f if 'beta' in attr_dict else 1.0
+        transA = attr_dict['transA'].i if 'transA' in attr_dict else 0
+        transB = attr_dict['transB'].i if 'transB' in attr_dict else 0
+
         _, w, b = node.input
         w = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[w]) )
         b = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[b]) )
+
+        if transB == 0:
+            w = w.t()
+
         return w,b
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:

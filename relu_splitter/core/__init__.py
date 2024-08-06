@@ -44,8 +44,8 @@ class ReluSplitter():
     def init_model(self):
         model = onnx.load(self.onnx_path)
 
-        assert len(model.graph.input) == 1, "Model has more than one input"
-        assert len(model.graph.output) == 1, "Model has more than one output"
+        assert len(model.graph.input) == 1, f"Model has more than one input {model.graph.input}"
+        assert len(model.graph.output) == 1, f"Model has more than one output {model.graph.output}"
         self.warpped_model = WarppedOnnxModel(model)
 
     def init_seeds(self):
@@ -77,8 +77,6 @@ class ReluSplitter():
                     splitable_nodes.append( (prior_node, node) )
         return splitable_nodes
     
-
-        
     def split(self, split_idx=0, max_splits=None, split_strategy="single"):
         splitable_nodes = self.get_splitable_nodes()
         assert split_idx < len(splitable_nodes), f"Split location <{split_idx}> is out of bound"

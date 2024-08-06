@@ -6,13 +6,10 @@ from pathlib import Path
 import os
 
 import tqdm
+from copy import deepcopy, copy
 
-# from relu_splitter.model import WarppedOnnxModel
 from onnx2pytorch import ConvertModel
 from relu_splitter.utils.onnx_utils import check_model_closeness
-
-
-
 
 
 def simplify_acasxu():
@@ -54,12 +51,13 @@ def simplify_acasxu():
         m1 = ConvertModel(model)
         m2 = ConvertModel(new_model)
 
-        res = check_model_closeness(m1, m2, (1, 5), n=50, rtol=1e-5, atol=1e-5)
+        res, diff = check_model_closeness(m1, m2, (1, 5), n=100, rtol=1e-6, atol=1e-6)
         if not res:
             print(f"Conversion failed for {onnx_file}")
             continue
         else:
             onnx.save(new_model, dest)
+        
             
 
 if __name__ == "__main__":

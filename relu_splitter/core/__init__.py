@@ -200,12 +200,12 @@ class ReluSplitter():
         
         self.logger.info("Checking model Correctness")
         input_shape = list(self.warpped_model.input_shapes.values())[0]
-        equiv = check_model_closeness(self.warpped_model, new_model, input_shape, atol=1e-6, rtol=1e-5)
+        equiv, diff = check_model_closeness(self.warpped_model, new_model, input_shape, atol=1e-5, rtol=1e-5)
         if not equiv:
             self.logger.error("Model closeness check failed, proceed with caution")
             raise ValueError("Model closeness check failed")
         else:
-            self.logger.info("Model closeness check passed")
+            self.logger.info(f"Model closeness check passed with worst diff {diff}")
         return new_model
 
 

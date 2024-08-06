@@ -43,7 +43,6 @@ class WarppedOnnxModel():
             for i, node in enumerate(model.graph.node):
                 node.name = f"{node.op_type}_{i}"
             self.logger.warning(f"Renamed nodes...")
-                # print(f"Assigned name '{node.name}' to node of type '{node.op_type}'")
         # for node in model.graph.node:
             # each node only produce one output
             # assert len(node.output) == 1, f"Node {node.name} produces more than one output"
@@ -122,10 +121,9 @@ class WarppedOnnxModel():
         return w,b
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # print([n.name for n in self._model.graph.node])
-        model = ConvertModel(self._model)
-        model = BoundedModule(model, x)
-        return model(x)
+        if not hasattr(self, "_bounded_model"):
+            self._bounded_model = BoundedModule(ConvertModel(self._model), x)
+        return self._bounded_model(x)
 
     def save(self, fname: Path):
         if not fname.parent.exists():

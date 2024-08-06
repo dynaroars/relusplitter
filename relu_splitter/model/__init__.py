@@ -11,6 +11,7 @@ from onnx import helper, numpy_helper, TensorProto
 from onnxruntime import InferenceSession
 from onnx2pytorch import ConvertModel
 
+
 from copy import copy, deepcopy
 
 from ..utils.onnx_utils import truncate_onnx_model, compute_model_bound
@@ -41,6 +42,7 @@ class WarppedOnnxModel():
         if has_duplicate_node_name or has_node_w_empty_name or self.force_rename:
             for i, node in enumerate(model.graph.node):
                 node.name = f"{node.op_type}_{i}"
+            self.logger.warning(f"Renamed nodes...")
                 # print(f"Assigned name '{node.name}' to node of type '{node.op_type}'")
         # for node in model.graph.node:
             # each node only produce one output
@@ -120,7 +122,7 @@ class WarppedOnnxModel():
         return w,b
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # also add ort
+        # print([n.name for n in self._model.graph.node])
         model = ConvertModel(self._model)
         model = BoundedModule(model, x)
         return model(x)

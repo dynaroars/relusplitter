@@ -81,6 +81,7 @@ class ReluSplitter():
         splitable_nodes = self.get_splitable_nodes()
         assert split_idx < len(splitable_nodes), f"Split location <{split_idx}> is out of bound"
         gemm_node, relu_node = splitable_nodes[split_idx][0], splitable_nodes[split_idx][1]
+        assert all(attri.i == 0 for attri in gemm_node.attribute if attri.name == "TransA"), "TransA == 1 is not supported"
 
         self.logger.info("Splitting model...")
         self.logger.info(f"Splitting model: {self.onnx_path}")
@@ -133,25 +134,20 @@ class ReluSplitter():
             if split_mask[i]:
                 split_weights[idx]      = w
                 split_weights[idx+1]    = -w
-                
                 split_bias[idx]         = -b
                 split_bias[idx+1]       = b
-
                 merge_weights[i][idx]   = 1
                 merge_weights[i][idx+1] = -1
-
                 merge_bias[i] = offset[i] + b
-
                 idx += 2
-
             else:
                 split_weights[idx] = grad[i]
                 split_bias[idx] = offset[i]
-
                 merge_weights[i][idx] = 1
-
                 idx += 1
-
+        split_weights = split_weights.t()
+        merge_weights = merge_weights.t()
+        
 
         node_input = gemm_node.input[0]
         node_output = relu_node.output[0]
@@ -167,7 +163,7 @@ class ReluSplitter():
                                             name=f"{gemm_node.name}_split_layer",
                                             alpha=1.0,
                                             beta=1.0,
-                                            transB=1,
+                                            transB=0,
                                             transA=0)
         split_layer_relu = onnx.helper.make_node("Relu",
                                                 inputs=[split_layer_pre_relu],
@@ -180,7 +176,7 @@ class ReluSplitter():
                                             name=f"{gemm_node.name}_merge_layer",
                                             alpha=1.0,
                                             beta=1.0,
-                                            transB=1,
+                                            transB=0,
                                             transA=0)
         merge_layer_relu = onnx.helper.make_node("Relu",
                                                 inputs=[merge_layer_pre_relu],

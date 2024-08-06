@@ -5,6 +5,15 @@ from onnxsim import simplify
 from pathlib import Path
 import os
 
+import tqdm
+
+# from relu_splitter.model import WarppedOnnxModel
+from onnx2pytorch import ConvertModel
+from relu_splitter.utils.onnx_utils import check_model_closeness
+
+
+
+
 
 def simplify_acasxu():
     acasxu_onnx_root = Path("data/acasxu/onnx")
@@ -12,8 +21,8 @@ def simplify_acasxu():
 
     output_root.mkdir(parents=True, exist_ok=True)
 
-    for onnx_file in acasxu_onnx_root.rglob("*.onnx"):
-        print(f"Simplifying {onnx_file}")        
+    # for onnx_file in acasxu_onnx_root.rglob("*.onnx"):
+    for onnx_file in tqdm.tqdm(list(acasxu_onnx_root.rglob("*.onnx"))):
         dest     = output_root / (onnx_file.stem + "_converted.onnx")
         basename = os.path.basename(onnx_file)
 
@@ -42,8 +51,16 @@ def simplify_acasxu():
         new_model = onnx.helper.make_model(new_graph, producer_name='Relu-splitter-EXP',)
 
         # check conversion correctness
+        m1 = ConvertModel(model)
+        m2 = ConvertModel(new_model)
 
-        onnx.save(new_model, dest)
+        res = check_model_closeness(m1, m2, (1, 5), n=50, rtol=1e-5, atol=1e-5)
+        if not res:
+            print(f"Conversion failed for {onnx_file}")
+            continue
+        else:
+            onnx.save(new_model, dest)
+            
 
 if __name__ == "__main__":
     simplify_acasxu()

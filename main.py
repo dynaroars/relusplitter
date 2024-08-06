@@ -3,12 +3,14 @@ import onnx
 import logging
 import argparse
 import sys
+from pathlib import Path
 
 import torch.nn as nn
 from onnx2pytorch import ConvertModel
 from auto_LiRPA import BoundedModule, BoundedTensor, PerturbationLpNorm
 
 from relu_splitter.core import ReluSplitter
+from relu_splitter.model import WarppedOnnxModel
 
 
 def setup_logging(verbosity):
@@ -29,8 +31,9 @@ def get_parser():
     split_parser.add_argument('--spec', type=str, required=True, help='Path to the VNNLIB file')
     split_parser.add_argument('--seed', type=int, default=0, help='Seed for random number generation')
     split_parser.add_argument('--split_strategy', type=str, default='single', help='Splitting strategy')
-    split_parser.add_argument('--max_splits', type=str, default=None, help='Maximum number of splits')
+    split_parser.add_argument('--max_splits', type=int, default=None, help='Maximum number of splits')
     split_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
+    split_parser.add_argument('--output', type=str, default=None, help='Output path for the new model')
 
     # Subparser for the info command
     info_parser = subparsers.add_parser('info', help='Info command help')
@@ -50,9 +53,27 @@ def main():
         random_seed = args.seed
         max_splits = args.max_splits
         split_idx = args.split_idx
+        output_path = Path(args.output) if args.output is not None else None
         
         relusplitter = ReluSplitter(onnx_path, spec_path, random_seed, logger)
         new_model = relusplitter.split(args.split_idx, args.max_splits, args.split_strategy)
+
+        # check model equivalency
+        # original_model = WarppedOnnxModel(onnx.load(onnx_path))
+        # new_model = new_model
+
+        # assert len(original_model.input_shapes) == len(new_model.input_shapes) == 1
+        # input_shape = list(original_model.input_shapes.values())[0]
+        # for n in range(50):
+        #     random_input = torch.randn(input_shape)
+        #     original_output = original_model.forward(random_input)
+        #     new_output = new_model.forward(random_input)
+        #     diff = torch.abs(torch.tensor(original_output) - torch.tensor(new_output)).max()
+        #     print(f"Diff: {diff}")
+
+        if output_path is not None:
+            logger.info(f"Model saved to {output_path}")
+            new_model.save(output_path)
 
     elif args.command == 'info':
         onnx_path = args.net

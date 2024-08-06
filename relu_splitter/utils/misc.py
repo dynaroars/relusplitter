@@ -10,7 +10,6 @@ from random import uniform
 from pathlib import Path
 
 
-
 def generate_random_inputs(input_shape, num_tests):
     inputs = []
     for _ in range(num_tests):
@@ -20,6 +19,18 @@ def generate_random_inputs(input_shape, num_tests):
 
 def compare_outputs(output1, output2, tolerance=1e-5):
     return np.allclose(output1, output2, atol=tolerance)
+
+def check_model_equivalency(m1, m2, input_shape, n=100, **kwargs):
+    for _ in range(n):
+        x = torch.randn(input_shape)
+        y1,y2 = m1.forward(x), m2.forward(x)
+        if not torch.allclose(y1, y2, **kwargs):
+            cex.append((x,y1,y2))
+            logger.error(f"Outputs are not the same for input {x}\n{y1}\n{y2}")
+            return False
+    return True
+
+
 
 def check_model_equivalency(m1, m2, input_shape, num_tests=100):
     # Check type equivalency

@@ -1,12 +1,14 @@
 import logging
 from pathlib import Path
 from typing import Union, Tuple
+from functools import reduce
 
 import onnx
 import torch
 
 from auto_LiRPA import BoundedModule, BoundedTensor, PerturbationLpNorm
 from onnx import helper, numpy_helper, TensorProto
+from onnxruntime import InferenceSession
 from onnx2pytorch import ConvertModel
 
 from copy import copy, deepcopy
@@ -30,23 +32,8 @@ class WarppedOnnxModel():
         self._nodes_mapping = {node.name: node for node in model.graph.node}
         # self.node_accepts_input = {node.input[0]: node for node in model.graph.node}
         self._node_produce_output = {output: node for node in model.graph.node for output in node.output}
-
-    @property
-    def nodes(self):
-        return copy(self._nodes)
-
-    def info(self):
-        s = "\n"
-        for node in self._nodes:
-            s += f"\t\tNode name: {node.name}, Node type: {node.op_type}\n"
-            s += f"\t\t\tInputs: {node.input}\n"
-            s += f"\t\t\tOutputs: {node.output}\n"
-        self.logger.info(s)
-
-
-
+    
     def _sanity_check(self, model: onnx.ModelProto):
-
         # check for duplicate node name or no node name
         node_names = [node.name for node in model.graph.node]
         has_duplicate_node_name = (len(node_names) != len(set(node_names)))
@@ -60,6 +47,49 @@ class WarppedOnnxModel():
             assert len(node.output) == 1, f"Node {node.name} produces more than one output"
             # allowed op_types
             # ...
+
+    def info(self):
+        s = "\n"
+        for node in self._nodes:
+            s += f"\t\tNode name: {node.name}, Node type: {node.op_type}\n"
+            s += f"\t\t\tInputs: {node.input}\n"
+            s += f"\t\t\tOutputs: {node.output}\n"
+        self.logger.info(s)
+
+    @property
+    def nodes(self):
+        return copy(self._nodes)
+    
+    @property
+    def num_inputs(self):
+        count = 0
+        for input_tensor in self.input_shapes.values():
+            count += reduce(lambda x, y: x*y, input_tensor)
+        return count
+
+    @property
+    def input_shapes(self):
+        try:
+            input_shapes = {}
+            for input_tensor in self._model.graph.input:
+                shape = []
+                for dim in input_tensor.type.tensor_type.shape.dim:
+                    shape.append(dim.dim_value)
+                input_shapes[input_tensor.name] = shape
+            return input_shapes
+        except:
+            self.logger.warning("Error retrieving the input shape, Infering the input shape...")
+            return self._infer_input_shapes()
+        
+    def _infer_input_shapes(self):
+        input_shapes = {}
+        for input_tensor in self._model.graph.input:
+            shape = []
+            for dim in input_tensor.type.tensor_type.shape.dim:
+                shape.append(dim.dim_value)
+            input_shapes[input_tensor.name] = shape
+        return input_shapes
+
 
     def get_prior_node(self, node):
         assert node.op_type in SINGLE_INPUT_OPS
@@ -79,6 +109,7 @@ class WarppedOnnxModel():
         return w,b
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # also add ort
         model = ConvertModel(self._model)
         model = BoundedModule(model, x)
         return model(x)
@@ -92,17 +123,11 @@ class WarppedOnnxModel():
     def generate_updated_model(self, nodes_to_replace, additional_nodes, additional_initializers, 
                       graph_name=f"bruh_split_merge",
                       producer_name="ReluSplitter"):
-
         # maybe some assertions
-        
-        
         new_nodes = []
         new_initializers = []
-
-
         model_in = self._model.graph.input
         model_out = self._model.graph.output
-
         model_input_name = model_in[0].name
         model_output_name = model_out[0].name
 
@@ -123,7 +148,6 @@ class WarppedOnnxModel():
             if not updated:
                 raise ValueError(f"Can't find a node to add to the new model")
 
-
         new_graph = onnx.helper.make_graph(
             new_nodes,
             graph_name,
@@ -131,7 +155,13 @@ class WarppedOnnxModel():
             model_out,
             new_initializers
         )
-
         new_model = helper.make_model(new_graph, producer_name=producer_name)
         return WarppedOnnxModel(new_model, force_rename=False, logger=self.logger)
-                        
+    
+    @property
+    def onnx(self):
+        return self._model
+    @property
+    def ort_sess(self):
+        return InferenceSession(self._model.SerializeToString())
+    

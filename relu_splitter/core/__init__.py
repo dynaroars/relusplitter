@@ -2,12 +2,13 @@ import random
 import logging
 from pathlib import Path
 from typing import Union
+from functools import reduce
 
 import onnx
 import torch
 
 from ..utils.read_vnnlib import read_vnnlib
-from ..utils.onnx_utils import truncate_onnx_model
+from ..utils.onnx_utils import truncate_onnx_model, check_model_closeness
 from ..model import WarppedOnnxModel
 from auto_LiRPA import BoundedTensor, PerturbationLpNorm
 
@@ -25,16 +26,32 @@ class ReluSplitter():
         self.random_seed = random_seed
         self.logger = logger
 
+        self.init_model()
+        self.init_vnnlib()
+        self.init_seeds()
+
+    def init_vnnlib(self):
         input_bound, output_bound = read_vnnlib(str(self.spec_path))[0]
         input_lb, input_ub = torch.tensor([[[[i[0] for i in input_bound]]]]), torch.tensor([[[[i[1] for i in input_bound]]]])
+        spec_num_inputs = reduce(lambda x, y: x*y, input_lb.shape)
+        model_num_inputs = self.warpped_model.num_inputs
+
         assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
+        assert model_num_inputs == spec_num_inputs, "Spec number of inputs does not match model inputs"
         self.bounded_input = BoundedTensor(input_lb, PerturbationLpNorm(x_L=input_lb, x_U=input_ub))
 
-        model = onnx.load(network)
+
+    def init_model(self):
+        model = onnx.load(self.onnx_path)
+
+        assert len(model.graph.input) == 1, "Model has more than one input"
+        assert len(model.graph.output) == 1, "Model has more than one output"
         self.warpped_model = WarppedOnnxModel(model)
 
+    def init_seeds(self):
         random.seed(self.random_seed)
         torch.manual_seed(self.random_seed)
+        
 
 
     def get_split_loc_fn(self, bound, split_strategy, **kwargs):
@@ -85,14 +102,16 @@ class ReluSplitter():
         n_stable_relu = torch.sum(stable_relu_mask).item()
         if max_splits is not None and n_stable_relu > max_splits:
             self.logger.info(f"Max split set to: {max_splits}...")
-            self.logger.info(f"Found <{n_stable_relu}> stable ReLUs, randomly selecting <{max_splits}> to split")
+            self.logger.info(f"Found {n_stable_relu} stable ReLUs, randomly selecting {max_splits} to split")
             indices = torch.nonzero(stable_relu_mask, as_tuple=True)[0]
             selected_indices = indices[torch.randperm(len(indices))[:max_splits]]
             split_mask = torch.zeros_like(stable_relu_mask, dtype=torch.bool)
             split_mask[selected_indices] = True
-            assert torch.sum(stable_relu_mask).item() <= max_splits, "Number of True values exceeds max_splits"
-            assert torch.equals(stable_relu_mask.logical_or(split_mask), stable_relu_mask), "relu max property violated"
+            n_splits = max_splits
+            assert torch.sum(split_mask).item() <= max_splits, "Number of True values exceeds max_splits"
+            assert torch.equal(stable_relu_mask.logical_or(split_mask), stable_relu_mask), "relu max property violated"
         else:
+            self.logger.info(f"Found {n_stable_relu} stable ReLUs, splitting all of them")
             split_mask = stable_relu_mask
             n_splits = n_stable_relu
 
@@ -183,19 +202,16 @@ class ReluSplitter():
                                                     additional_initializers=new_initializers,
                                                     graph_name=f"{self.onnx_path.stem}_split_{split_idx}",
                                                     producer_name="ReluSplitter")
+        self.logger.info("Model created")
         
-        # check model equivalence
-        orginal_output = self.warpped_model.forward(self.bounded_input)
-        new_output = new_model.forward(self.bounded_input)
-
-        self.logger.info("model created")
-        # self.logger.info("New model:")
-        # new_model.info()
-        # self.logger.info(f"Original output: {orginal_output}")
-        # self.logger.info(f"New output     : {new_output}")
-        self.logger.info(f"Diff: {torch.abs(orginal_output - new_output)}")
-        # assert torch.allclose(orginal_output, new_output), "Models are not equivalent"
-
+        self.logger.info("Checking model Correctness")
+        input_shape = list(self.warpped_model.input_shapes.values())[0]
+        equiv = check_model_closeness(self.warpped_model, new_model, input_shape, atol=1e-6, rtol=1e-5)
+        if not equiv:
+            self.logger.error("Model closeness check failed, proceed with caution")
+            raise ValueError("Model closeness check failed")
+        else:
+            self.logger.info("Model closeness check passed")
         return new_model
 
 

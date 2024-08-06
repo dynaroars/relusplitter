@@ -1,8 +1,22 @@
+import logging
 import onnx
+import torch
+import numpy as np
 from onnx import helper, numpy_helper, TensorProto
-
 from onnx2pytorch import ConvertModel
 from auto_LiRPA import BoundedModule, BoundedTensor, PerturbationLpNorm
+
+logger = logging.getLogger(__name__)
+
+
+def check_model_closeness(m1, m2, input_shape, n=50, **kwargs):
+    for _ in range(n):
+        x = torch.randn(input_shape)
+        y1,y2 = m1.forward(x), m2.forward(x)
+        if not torch.allclose(y1, y2, **kwargs):
+            logger.error(f"Outputs are not the same for input {x}\n{y1}\n{y2}")
+            return False
+    return True
 
 def compute_model_bound(model: onnx.ModelProto, bounded_input: BoundedTensor, method="backward"):
     model = ConvertModel(model)

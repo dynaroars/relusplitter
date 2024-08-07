@@ -8,6 +8,12 @@ from random import uniform
 
 
 from pathlib import Path
+import uuid
+
+def get_random_id(len=8):
+    assert len <= 32
+    return str(uuid.uuid4())[:len]
+
 
 
 def generate_random_inputs(input_shape, num_tests):

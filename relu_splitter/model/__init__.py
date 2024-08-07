@@ -15,6 +15,7 @@ from onnx2pytorch import ConvertModel
 from copy import copy, deepcopy
 
 from ..utils.onnx_utils import truncate_onnx_model, compute_model_bound
+from ..utils.misc import get_random_id
 
 SINGLE_INPUT_OPS = ["Relu"]
 default_logger = logging.getLogger(__name__)
@@ -56,6 +57,30 @@ class WarppedOnnxModel():
             s += f"\t\t\tInputs: {node.input}\n"
             s += f"\t\t\tOutputs: {node.output}\n"
         self.logger.info(s)
+
+    def gen_node_name(self, prefix: str):
+        name = f"{prefix}_{get_random_id()}"
+        while self.has_node(name):
+            name = f"{prefix}_{get_random_id()}"
+        return name
+
+    def has_node(self, node_name: str):
+        return node_name in self._nodes_mapping.keys()
+
+    def gen_tensor_name(self, prefix: str):
+        name = f"{prefix}_{get_random_id()}"
+        while self.has_tensor(name):
+            name = f"{prefix}_{get_random_id()}"
+        return name
+
+    def has_tensor(self, tensor_name: str):
+        if not hasattr(self, "_tensor_names"):
+            self._tensor_names = set()
+            for node in self._nodes:
+                self._tensor_names.update(node.input)
+                self._tensor_names.update(node.output)
+        print(self._tensor_names)
+        return tensor_name in self._tensor_names
 
     @property
     def nodes(self):

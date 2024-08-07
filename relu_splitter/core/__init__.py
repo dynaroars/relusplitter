@@ -150,23 +150,34 @@ class ReluSplitter():
         split_weights = split_weights.t()
         merge_weights = merge_weights.t()
         
-
+        # orginal_input_name = gemm_node.input[0]
+        # orginal_output_name = relu_node.output[0]
+        # split_pre_tensor_name = f"{orginal_output_name}_split_Pre"
+        # split_post_tensor_name = f"{orginal_output_name}_split_Post"
+        # merge_pre_tensor_name = f"{orginal_output_name}_merge_Pre"
+        # merge_pose_tensor_name = orginal_output_name
+        # split_w_name = f"{orginal_output_name}_split_layer_w"
+        # split_b_name = f"{orginal_output_name}_split_layer_b"
+        # merge_w_name = f"{orginal_output_name}_merge_layer_w"
+        # merge_b_name = f"{orginal_output_name}_merge_layer_b"
+        # split_node_name      = f"{TOOL_NAME}_{orginal_output_name}_split"
+        # split_relu_node_name = f"{TOOL_NAME}_{orginal_output_name}_split_relu"
+        # merge_node_name      = f"{TOOL_NAME}_{orginal_output_name}_merge"
+        # merge_relu_node_name = f"{TOOL_NAME}_{orginal_output_name}_merge_relu"
         orginal_input_name = gemm_node.input[0]
         orginal_output_name = relu_node.output[0]
-        split_pre_tensor_name = f"{orginal_output_name}_split_Pre"
-        split_post_tensor_name = f"{orginal_output_name}_split_Post"
-        merge_pre_tensor_name = f"{orginal_output_name}_merge_Pre"
+        split_pre_tensor_name = self.warpped_model.gen_tensor_name(prefix=f"{TOOL_NAME}_sPre")
+        split_post_tensor_name = self.warpped_model.gen_tensor_name(prefix=f"{TOOL_NAME}_sPost")
+        merge_pre_tensor_name = self.warpped_model.gen_tensor_name(prefix=f"{TOOL_NAME}_mPre")
         merge_pose_tensor_name = orginal_output_name
-        split_w_name = f"{orginal_output_name}_split_layer_w"
-        split_b_name = f"{orginal_output_name}_split_layer_b"
-        merge_w_name = f"{orginal_output_name}_merge_layer_w"
-        merge_b_name = f"{orginal_output_name}_merge_layer_b"
-        split_node_name      = f"{TOOL_NAME}_{orginal_output_name}_split"
-        split_relu_node_name = f"{TOOL_NAME}_{orginal_output_name}_split_relu"
-        merge_node_name      = f"{TOOL_NAME}_{orginal_output_name}_merge"
-        merge_relu_node_name = f"{TOOL_NAME}_{orginal_output_name}_merge_relu"
-        
-
+        split_w_name = self.warpped_model.gen_tensor_name(prefix=f"{TOOL_NAME}_sW")
+        split_b_name = self.warpped_model.gen_tensor_name(prefix=f"{TOOL_NAME}_sB")
+        merge_w_name = self.warpped_model.gen_tensor_name(prefix=f"{TOOL_NAME}_mW")
+        merge_b_name = self.warpped_model.gen_tensor_name(prefix=f"{TOOL_NAME}_mB")
+        split_node_name      = self.warpped_model.gen_node_name(prefix=f"{TOOL_NAME}_s")
+        split_relu_node_name = self.warpped_model.gen_node_name(prefix=f"{TOOL_NAME}_sR")
+        merge_node_name      = self.warpped_model.gen_node_name(prefix=f"{TOOL_NAME}_m")
+        merge_relu_node_name = self.warpped_model.gen_node_name(prefix=f"{TOOL_NAME}_mR")
 
         # create the new split layer
         split_layer = onnx.helper.make_node("Gemm",

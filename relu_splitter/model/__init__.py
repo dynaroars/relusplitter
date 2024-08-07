@@ -135,8 +135,6 @@ class WarppedOnnxModel():
                       graph_name=f"bruh_split_merge",
                       producer_name="ReluSplitter"):
         # maybe some assertions
-        self.logger.info(f"replacing nodes: {[node.name for node in nodes_to_replace]}")
-        self.logger.info(f"adding nodes: {[node.name for node in additional_nodes]}")
         new_nodes = []
         new_initializers = []
         model_in = self._model.graph.input

@@ -1,5 +1,5 @@
 #!/bin/bash
-export TOOL_NAME=stable_nas
+export TOOL_NAME=ReluSplitter
 export CONDA_HOME=$HOME/anaconda3
 
 conda activate $TOOL_NAME

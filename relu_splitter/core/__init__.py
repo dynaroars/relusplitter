@@ -1,5 +1,6 @@
 import random
 import logging
+import os
 from pathlib import Path
 from typing import Union
 from functools import reduce
@@ -12,6 +13,7 @@ from ..utils.onnx_utils import truncate_onnx_model, check_model_closeness
 from ..model import WarppedOnnxModel
 from auto_LiRPA import BoundedTensor, PerturbationLpNorm
 
+TOOL_NAME = os.environ.get("TOOL_NAME", "ReluSplitter")
 default_logger = logging.getLogger(__name__)
 
 class ReluSplitter():
@@ -155,16 +157,22 @@ class ReluSplitter():
         split_post_tensor_name = f"{orginal_output_name}_split_Post"
         merge_pre_tensor_name = f"{orginal_output_name}_merge_Pre"
         merge_pose_tensor_name = orginal_output_name
-        split_layer_w_name = f"{orginal_output_name}_split_layer_w"
-        split_layer_b_name = f"{orginal_output_name}_split_layer_b"
-        merge_layer_w_name = f"{orginal_output_name}_merge_layer_w"
-        merge_layer_b_name = f"{orginal_output_name}_merge_layer_b"
+        split_w_name = f"{orginal_output_name}_split_layer_w"
+        split_b_name = f"{orginal_output_name}_split_layer_b"
+        merge_w_name = f"{orginal_output_name}_merge_layer_w"
+        merge_b_name = f"{orginal_output_name}_merge_layer_b"
+        split_node_name      = f"{TOOL_NAME}_{orginal_output_name}_split"
+        split_relu_node_name = f"{TOOL_NAME}_{orginal_output_name}_split_relu"
+        merge_node_name      = f"{TOOL_NAME}_{orginal_output_name}_merge"
+        merge_relu_node_name = f"{TOOL_NAME}_{orginal_output_name}_merge_relu"
+        
+
 
         # create the new split layer
         split_layer = onnx.helper.make_node("Gemm",
-                                            inputs=[orginal_input_name, split_layer_w_name, split_layer_b_name],
+                                            inputs=[orginal_input_name, split_w_name, split_b_name],
                                             outputs=[split_pre_tensor_name],
-                                            name=f"{gemm_node.name}_split_layer",
+                                            name=split_node_name,
                                             alpha=1.0,
                                             beta=1.0,
                                             transB=0,
@@ -172,12 +180,12 @@ class ReluSplitter():
         split_layer_relu = onnx.helper.make_node("Relu",
                                                 inputs=[split_pre_tensor_name],
                                                 outputs=[split_post_tensor_name],
-                                                name=f"{gemm_node.name}_split_layer_relu")
+                                                name=split_relu_node_name)
         # create the new merge layer
         merge_layer = onnx.helper.make_node("Gemm",
-                                            inputs=[split_post_tensor_name, merge_layer_w_name, merge_layer_b_name],
+                                            inputs=[split_post_tensor_name, merge_w_name, merge_b_name],
                                             outputs=[merge_pre_tensor_name],
-                                            name=f"{gemm_node.name}_merge_layer",
+                                            name=merge_node_name,
                                             alpha=1.0,
                                             beta=1.0,
                                             transB=0,
@@ -185,14 +193,14 @@ class ReluSplitter():
         merge_layer_relu = onnx.helper.make_node("Relu",
                                                 inputs=[merge_pre_tensor_name],
                                                 outputs=[merge_pose_tensor_name],
-                                                name=f"{gemm_node.name}_merge_layer_relu")
+                                                name=merge_relu_node_name)
         
         new_nodes = [split_layer, split_layer_relu, merge_layer, merge_layer_relu]
         new_initializers = [
-            onnx.helper.make_tensor(split_layer_w_name, onnx.TensorProto.FLOAT, split_weights.shape, split_weights.flatten().tolist()),
-            onnx.helper.make_tensor(split_layer_b_name, onnx.TensorProto.FLOAT, split_bias.shape, split_bias.flatten().tolist()),
-            onnx.helper.make_tensor(merge_layer_w_name, onnx.TensorProto.FLOAT, merge_weights.shape, merge_weights.flatten().tolist()),
-            onnx.helper.make_tensor(merge_layer_b_name, onnx.TensorProto.FLOAT, merge_bias.shape, merge_bias.flatten().tolist())
+            onnx.helper.make_tensor(split_w_name, onnx.TensorProto.FLOAT, split_weights.shape, split_weights.flatten().tolist()),
+            onnx.helper.make_tensor(split_b_name, onnx.TensorProto.FLOAT, split_bias.shape, split_bias.flatten().tolist()),
+            onnx.helper.make_tensor(merge_w_name, onnx.TensorProto.FLOAT, merge_weights.shape, merge_weights.flatten().tolist()),
+            onnx.helper.make_tensor(merge_b_name, onnx.TensorProto.FLOAT, merge_bias.shape, merge_bias.flatten().tolist())
         ]
 
         new_model = self.warpped_model.generate_updated_model( nodes_to_replace=[gemm_node, relu_node],

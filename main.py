@@ -34,6 +34,7 @@ def get_parser():
     split_parser.add_argument('--max_splits', type=int, default=None, help='Maximum number of splits')
     split_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
     split_parser.add_argument('--output', type=str, default=None, help='Output path for the new model')
+    split_parser.add_argument('--split_all', action='store_true', help='Split all ReLUs')
 
     # Subparser for the info command
     info_parser = subparsers.add_parser('info', help='Info command help')
@@ -56,7 +57,10 @@ def main():
         output_path = Path(args.output) if args.output is not None else None
         
         relusplitter = ReluSplitter(onnx_path, spec_path, random_seed, logger)
-        new_model = relusplitter.split(args.split_idx, args.max_splits, args.split_strategy)
+        if args.split_all:
+            new_model = relusplitter.split_iterative(None, args.max_splits, args.split_strategy)
+        else:
+            new_model = relusplitter.split(args.split_idx, args.max_splits, args.split_strategy)
 
         # check model equivalency
         # original_model = WarppedOnnxModel(onnx.load(onnx_path))

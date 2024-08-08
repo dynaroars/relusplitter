@@ -79,7 +79,6 @@ class WarppedOnnxModel():
             for node in self._nodes:
                 self._tensor_names.update(node.input)
                 self._tensor_names.update(node.output)
-        print(self._tensor_names)
         return tensor_name in self._tensor_names
 
     @property

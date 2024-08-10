@@ -11,6 +11,7 @@ from auto_LiRPA import BoundedModule, BoundedTensor, PerturbationLpNorm
 
 from relu_splitter.core import ReluSplitter
 from relu_splitter.model import WarppedOnnxModel
+from relu_splitter.verify import init_verifier
 
 
 def setup_logging(verbosity):
@@ -45,6 +46,20 @@ def get_parser():
     info_parser = subparsers.add_parser('info', help='Info command help')
     info_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
     info_parser.add_argument('--spec', type=str, required=False, help='Path to the VNNLIB file')
+
+    # Subparser for the exp command
+    exp_parser = subparsers.add_parser('exp', help='Exp command help')
+    exp_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
+    exp_parser.add_argument('--spec', type=str, required=True, help='Path to the VNNLIB file')
+    exp_parser.add_argument('--seed', type=int, default=0, help='Seed for random number generation')
+    exp_parser.add_argument('--mask', type=str, default='stable', help='Mask for splitting')
+    exp_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
+    exp_parser.add_argument('--split_strategy', type=str, default='single', help='Splitting strategy')
+    exp_parser.add_argument('--max_splits', type=int, default=sys.maxsize, help='Maximum number of splits')
+    
+    exp_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')
+    exp_parser.add_argument('--rtol', type=float, default=1e-5, help='Relative tolerance for closeness check')
+
 
     return parser
 
@@ -85,6 +100,42 @@ def main():
             relusplitter.info()
         else:
             relusplitter.info_net_only()
+    elif args.command == 'exp':
+        verifier = init_verifier("neuralsat")
+        onnx_path = Path(args.net)
+        spec_path = Path(args.spec)
+
+        conf_1 = {
+            "split_mask": args.mask,
+            "split_strategy": args.split_strategy,
+            "max_splits": args.max_splits,
+            "split_idx": args.split_idx,
+            "random_seed": args.seed,
+            "atol": args.atol,
+            "rtol": args.rtol
+        }
+        conf_2 = conf_1.copy()
+        conf_2["split_mask"] = "unstable"
+        
+        relusplitter_1 = ReluSplitter(onnx_path, 
+                                    spec_path, 
+                                    logger = logger, 
+                                    conf = conf_1)
+        relusplitter_2 = ReluSplitter(onnx_path, 
+                                    spec_path, 
+                                    logger = logger, 
+                                    conf = conf_2)
+        m1 = relusplitter_1.split(args.split_idx)
+        m2 = relusplitter_2.split(args.split_idx)
+        m1.save(Path("m1.onnx"))
+        m2.save(Path("m2.onnx"))
+        co = { "onnx_path": onnx_path, "vnnlib_path": spec_path, "log_path": "log.txt" }
+        c1 = { "onnx_path": "m1.onnx", "vnnlib_path": spec_path, "log_path": "log.txt" }
+        c2 = { "onnx_path": "m2.onnx", "vnnlib_path": spec_path, "log_path": "log.txt" }
+        print(verifier.execute(co))
+        print(verifier.execute(c1))
+        print(verifier.execute(c2))
+        
     else:
         parser.print_help()
         sys.exit(1)

@@ -12,13 +12,13 @@ from ..utils.read_vnnlib import read_vnnlib
 from ..utils.onnx_utils import truncate_onnx_model, check_model_closeness
 from ..model import WarppedOnnxModel
 from auto_LiRPA import BoundedTensor, PerturbationLpNorm
-from .default_config import default_conf
+from .default_config import default_config
 
 TOOL_NAME = os.environ.get("TOOL_NAME", "ReluSplitter")
 default_logger = logging.getLogger(__name__)
 
 class ReluSplitter():
-    def __init__(self, network: Union[Path], spec: Union[Path, str, None], logger = default_logger, conf=default_conf) -> None:
+    def __init__(self, network: Union[Path], spec: Union[Path, str, None], logger = default_logger, conf=default_config) -> None:
         self.onnx_path = network
         self.spec_path = spec
         self._conf = conf
@@ -84,13 +84,15 @@ class ReluSplitter():
         max_splits = self._conf["max_splits"]
         node1, node2 = nodes
         assert node1.op_type == "Gemm" and node2.op_type == "Relu", f"Invalid nodes:{node1.op_type} -> {node2.op_type}"
+        
+        input_lb, input_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.input[0])          # the input bound of the Gemm node, from which the split location is sampled
+        output_lb, output_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.output[0])       # the output bound for determining the stability of the neurons
+        assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
+        
         if mask == "all":
-            split_mask = torch.ones(node1.output[0].type.shape[1], dtype=torch.bool)
+            split_mask = torch.ones_like(output_lb, dtype=torch.bool).squeeze()
         elif mask in ["stable", "unstable"]:
         # the input and output of the Gemm node
-            input_lb, input_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.input[0])          # the input bound of the Gemm node, from which the split location is sampled
-            output_lb, output_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.output[0])       # the output bound for determining the stability of the neurons
-            assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
             split_mask = torch.logical_or(output_lb >= 0, output_ub < 0).squeeze()
             if mask == "unstable":
                 split_mask = ~split_mask

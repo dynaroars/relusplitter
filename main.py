@@ -30,14 +30,21 @@ def get_parser():
     split_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
     split_parser.add_argument('--spec', type=str, required=True, help='Path to the VNNLIB file')
     split_parser.add_argument('--seed', type=int, default=0, help='Seed for random number generation')
-    split_parser.add_argument('--split_strategy', type=str, default='single', help='Splitting strategy')
-    split_parser.add_argument('--max_splits', type=int, default=None, help='Maximum number of splits')
+    split_parser.add_argument('--mask', type=str, default='stable', help='Mask for splitting')
     split_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
-    split_parser.add_argument('--output', type=str, default=None, help='Output path for the new model')
+    split_parser.add_argument('--split_strategy', type=str, default='single', help='Splitting strategy')
+    split_parser.add_argument('--max_splits', type=int, default=sys.maxsize, help='Maximum number of splits')
+    
+    split_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')
+    split_parser.add_argument('--rtol', type=float, default=1e-5, help='Relative tolerance for closeness check')
+
+    split_parser.add_argument('--output', type=str, default="splitted.onnx", help='Output path for the new model')
+
 
     # Subparser for the info command
     info_parser = subparsers.add_parser('info', help='Info command help')
     info_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
+    info_parser.add_argument('--spec', type=str, required=False, help='Path to the VNNLIB file')
 
     return parser
 
@@ -48,23 +55,36 @@ def main():
     logger = setup_logging(args.verbosity)
 
     if args.command == 'split':
-        onnx_path = args.net
-        spec_path = args.spec
-        random_seed = args.seed
-        max_splits = args.max_splits
-        split_idx = args.split_idx
-        output_path = Path(args.output) if args.output is not None else None
+        onnx_path = Path(args.net)
+        spec_path = Path(args.spec)
+        output_path = Path(args.output)
+
+        conf = {
+            "split_mask": args.mask,
+            "split_strategy": args.split_strategy,
+            "max_splits": args.max_splits,
+            "split_idx": args.split_idx,
+            "random_seed": args.seed,
+            "atol": args.atol,
+            "rtol": args.rtol
+        }
         
-        relusplitter = ReluSplitter(onnx_path, spec_path, random_seed, logger)
-        new_model = relusplitter.split(args.split_idx, args.max_splits, args.split_strategy)
-        
-        if output_path is not None:
-            logger.info(f"Model saved to {output_path}")
-            new_model.save(output_path)
+        relusplitter = ReluSplitter(onnx_path, 
+                                    spec_path, 
+                                    logger = logger, 
+                                    conf = conf)
+        new_model = relusplitter.split(args.split_idx)
+        new_model.save(output_path)
+        logger.info(f"Model saved to {output_path}")
 
     elif args.command == 'info':
         onnx_path = args.net
-        ReluSplitter.info(onnx_path)
+        spec_path = args.spec
+        relusplitter = ReluSplitter(onnx_path, spec_path, logger=logger)
+        if spec_path is not None:
+            relusplitter.info()
+        else:
+            relusplitter.info_net_only()
     else:
         parser.print_help()
         sys.exit(1)

@@ -40,7 +40,7 @@ class ReluSplitter():
         assert self._conf["split_strategy"] in ["single", "random", "adaptive"]
         assert self._conf["split_idx"] >= 0
         assert self._conf["random_seed"] >= 0
-        assert self._conf["split_mask"] in ["stable", "unstable", "all"]
+        assert self._conf["split_mask"] in ["stable+", "stable-", "unstable", "all"]
         assert self._conf["atol"] >= 0
         assert self._conf["rtol"] >= 0
 
@@ -93,9 +93,13 @@ class ReluSplitter():
             split_mask = torch.ones_like(output_lb, dtype=torch.bool).squeeze()
         elif mask in ["stable", "unstable"]:
         # the input and output of the Gemm node
-            split_mask = torch.logical_or(output_lb >= 0, output_ub < 0).squeeze()
+            split_mask = torch.logical_or(output_lb > 0, output_ub <= 0).squeeze()
             if mask == "unstable":
                 split_mask = ~split_mask
+        elif mask in ["stable+"]:
+            split_mask = (output_lb > 0).squeeze()
+        elif mask in ["stable-"]:
+            split_mask = (output_ub <= 0).squeeze()
         else:
             raise NotImplementedError(f"Unknown split mask {mask}")
         self.logger.info(f"Found {torch.sum(split_mask).item()} splitable ReLUs with mask <{mask}>")

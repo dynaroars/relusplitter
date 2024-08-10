@@ -52,7 +52,7 @@ def get_parser():
     exp_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
     exp_parser.add_argument('--spec', type=str, required=True, help='Path to the VNNLIB file')
     exp_parser.add_argument('--seed', type=int, default=0, help='Seed for random number generation')
-    exp_parser.add_argument('--mask', type=str, default='stable', help='Mask for splitting')
+    exp_parser.add_argument('--mask', type=str, default='stable+', help='Mask for splitting')
     exp_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
     exp_parser.add_argument('--split_strategy', type=str, default='single', help='Splitting strategy')
     exp_parser.add_argument('--max_splits', type=int, default=sys.maxsize, help='Maximum number of splits')
@@ -115,7 +115,9 @@ def main():
             "rtol": args.rtol
         }
         conf_2 = conf_1.copy()
-        conf_2["split_mask"] = "unstable"
+        conf_2["split_mask"] = "stable-"
+        conf_3 = conf_1.copy()
+        conf_3["split_mask"] = "unstable"
         
         relusplitter_1 = ReluSplitter(onnx_path, 
                                     spec_path, 
@@ -125,16 +127,24 @@ def main():
                                     spec_path, 
                                     logger = logger, 
                                     conf = conf_2)
+        relusplitter_3 = ReluSplitter(onnx_path, 
+                                    spec_path, 
+                                    logger = logger, 
+                                    conf = conf_2)
         m1 = relusplitter_1.split(args.split_idx)
         m2 = relusplitter_2.split(args.split_idx)
+        m3 = relusplitter_3.split(args.split_idx)
         m1.save(Path("m1.onnx"))
         m2.save(Path("m2.onnx"))
+        m3.save(Path("m3.onnx"))
         co = { "onnx_path": onnx_path, "vnnlib_path": spec_path, "log_path": "log.txt" }
         c1 = { "onnx_path": "m1.onnx", "vnnlib_path": spec_path, "log_path": "log.txt" }
         c2 = { "onnx_path": "m2.onnx", "vnnlib_path": spec_path, "log_path": "log.txt" }
-        print(verifier.execute(co))
-        print(verifier.execute(c1))
-        print(verifier.execute(c2))
+        c3 = { "onnx_path": "m3.onnx", "vnnlib_path": spec_path, "log_path": "log.txt" }
+        print(f"orginal: {verifier.execute(co)}")
+        print(f"stable+: {verifier.execute(c1)}")
+        print(f"stable-: {verifier.execute(c2)}")
+        print(f"unstable:{verifier.execute(c3)}")
         
     else:
         parser.print_help()

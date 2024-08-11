@@ -8,7 +8,7 @@ from functools import reduce
 import onnx
 import torch
 
-from ..utils.misc import adjust_mask_random_k
+from ..utils.misc import adjust_mask_random_k, find_feasible_point
 from ..utils.read_vnnlib import read_vnnlib
 from ..utils.onnx_utils import truncate_onnx_model, check_model_closeness
 from ..model import WarppedOnnxModel
@@ -44,7 +44,7 @@ class ReluSplitter():
         assert "min_splits" in self._conf, "min_splits not found in config"
         assert "max_splits" in self._conf, "max_splits not found in config"
         assert self._conf["min_splits"] >= 0 and self._conf["min_splits"] <= self._conf["max_splits"]
-        assert self._conf["split_strategy"] in ["single", "random", "adaptive"]
+        assert self._conf["split_strategy"] in ["single", "random", "unstable+", "unstable-", "adaptive"]
         assert self._conf["split_idx"] >= 0
         assert self._conf["random_seed"] >= 0
         assert self._conf["split_mask"] in ["stable+", "stable-", "stable", "unstable", "all"], f"Unknown split mask {self._conf['split_mask']}"
@@ -78,9 +78,27 @@ class ReluSplitter():
         lb, ub = self.warpped_model.get_bound_of(self.bounded_input, gemm_node.input[0])          # the input bound of the Gemm node, from which the split location is sampled
         if split_strategy == "single":
             split_loc = (torch.rand_like(lb) * (ub - lb) + lb).squeeze()
-            return lambda: split_loc
+            return lambda **kwargs: split_loc
         elif split_strategy == "random":
-            return lambda: (torch.rand_like(lb) * (ub - lb) + lb).squeeze()
+            return lambda **kwargs: (torch.rand_like(lb) * (ub - lb) + lb).squeeze()
+        elif split_strategy == "unstable+":
+            def split_loc_fn(**kwargs):
+                w, b = kwargs["w"], kwargs["b"]
+                while True:
+                    split_loc = (torch.rand_like(lb) * (ub - lb) + lb).squeeze()
+                    if split_loc @ w + b > 0:
+                        self.logger.warning(f"Split location: {split_loc}")
+                        return split_loc
+            return split_loc_fn
+        elif split_strategy == "unstable-":
+            def split_loc_fn(**kwargs):
+                w, b = kwargs["w"], kwargs["b"]
+                while True:
+                    split_loc = (torch.rand_like(lb) * (ub - lb) + lb).squeeze()
+                    if split_loc @ w + b <= 0:
+                        self.logger.warning(f"Split location: {split_loc}")
+                        return split_loc
+            return split_loc_fn
         elif split_strategy == "adaptive":
             raise NotImplementedError
         else:
@@ -91,12 +109,17 @@ class ReluSplitter():
         assert node1.op_type == "Gemm" and node2.op_type == "Relu", f"Invalid nodes:{node1.op_type} -> {node2.op_type}"
         input_lb, input_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.input[0])          # the input bound of the Gemm node, from which the split location is sampled
         output_lb, output_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.output[0])       # the output bound for determining the stability of the neurons
+        assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
         masks = {}
         masks["all"] = torch.ones_like(output_lb, dtype=torch.bool).squeeze()
         masks["stable"] = torch.logical_or(output_lb > 0, output_ub <= 0).squeeze()
         masks["unstable"] = ~masks["stable"]
         masks["stable+"] = (output_lb > 0).squeeze()
         masks["stable-"] = (output_ub <= 0).squeeze()
+        assert torch.all(masks["stable"] == (masks["stable+"] | masks["stable-"])), "stable is not equal to stable+ AND stable-"
+        assert not torch.any(masks["stable+"] & masks["stable-"]), "stable+ and stable- are not mutually exclusive"
+        assert not torch.any(masks["unstable"] & masks["stable"]), "unstable and stable are not mutually exclusive"
+        assert torch.all((masks["unstable"] | masks["stable"]) == masks["all"]), "The union of unstable and stable does not cover all elements"
         return masks
 
 
@@ -143,7 +166,7 @@ class ReluSplitter():
         assert min_splits <= n_splits <= max_splits, f"Number of splits {n_splits} is out of range [{min_splits}, {max_splits}]"
 
         split_loc_fn = self.get_split_loc_fn(splitable_nodes[split_idx])   # kwargs here
-        grad, offset = self.warpped_model.get_gemm_wb(gemm_node)
+        grad, offset = self.warpped_model.get_gemm_wb(gemm_node)    # w,b of the layer to be splitted
         # create new layers
         num_out, num_in = grad.shape
         split_weights = torch.zeros((num_out + n_splits, num_in))
@@ -153,9 +176,11 @@ class ReluSplitter():
         
         idx = 0
         for i in range(len(split_mask)):
-            w = grad[i]
-            b = grad[i] @ split_loc_fn()
             if split_mask[i]:
+                split_loc = split_loc_fn(w=grad[i], b=offset[i])
+                w = grad[i]
+                b = grad[i] @ split_loc
+                
                 split_weights[idx]      = w
                 split_weights[idx+1]    = -w
                 split_bias[idx]         = -b

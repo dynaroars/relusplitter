@@ -6,9 +6,6 @@ import argparse
 import sys
 from pathlib import Path
 
-import torch.nn as nn
-from onnx2pytorch import ConvertModel
-from auto_LiRPA import BoundedModule, BoundedTensor, PerturbationLpNorm
 
 from relu_splitter.core import ReluSplitter
 from relu_splitter.model import WarppedOnnxModel

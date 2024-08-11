@@ -27,7 +27,45 @@ def adjust_mask_random_k(mask, k):
         return mask
     raise ValueError("Something wrong")
 
+def find_feasible_point(lb, ub, w, b, epsilon=1e-6):
+    """
+    Finds a point x within the bounds [lb, ub] that satisfies w @ x + b > 0.
 
+    Parameters:
+    lb (torch.Tensor): Lower bound for x.
+    ub (torch.Tensor): Upper bound for x.
+    w (torch.Tensor): Weight tensor.
+    b (torch.Tensor): Bias tensor.
+    epsilon (float): A small value to nudge the solution when near the boundary.
+
+    Returns:
+    torch.Tensor: A feasible point x that satisfies w @ x + b > 0.
+    """
+    # Calculate the max possible value of w @ x + b within the bounds
+    max_value = torch.where(w > 0, ub, lb) @ w + b
+    print(lb)
+    print(ub)
+    print(w)
+    print(b)
+    assert max_value > 0, f"No feasible point within the given bounds can satisfy w @ x + b > 0, {max_value}"
+    
+    # Start with a random point within bounds
+    x = (torch.rand_like(lb) * (ub - lb) + lb).squeeze()
+    
+    if w @ x + b > 0:
+        return x
+    
+    # Heuristic adjustment based on w
+    for i in range(len(w)):
+        if w[i] > 0:
+            x[i] = max(lb[i].item(), min(ub[i].item(), ub[i].item() - epsilon))
+        elif w[i] < 0:
+            x[i] = min(ub[i].item(), max(lb[i].item(), lb[i].item() + epsilon))
+        
+        if w @ x + b > 0:
+            return x
+    
+    raise ValueError("No feasible point found within the given bounds.")
 
 def generate_random_inputs(input_shape, num_tests):
     inputs = []

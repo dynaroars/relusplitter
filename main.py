@@ -1,6 +1,7 @@
+from relu_splitter.utils.logger import logger
+
 import torch
 import onnx
-import logging
 import argparse
 import sys
 from pathlib import Path
@@ -14,11 +15,6 @@ from relu_splitter.model import WarppedOnnxModel
 from relu_splitter.verify import init_verifier
 
 
-def setup_logging(verbosity):
-    logging.basicConfig(level=verbosity, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logger = logging.getLogger()
-    logger.setLevel(verbosity)
-    return logger
 
 def get_parser():
     parser = argparse.ArgumentParser(description="Parser for network verification arguments")
@@ -67,11 +63,11 @@ def get_parser():
 
     return parser
 
-def main():
-    
+
+if __name__ == "__main__":
     parser = get_parser()
     args = parser.parse_args()
-    logger = setup_logging(args.verbosity)
+    logger.setLevel(args.verbosity)
 
     if args.command == 'split':
         onnx_path = Path(args.net)
@@ -164,6 +160,3 @@ def main():
 
 
 
-if __name__ == '__main__':
-    main()
-    print("BRUH")

@@ -25,17 +25,17 @@ class ReluSplitter():
         self._conf = conf
         self.logger = logger
 
-        self.logger.info("ReluSplitter initializing")
-        self.logger.info(f"Model: {self.onnx_path}")
-        self.logger.info(f"Spec: {self.spec_path}")
-        self.logger.info(f"Config: {self._conf}")
+        self.logger.debug("ReluSplitter initializing")
+        self.logger.debug(f"Model: {self.onnx_path}")
+        self.logger.debug(f"Spec: {self.spec_path}")
+        self.logger.debug(f"Config: {self._conf}")
 
         self.check_config()
         self.init_model()
         self.init_vnnlib()
         self.init_seeds()
 
-        self.logger.info("ReluSplitter initialized")
+        self.logger.debug("ReluSplitter initialized")
 
 
     def check_config(self):
@@ -138,7 +138,7 @@ class ReluSplitter():
             self.logger.error(f"Not enough ReLUs to split, found {mask_size} ReLUs, but min_splits is {min_splits}")
             raise ValueError("Not enough ReLUs to split")
         elif mask_size > max_splits:
-            self.logger.warn(f"Randomly selecting {max_splits}/{mask_size} ReLUs to split")
+            self.logger.info(f"Randomly selecting {max_splits}/{mask_size} ReLUs to split")
             split_mask = adjust_mask_random_k(split_mask, max_splits)
         n_splits = torch.sum(split_mask).item()  # actual number of splits
         assert min_splits <= n_splits <= max_splits, f"Number of splits {n_splits} is out of range [{min_splits}, {max_splits}]"
@@ -229,8 +229,8 @@ class ReluSplitter():
                                                                 graph_name=f"{self.onnx_path.stem}_split_{split_idx}",
                                                                 producer_name="ReluSplitter")
         self.logger.info("=========== Model created ===========")
-        self.logger.info("=====================================")
-        self.logger.info(f"Checking model closeness with atol: {self._conf['atol']} and rtol: {self._conf['rtol']}")
+        self.logger.debug("=====================================")
+        self.logger.debug(f"Checking model closeness with atol: {self._conf['atol']} and rtol: {self._conf['rtol']}")
         input_shape = list(self.warpped_model.input_shapes.values())[0]
         equiv, diff = check_model_closeness(self.warpped_model, 
                                             new_model, 
@@ -238,10 +238,10 @@ class ReluSplitter():
                                             atol=self._conf["atol"], 
                                             rtol=self._conf["rtol"])
         if not equiv:
-            self.logger.error(f"Model closeness check failed, with diff {diff}")
+            self.logger.error(f"Model closeness check failed with diff {diff}")
             raise ValueError("Model closeness check failed")
         else:
-            self.logger.info(f"Model closeness check passed with worst diff {diff}")
+            self.logger.debug(f"Model closeness check passed with worst diff {diff}")
         return new_model
 
 

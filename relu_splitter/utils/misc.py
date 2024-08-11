@@ -18,11 +18,11 @@ def adjust_mask_random_k(mask, k):
     assert k >= 0
     count = torch.sum(mask).item()
     if count > k:
-        indices = torch.nonzero(split_mask, as_tuple=True)[0]
+        indices = torch.nonzero(mask, as_tuple=True)[0]
         selected_indices = indices[torch.randperm(len(indices))[:k]]
-        split_mask = torch.zeros_like(split_mask, dtype=torch.bool)
-        split_mask[selected_indices] = True
-        return split_mask
+        mask = torch.zeros_like(mask, dtype=torch.bool)
+        mask[selected_indices] = True
+        return mask
     elif count <= k:
         return mask
     raise ValueError("Something wrong")

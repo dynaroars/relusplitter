@@ -118,14 +118,13 @@ class ReluSplitter():
         gemm_node, relu_node = splitable_nodes[split_idx][0], splitable_nodes[split_idx][1]
         assert all(attri.i == 0 for attri in gemm_node.attribute if attri.name == "TransA"), "TransA == 1 is not supported yet"
 
-        self.logger.info("=====================================")
-        self.logger.info(f"Splitting model: {self.onnx_path}")
-        self.logger.info(f"Spec file: {self.spec_path}")
-        self.logger.info(f"Random seed: {self._conf['random_seed']}")
-        self.logger.info(f"Split strategy: {self._conf['split_strategy']}")
-        self.logger.info(f"Split mask: {self._conf['split_mask']}")
-        self.logger.info(f"min_splits: {self._conf['min_splits']}, max_splits: {self._conf['max_splits']}")
-        self.logger.info(f"Splitting at Gemm node: <{gemm_node.name}> && ReLU node: <{relu_node.name}>")
+        self.logger.debug("=====================================")
+        self.logger.debug(f"Splitting model: {self.onnx_path} with spec: {self.spec_path}")
+        self.logger.debug(f"Splitting at Gemm node: <{gemm_node.name}> && ReLU node: <{relu_node.name}>")
+        self.logger.debug(f"Random seed: {self._conf['random_seed']}")
+        self.logger.debug(f"Split strategy: {self._conf['split_strategy']}")
+        self.logger.debug(f"Split mask: {self._conf['split_mask']}")
+        self.logger.debug(f"min_splits: {self._conf['min_splits']}, max_splits: {self._conf['max_splits']}")
 
         split_masks = self.get_split_masks(splitable_nodes[split_idx])
         split_mask = split_masks[self._conf["split_mask"]]
@@ -228,8 +227,7 @@ class ReluSplitter():
                                                                 additional_initializers=new_initializers,
                                                                 graph_name=f"{self.onnx_path.stem}_split_{split_idx}",
                                                                 producer_name="ReluSplitter")
-        self.logger.info("=========== Model created ===========")
-        self.logger.debug("=====================================")
+        self.logger.debug("=========== Model created ===========")
         self.logger.debug(f"Checking model closeness with atol: {self._conf['atol']} and rtol: {self._conf['rtol']}")
         input_shape = list(self.warpped_model.input_shapes.values())[0]
         equiv, diff = check_model_closeness(self.warpped_model, 

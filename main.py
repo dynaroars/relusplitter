@@ -87,11 +87,11 @@ if __name__ == "__main__":
         if args.n_splits is not None:
             conf["min_splits"] = args.n_splits
             conf["max_splits"] = args.n_splits
-        
         relusplitter = ReluSplitter(onnx_path, 
                                     spec_path, 
                                     logger = logger, 
                                     conf = conf)
+        logger.info(f"Start splitting...\n conf: {conf}")
         new_model = relusplitter.split(args.split_idx)
         new_model.save(output_path)
         logger.info(f"Model saved to {output_path}")

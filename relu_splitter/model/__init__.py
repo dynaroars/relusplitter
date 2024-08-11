@@ -43,7 +43,7 @@ class WarppedOnnxModel():
         if has_duplicate_node_name or has_node_w_empty_name or self.force_rename:
             for i, node in enumerate(model.graph.node):
                 node.name = f"{node.op_type}_{i}"
-            self.logger.warning(f"Renamed nodes...")
+            self.logger.info(f"Renamed nodes...")
         # for node in model.graph.node:
             # each node only produce one output
             # assert len(node.output) == 1, f"Node {node.name} produces more than one output"

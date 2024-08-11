@@ -85,6 +85,7 @@ dependencies:
   - pillow=10.3.0=py311h5eee18b_0
   - pip=24.0=py311h06a4308_0
   - protobuf=3.20.3=py311h6a678d5_0
+  - psutil=5.9.0=py311h5eee18b_0
   - python=3.11.9=h955ad1f_0
   - python-flatbuffers=2.0=pyhd3eb1b0_0
   - python_abi=3.11=2_cp311

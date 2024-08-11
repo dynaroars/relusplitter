@@ -153,6 +153,13 @@ class ReluSplitter():
         split_mask = split_masks[self._conf["split_mask"]]
         mask_size  = torch.sum(split_mask).item()
         min_splits, max_splits = self._conf["min_splits"], self._conf["max_splits"]
+        
+        self.logger.info(f"============= Split Mask Sumamry =============")
+        self.logger.info(f"stable+: {torch.sum(split_masks['stable+'])}\t"
+                            f"stable-: {torch.sum(split_masks['stable-'])}")
+        self.logger.info(f"unstable: {torch.sum(split_masks['unstable'])}\t"
+                            f"all: {torch.sum(split_masks['all'])}")
+        
         if mask_size == 0:
             self.logger.error("No splitable ReLUs found")
             raise ValueError("No splitable ReLUs")

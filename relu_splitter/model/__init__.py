@@ -99,6 +99,9 @@ class WarppedOnnxModel():
             for input_tensor in self._model.graph.input:
                 shape = []
                 for dim in input_tensor.type.tensor_type.shape.dim:
+                    if dim.dim_value == 0:
+                        self.logger.info("skip the input shape with 0 dim_value")
+                        continue
                     shape.append(dim.dim_value)
                 input_shapes[input_tensor.name] = shape
             return input_shapes

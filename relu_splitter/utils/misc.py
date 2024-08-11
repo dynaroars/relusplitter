@@ -14,6 +14,19 @@ def get_random_id(len=8):
     assert len <= 32
     return str(uuid.uuid4())[:len]
 
+def adjust_mask_random_k(mask, k):
+    assert k >= 0
+    count = torch.sum(mask).item()
+    if count > k:
+        indices = torch.nonzero(split_mask, as_tuple=True)[0]
+        selected_indices = indices[torch.randperm(len(indices))[:k]]
+        split_mask = torch.zeros_like(split_mask, dtype=torch.bool)
+        split_mask[selected_indices] = True
+        return split_mask
+    elif count <= k:
+        return mask
+    raise ValueError("Something wrong")
+
 
 
 def generate_random_inputs(input_shape, num_tests):

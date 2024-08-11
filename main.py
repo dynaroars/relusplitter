@@ -31,9 +31,11 @@ def get_parser():
     split_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
     split_parser.add_argument('--spec', type=str, required=True, help='Path to the VNNLIB file')
     split_parser.add_argument('--seed', type=int, default=0, help='Seed for random number generation')
-    split_parser.add_argument('--mask', type=str, default='stable', help='Mask for splitting')
+    split_parser.add_argument('--mask', type=str, default='stable+', help='Mask for splitting')
     split_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
     split_parser.add_argument('--split_strategy', type=str, default='single', help='Splitting strategy')
+    split_parser.add_argument('--n_splits', type=int, default=None, help='Number of splits (strict), this will override min_splits and max_splits')
+    split_parser.add_argument('--min_splits', type=int, default=1, help='Maximum number of splits')
     split_parser.add_argument('--max_splits', type=int, default=sys.maxsize, help='Maximum number of splits')
     
     split_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')
@@ -55,6 +57,8 @@ def get_parser():
     exp_parser.add_argument('--mask', type=str, default='stable+', help='Mask for splitting')
     exp_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
     exp_parser.add_argument('--split_strategy', type=str, default='single', help='Splitting strategy')
+    exp_parser.add_argument('--n_splits', type=int, default=None, help='Maximum number of splits')
+    exp_parser.add_argument('--min_splits', type=int, default=1, help='Maximum number of splits')
     exp_parser.add_argument('--max_splits', type=int, default=sys.maxsize, help='Maximum number of splits')
     
     exp_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')
@@ -77,12 +81,16 @@ def main():
         conf = {
             "split_mask": args.mask,
             "split_strategy": args.split_strategy,
+            "min_splits": args.min_splits,
             "max_splits": args.max_splits,
             "split_idx": args.split_idx,
             "random_seed": args.seed,
             "atol": args.atol,
             "rtol": args.rtol
         }
+        if args.n_splits is not None:
+            conf["min_splits"] = args.n_splits
+            conf["max_splits"] = args.n_splits
         
         relusplitter = ReluSplitter(onnx_path, 
                                     spec_path, 
@@ -93,13 +101,13 @@ def main():
         logger.info(f"Model saved to {output_path}")
 
     elif args.command == 'info':
-        onnx_path = args.net
-        spec_path = args.spec
-        relusplitter = ReluSplitter(onnx_path, spec_path, logger=logger)
-        if spec_path is not None:
-            relusplitter.info()
-        else:
-            relusplitter.info_net_only()
+        onnx_path = Path(args.net)
+        spec_path = Path(args.spec)
+        # relusplitter = ReluSplitter(onnx_path, spec_path, logger=logger)
+        # if spec_path is not None:
+        #     relusplitter.info()
+        # else:
+        relusplitter.info_net_only()
     elif args.command == 'exp':
         verifier = init_verifier("neuralsat")
         onnx_path = Path(args.net)
@@ -108,12 +116,16 @@ def main():
         conf_1 = {
             "split_mask": args.mask,
             "split_strategy": args.split_strategy,
+            "min_splits": args.min_splits,
             "max_splits": args.max_splits,
             "split_idx": args.split_idx,
             "random_seed": args.seed,
             "atol": args.atol,
             "rtol": args.rtol
         }
+        if args.n_splits is not None:
+            conf["min_splits"] = args.n_splits
+            conf["max_splits"] = args.n_splits
         conf_2 = conf_1.copy()
         conf_2["split_mask"] = "stable-"
         conf_3 = conf_1.copy()

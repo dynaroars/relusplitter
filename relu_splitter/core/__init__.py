@@ -8,6 +8,7 @@ from functools import reduce
 import onnx
 import torch
 
+from ..utils.misc import adjust_mask_random_k
 from ..utils.read_vnnlib import read_vnnlib
 from ..utils.onnx_utils import truncate_onnx_model, check_model_closeness
 from ..model import WarppedOnnxModel
@@ -23,24 +24,30 @@ class ReluSplitter():
         self.spec_path = spec
         self._conf = conf
         self.logger = logger
+
+        self.logger.info("ReluSplitter initializing")
+        self.logger.info(f"Model: {self.onnx_path}")
+        self.logger.info(f"Spec: {self.spec_path}")
+        self.logger.info(f"Config: {self._conf}")
+
         self.check_config()
         self.init_model()
         self.init_vnnlib()
         self.init_seeds()
+
         self.logger.info("ReluSplitter initialized")
-        self.logger.info(f"Model: {self.onnx_path}")
-        self.logger.info(f"Spec: {self.spec_path}")
-        self.logger.info(f"Config: {self._conf}")
 
 
     def check_config(self):
         assert self.onnx_path.exists(), f"Model file <{self.onnx_path}> does not exist"
         assert self.spec_path.exists(), f"Spec file <{self.spec_path}> does not exist"
+        assert "min_splits" in self._conf, "min_splits not found in config"
         assert "max_splits" in self._conf, "max_splits not found in config"
+        assert self._conf["min_splits"] >= 0 and self._conf["min_splits"] <= self._conf["max_splits"]
         assert self._conf["split_strategy"] in ["single", "random", "adaptive"]
         assert self._conf["split_idx"] >= 0
         assert self._conf["random_seed"] >= 0
-        assert self._conf["split_mask"] in ["stable+", "stable-", "unstable", "all"]
+        assert self._conf["split_mask"] in ["stable+", "stable-", "stable", "unstable", "all"], f"Unknown split mask {self._conf['split_mask']}"
         assert self._conf["atol"] >= 0
         assert self._conf["rtol"] >= 0
 
@@ -51,7 +58,7 @@ class ReluSplitter():
         model_num_inputs = self.warpped_model.num_inputs
 
         assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
-        assert model_num_inputs == spec_num_inputs, "Spec number of inputs does not match model inputs"
+        assert model_num_inputs == spec_num_inputs, f"Spec number of inputs does not match model inputs {spec_num_inputs} != {model_num_inputs}"
         self.bounded_input = BoundedTensor(input_lb, PerturbationLpNorm(x_L=input_lb, x_U=input_ub))
 
     def init_model(self):
@@ -79,42 +86,19 @@ class ReluSplitter():
         else:
             raise ValueError(f"Unknown split strategy {split_strategy}")
 
-    def get_split_mask(self, nodes, reversed=False):
-        mask = self._conf["split_mask"]
-        max_splits = self._conf["max_splits"]
+    def get_split_masks(self, nodes):
         node1, node2 = nodes
         assert node1.op_type == "Gemm" and node2.op_type == "Relu", f"Invalid nodes:{node1.op_type} -> {node2.op_type}"
-        
         input_lb, input_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.input[0])          # the input bound of the Gemm node, from which the split location is sampled
         output_lb, output_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.output[0])       # the output bound for determining the stability of the neurons
-        assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
-        
-        if mask == "all":
-            split_mask = torch.ones_like(output_lb, dtype=torch.bool).squeeze()
-        elif mask in ["stable", "unstable"]:
-        # the input and output of the Gemm node
-            split_mask = torch.logical_or(output_lb > 0, output_ub <= 0).squeeze()
-            if mask == "unstable":
-                split_mask = ~split_mask
-        elif mask in ["stable+"]:
-            split_mask = (output_lb > 0).squeeze()
-        elif mask in ["stable-"]:
-            split_mask = (output_ub <= 0).squeeze()
-        else:
-            raise NotImplementedError(f"Unknown split mask {mask}")
-        self.logger.info(f"Found {torch.sum(split_mask).item()} splitable ReLUs with mask <{mask}>")
+        masks = {}
+        masks["all"] = torch.ones_like(output_lb, dtype=torch.bool).squeeze()
+        masks["stable"] = torch.logical_or(output_lb > 0, output_ub <= 0).squeeze()
+        masks["unstable"] = ~masks["stable"]
+        masks["stable+"] = (output_lb > 0).squeeze()
+        masks["stable-"] = (output_ub <= 0).squeeze()
+        return masks
 
-        n_splits = torch.sum(split_mask).item()
-        if n_splits > max_splits:
-            self.logger.info(f"Max split set to: {max_splits}...\n Randomly selecting {max_splits} to split")
-            indices = torch.nonzero(split_mask, as_tuple=True)[0]
-            selected_indices = indices[torch.randperm(len(indices))[:max_splits]]
-            split_mask = torch.zeros_like(split_mask, dtype=torch.bool)
-            split_mask[selected_indices] = True
-            n_splits = max_splits
-            assert torch.sum(split_mask).item() <= max_splits, "Number of True values exceeds max_splits"
-            assert torch.equal(split_mask.logical_or(split_mask), split_mask), "relu max property violated"
-        return split_mask, n_splits
 
     def get_splitable_nodes(self):
         # parrtern 1: Gemm -> Relu
@@ -128,7 +112,7 @@ class ReluSplitter():
                     splitable_nodes.append( (prior_node, node) )
         return splitable_nodes
     
-    def split(self, split_idx=0, max_splits=None):
+    def split(self, split_idx=0):
         splitable_nodes = self.get_splitable_nodes()
         assert split_idx < len(splitable_nodes), f"Split location <{split_idx}> is out of bound"
         gemm_node, relu_node = splitable_nodes[split_idx][0], splitable_nodes[split_idx][1]
@@ -139,17 +123,28 @@ class ReluSplitter():
         self.logger.info(f"Spec file: {self.spec_path}")
         self.logger.info(f"Random seed: {self._conf['random_seed']}")
         self.logger.info(f"Split strategy: {self._conf['split_strategy']}")
-        self.logger.info(f"Max splits: {self._conf['max_splits']}")
+        self.logger.info(f"Split mask: {self._conf['split_mask']}")
+        self.logger.info(f"min_splits: {self._conf['min_splits']}, max_splits: {self._conf['max_splits']}")
         self.logger.info(f"Splitting at Gemm node: <{gemm_node.name}> && ReLU node: <{relu_node.name}>")
 
-        split_mask, n_splits = self.get_split_mask(splitable_nodes[split_idx])
-        if n_splits == 0:
-            self.logger.info("No ReLUs to split, splitting the next layer instead...")
-            return self.split(split_idx+1, max_splits)
+        split_masks = self.get_split_masks(splitable_nodes[split_idx])
+        split_mask = split_masks[self._conf["split_mask"]]
+        mask_size  = torch.sum(split_mask).item()
+        min_splits, max_splits = self._conf["min_splits"], self._conf["max_splits"]
+        if mask_size == 0:
+            self.logger.error("No splitable ReLUs found")
+            raise ValueError("No splitable ReLUs")
+        elif mask_size < min_splits:
+            self.logger.error(f"Not enough ReLUs to split, found {mask_size} ReLUs, but min_splits is {min_splits}")
+            raise ValueError("Not enough ReLUs to split")
+        elif mask_size > max_splits:
+            self.logger.warn(f"Randomly selecting {max_splits}/{mask_size} ReLUs to split")
+            split_mask = adjust_mask_random_k(split_mask, max_splits)
+        n_splits = torch.sum(split_mask).item()  # actual number of splits
+        assert min_splits <= n_splits <= max_splits, f"Number of splits {n_splits} is out of range [{min_splits}, {max_splits}]"
 
         split_loc_fn = self.get_split_loc_fn(splitable_nodes[split_idx])   # kwargs here
         grad, offset = self.warpped_model.get_gemm_wb(gemm_node)
-
         # create new layers
         num_out, num_in = grad.shape
         split_weights = torch.zeros((num_out + n_splits, num_in))

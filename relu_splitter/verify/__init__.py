@@ -5,12 +5,13 @@ import logging
 
 from .neuralsat import Neuralsat
 from .abcrown import AlphaBetaCrown    
-
+from .marabou import Marabou
 
 
 verifiers = {
     "neuralsat": Neuralsat,
-    "abcrown": AlphaBetaCrown
+    "abcrown": AlphaBetaCrown,
+    "marabou": Marabou
 }
 
 def init_verifier(verifier_name):

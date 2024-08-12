@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import Union
 from functools import reduce
+from tqdm import tqdm
 
 import onnx
 import torch
@@ -41,15 +42,21 @@ class ReluSplitter():
     def check_config(self):
         assert self.onnx_path.exists(), f"Model file <{self.onnx_path}> does not exist"
         assert self.spec_path.exists(), f"Spec file <{self.spec_path}> does not exist"
-        assert "min_splits" in self._conf, "min_splits not found in config"
-        assert "max_splits" in self._conf, "max_splits not found in config"
-        assert self._conf["min_splits"] >= 0 and self._conf["min_splits"] <= self._conf["max_splits"]
-        assert self._conf["split_strategy"] in ["single", "random", "unstable+", "unstable-", "adaptive"]
-        assert self._conf["split_idx"] >= 0
-        assert self._conf["random_seed"] >= 0
-        assert self._conf["split_mask"] in ["stable+", "stable-", "stable", "unstable", "all"], f"Unknown split mask {self._conf['split_mask']}"
+
+        params = ["min_splits", "max_splits", "random_seed", "split_strategy", "split_mask", "atol", "rtol"]
+        missing_params = [param for param in params if param not in self._conf]
+        assert len(missing_params) == 0, f"Missing parameters in config: {missing_params}"
+        assert 0 < self._conf["min_splits"] <= self._conf["max_splits"]
         assert self._conf["atol"] >= 0
         assert self._conf["rtol"] >= 0
+        assert self._conf["random_seed"] >= 0
+        assert self._conf["split_strategy"] in ["single", "random", "unstable+", "unstable-", "adaptive"], f"Unknown split strategy {self._conf['split_strategy']}"
+        assert self._conf["split_mask"] in ["stable+", "stable-", "stable", "unstable", "all"], f"Unknown split mask {self._conf['split_mask']}"
+        
+        invalid_combinations = [("unstable+", "stable-"), ("unstable-", "stable+"), ("unstable+", "stable"), ("unstable-", "stable")]
+        assert (self._conf["split_strategy"], self._conf["split_mask"]) not in invalid_combinations, f"Invalid combination of split strategy and mask"
+
+
 
     def init_vnnlib(self):
         input_bound, output_bound = read_vnnlib(str(self.spec_path))[0]
@@ -87,7 +94,7 @@ class ReluSplitter():
                 while True:
                     split_loc = (torch.rand_like(lb) * (ub - lb) + lb).squeeze()
                     if split_loc @ w + b > 0:
-                        self.logger.warning(f"Split location: {split_loc}")
+                        self.logger.debug(f"Split location: {split_loc}")
                         return split_loc
             return split_loc_fn
         elif split_strategy == "unstable-":
@@ -96,7 +103,7 @@ class ReluSplitter():
                 while True:
                     split_loc = (torch.rand_like(lb) * (ub - lb) + lb).squeeze()
                     if split_loc @ w + b <= 0:
-                        self.logger.warning(f"Split location: {split_loc}")
+                        self.logger.debug(f"Split location: {split_loc}")
                         return split_loc
             return split_loc_fn
         elif split_strategy == "adaptive":
@@ -182,7 +189,9 @@ class ReluSplitter():
         merge_bias = torch.zeros(num_out)
         
         idx = 0
-        for i in range(len(split_mask)):
+        # for i in range(len(split_mask)): 
+        # progress bar tqdm
+        for i in tqdm(range(len(split_mask)), desc="Constructing new layers"):
             if split_mask[i]:
                 split_loc = split_loc_fn(w=grad[i], b=offset[i])
                 w = grad[i]
@@ -279,23 +288,18 @@ class ReluSplitter():
     def info_net_only(cls, onnx_path):
         class EmptyObject:
             pass
-
-        logger = logging.getLogger(__name__)
-        logger.info("Analyzing model")
-        logger.info(f"Model: {onnx_path}")
-
+        print("Analyzing model")
+        print(f"Model: {onnx_path}")
         model = WarppedOnnxModel(onnx.load(onnx_path))
         model.info()
-
         fake_splitter = EmptyObject()
         fake_splitter.warpped_model = model
         splitable_nodes = cls.get_splitable_nodes(fake_splitter)
-
-        logger.info(f"Found {len(splitable_nodes)} splitable nodes")
+        print(f"Found {len(splitable_nodes)} splitable nodes")
         for i, (prior_node, relu_node) in enumerate(splitable_nodes):
-            logger.info("\n"
-                        f">>> Splitable ReLU layer {i} <<<\n"
-                        f"Gemm node: {prior_node.name}\n"
-                        f"ReLU node: {relu_node.name}\n"
-                        "=====================================")
+            print("\n"
+                f">>> Splitable ReLU layer {i} <<<\n"
+                f"Gemm node: {prior_node.name}\n"
+                f"ReLU node: {relu_node.name}\n"
+                "=====================================")
         return splitable_nodes

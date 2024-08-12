@@ -14,37 +14,43 @@ from relu_splitter.verify import init_verifier
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(description="Parser for network verification arguments")
+    parser = argparse.ArgumentParser(description='Parser for network verification arguments')
     parser.add_argument('--verbosity', type=int, default=10, help='Verbosity level (10=DEBUG, 20=INFO, 30=WARNING, 40=ERROR, 50=CRITICAL)')
 
     subparsers = parser.add_subparsers(dest='command', help='Sub-command help')
 
     # Subparser for the main command
-    split_parser = subparsers.add_parser('split', help='Main command help')
+    split_parser = subparsers.add_parser('split', help='split command help')
     split_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
     split_parser.add_argument('--spec', type=str, required=True, help='Path to the VNNLIB file')
-    split_parser.add_argument('--seed', type=int, default=0, help='Seed for random number generation')
-    split_parser.add_argument('--mask', type=str, default='stable+', help='Mask for splitting')
-    split_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
-    split_parser.add_argument('--split_strategy', type=str, default='single', help='Splitting strategy')
+    split_parser.add_argument('--output', type=str, default='splitted.onnx', help='Output path for the new model')
+    
     split_parser.add_argument('--n_splits', type=int, default=None, help='Number of splits (strict), this will override min_splits and max_splits')
-    split_parser.add_argument('--min_splits', type=int, default=1, help='Maximum number of splits')
+    split_parser.add_argument('--min_splits', type=int, default=1, help='Minimum number of splits')
     split_parser.add_argument('--max_splits', type=int, default=sys.maxsize, help='Maximum number of splits')
+    
+    split_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
+    split_parser.add_argument('--mask', type=str, default='stable+', help='Mask for splitting',
+                              choices=['stable+', 'stable-', 'stable', 'unstable', 'all'])
+    split_parser.add_argument('--split_strategy', type=str, default='single', help='Splitting strategy',
+                              choices=['single', 'random', 'unstable+', 'unstable-', 'adaptive'])
+    
+    split_parser.add_argument('--seed', type=int, default=0, help='Seed for random number generation')
     split_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')
     split_parser.add_argument('--rtol', type=float, default=1e-5, help='Relative tolerance for closeness check')
-    split_parser.add_argument('--output', type=str, default="splitted.onnx", help='Output path for the new model')
-    split_parser.add_argument('--verify', type=str, default=False, help='run verification with verifier')
+    
+    split_parser.add_argument('--verify', type=str, default=False, help='run verification with verifier',
+                              choices=['neuralsat', 'abcrown', 'marabou'])
 
 
     # Subparser for the info command
     info_parser = subparsers.add_parser('info', help='Info command help')
     info_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
-    info_parser.add_argument('--spec', type=str, required=False, help='Path to the VNNLIB file')
 
     return parser
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     parser = get_parser()
     args = parser.parse_args()
     logger.setLevel(args.verbosity)
@@ -55,51 +61,48 @@ if __name__ == "__main__":
         output_path = Path(args.output)
 
         conf = {
-            "split_mask": args.mask,
-            "split_strategy": args.split_strategy,
-            "min_splits": args.min_splits,
-            "max_splits": args.max_splits,
-            "split_idx": args.split_idx,
-            "random_seed": args.seed,
-            "atol": args.atol,
-            "rtol": args.rtol
+            'split_mask': args.mask,
+            'split_strategy': args.split_strategy,
+            'min_splits': args.min_splits,
+            'max_splits': args.max_splits,
+            'split_idx': args.split_idx,
+            'random_seed': args.seed,
+            'atol': args.atol,
+            'rtol': args.rtol
         }
         if args.n_splits is not None:
-            conf["min_splits"] = args.n_splits
-            conf["max_splits"] = args.n_splits
+            conf['min_splits'] = args.n_splits
+            conf['max_splits'] = args.n_splits
         relusplitter = ReluSplitter(onnx_path, 
                                     spec_path, 
                                     logger = logger, 
                                     conf = conf)
-        logger.info(f"Start splitting...\n conf: {conf}")
+        logger.info(f'Start splitting...')
+        logger.info(f'Conf: {conf}')
         new_model = relusplitter.split(args.split_idx)
         new_model.save(output_path)
-        logger.info(f"Model saved to {output_path}")
+        logger.info(f'Model saved to {output_path}')
 
         if args.verify:
             verifier = init_verifier(args.verify)
             conf1 = {
-                "onnx_path": onnx_path,
-                "vnnlib_path": spec_path,
-                "log_path": Path("veri_1.log")
+                'onnx_path': onnx_path,
+                'vnnlib_path': spec_path,
+                'log_path': Path('veri_1.log'),
+                'verbosity': 1
             }
             conf2 = {
-                "onnx_path": output_path,
-                "vnnlib_path": spec_path,
-                "log_path": Path("veri_2.log")
+                'onnx_path': output_path,
+                'vnnlib_path': spec_path,
+                'log_path': Path('veri_2.log'),
+                'verbosity': 1
             }
-            logger.info(f"Start verification...")
+            logger.info(f'Start verification using {args.verify}')
             print(verifier.execute(conf1))
             print(verifier.execute(conf2))
 
     elif args.command == 'info':
-        onnx_path = Path(args.net)
-        spec_path = Path(args.spec)
-        # relusplitter = ReluSplitter(onnx_path, spec_path, logger=logger)
-        # if spec_path is not None:
-        #     relusplitter.info()
-        # else:
-        relusplitter.info_net_only()
+        ReluSplitter.info_net_only(Path(args.net))
     else:
         parser.print_help()
         sys.exit(1)

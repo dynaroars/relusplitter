@@ -43,10 +43,6 @@ def find_feasible_point(lb, ub, w, b, epsilon=1e-6):
     """
     # Calculate the max possible value of w @ x + b within the bounds
     max_value = torch.where(w > 0, ub, lb) @ w + b
-    print(lb)
-    print(ub)
-    print(w)
-    print(b)
     assert max_value > 0, f"No feasible point within the given bounds can satisfy w @ x + b > 0, {max_value}"
     
     # Start with a random point within bounds

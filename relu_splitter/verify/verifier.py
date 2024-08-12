@@ -56,16 +56,14 @@ class Verifier:
     def execute(cls, prog_conf):
         cmd = cls.gen_prog(prog_conf)
         log_path = prog_conf.get('log_path')
-
-        cls.logger.info("Executing verification ...")
-        cls.logger.debug(cmd)
-        cls.logger.debug(f"Verification output path: {log_path}")
         cls.logger.debug(f"config: {prog_conf}")
+        cls.logger.info(f"Executing verification ... log path: {log_path}")
+        cls.logger.info(cmd)
 
         with open(log_path, "w") as veri_log_fp:
             sp = subprocess.Popen(cmd, shell=True, stdout=veri_log_fp, stderr=veri_log_fp)
 
-        cls.logger.debug(f"Verification process pid: {sp.pid}")
+        cls.logger.debug(f"Verification process pid: {sp.pid}, waiting...")
         sp.wait()
         if sp.returncode != 0:
             cls.logger.error(f"Verification failed with return code {sp.returncode}")

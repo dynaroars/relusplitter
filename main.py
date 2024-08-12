@@ -85,17 +85,20 @@ if __name__ == '__main__':
 
         if args.verify:
             verifier = init_verifier(args.verify)
+            verifier.set_logger(logger)
             conf1 = {
                 'onnx_path': onnx_path,
                 'vnnlib_path': spec_path,
                 'log_path': Path('veri_1.log'),
-                'verbosity': 1
+                'verbosity': 1,
+                'num_workers': 10
             }
             conf2 = {
                 'onnx_path': output_path,
                 'vnnlib_path': spec_path,
                 'log_path': Path('veri_2.log'),
-                'verbosity': 1
+                'verbosity': 1,
+                'num_workers': 10
             }
             logger.info(f'Start verification using {args.verify}')
             print(verifier.execute(conf1))

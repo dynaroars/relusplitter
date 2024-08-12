@@ -83,28 +83,31 @@ class ReluSplitter():
         gemm_node, relu_node = nodes
         split_strategy = self._conf["split_strategy"]
         lb, ub = self.warpped_model.get_bound_of(self.bounded_input, gemm_node.input[0])          # the input bound of the Gemm node, from which the split location is sampled
+        lb, ub = lb.squeeze(), ub.squeeze()
         if split_strategy == "single":
-            split_loc = (torch.rand_like(lb) * (ub - lb) + lb).squeeze()
+            split_loc = (torch.rand_like(lb) * (ub - lb) + lb)
             return lambda **kwargs: split_loc
         elif split_strategy == "random":
-            return lambda **kwargs: (torch.rand_like(lb) * (ub - lb) + lb).squeeze()
+            return lambda **kwargs: (torch.rand_like(lb) * (ub - lb) + lb)
         elif split_strategy == "unstable+":
             def split_loc_fn(**kwargs):
                 w, b = kwargs["w"], kwargs["b"]
-                while True:
-                    split_loc = (torch.rand_like(lb) * (ub - lb) + lb).squeeze()
-                    if split_loc @ w + b > 0:
-                        self.logger.debug(f"Split location: {split_loc}")
-                        return split_loc
+                # while True:
+                #     split_loc = (torch.rand_like(lb) * (ub - lb) + lb)
+                #     if split_loc @ w + b > 0:
+                #         self.logger.debug(f"Split location: {split_loc}")
+                #         return split_loc
+                return find_feasible_point(lb, ub, w, b)
             return split_loc_fn
         elif split_strategy == "unstable-":
             def split_loc_fn(**kwargs):
                 w, b = kwargs["w"], kwargs["b"]
-                while True:
-                    split_loc = (torch.rand_like(lb) * (ub - lb) + lb).squeeze()
-                    if split_loc @ w + b <= 0:
-                        self.logger.debug(f"Split location: {split_loc}")
-                        return split_loc
+                # while True:
+                #     split_loc = (torch.rand_like(lb) * (ub - lb) + lb)
+                #     if split_loc @ w + b <= 0:
+                #         self.logger.debug(f"Split location: {split_loc}")
+                #         return split_loc
+                return find_feasible_point(lb, ub, -w, -b)
             return split_loc_fn
         elif split_strategy == "adaptive":
             raise NotImplementedError

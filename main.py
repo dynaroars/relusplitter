@@ -81,12 +81,12 @@ if __name__ == "__main__":
             conf1 = {
                 "onnx_path": onnx_path,
                 "vnnlib_path": spec_path,
-                "log_path": Path("veri.log")
+                "log_path": Path("veri_1.log")
             }
             conf2 = {
                 "onnx_path": output_path,
                 "vnnlib_path": spec_path,
-                "log_path": Path("veri.log")
+                "log_path": Path("veri_2.log")
             }
             logger.info(f"Start verification...")
             print(verifier.execute(conf1))

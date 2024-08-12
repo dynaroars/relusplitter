@@ -33,7 +33,7 @@ class Verifier:
     def gen_prog(cls, prog_conf):
         ram  = prog_conf.get('ram', None)
         time = prog_conf.get('timeout', None)
-        verbosity = prog_conf.get('verbosity', 0)
+        verbosity = prog_conf.get('verbosity', 1)
         prog = cls._gen_prog(prog_conf)
 
 

@@ -26,22 +26,11 @@ class Marabou(Verifier):
         veri_time = None
 
         for l in lines:
-            if "AssertionError" in l:
-                veri_ans = 'error'
-                veri_time = -1
-            elif "CUDA error: out of memory" in l:
-                veri_ans = 'out_of_memory'
-                veri_time = -1
-            elif "CUDA out of memory" in l:
-                veri_ans = 'out_of_memory'
-                veri_time = -1
-            elif "RuntimeError" in l:
-                veri_ans = 'error'
-                veri_time = -1
-
-            elif "[!] Result:" in l:
-                veri_ans = l.strip().split()[-1]
-            elif "[!] Runtime:" in l:
-                veri_time = float(l.strip().split()[-1])
+            if l == "unsat\n":
+                veri_ans = "unsat"
+            elif l == "sat\n":
+                veri_ans = "sat"
+            elif "(resmonitor) Process finished successfully" in l:
+                veri_time = float(l.strip().split()[-3][:-2])
 
         return veri_ans, veri_time

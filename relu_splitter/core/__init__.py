@@ -291,18 +291,42 @@ class ReluSplitter():
     def info_net_only(cls, onnx_path):
         class EmptyObject:
             pass
-        print("Analyzing model")
-        print(f"Model: {onnx_path}")
+        print("Analyzing model...\n")
+        print(f"Model: {onnx_path}\n")
+        print("Analyzing model without a vnnlib file, include a vnnlib file to get more information.\n")
+        print("=====================================")
         model = WarppedOnnxModel(onnx.load(onnx_path))
         model.info()
         fake_splitter = EmptyObject()
         fake_splitter.warpped_model = model
         splitable_nodes = cls.get_splitable_nodes(fake_splitter)
         print(f"Found {len(splitable_nodes)} splitable nodes")
+        print("=====================================")
+
         for i, (prior_node, relu_node) in enumerate(splitable_nodes):
-            print("\n"
-                f">>> Splitable ReLU layer {i} <<<\n"
-                f"Gemm node: {prior_node.name}\n"
-                f"ReLU node: {relu_node.name}\n"
-                "=====================================")
+            print(  f">>> Splitable ReLU layer {i} <<<\n"
+                    f"Gemm node: {prior_node.name}\n"
+                    f"ReLU node: {relu_node.name}\n"
+                    "=====================================")
         return splitable_nodes
+    
+    @classmethod
+    def info(cls, onnx_path, spec_path):
+        print("Analyzing model...\n")
+        print(f"Model: {onnx_path}\n")
+        print(f"Spec: {spec_path}\n")
+        print("=====================================")
+        relu_splitter = cls(onnx_path, spec_path, logger=default_logger, conf=default_config)
+        splitable_nodes = relu_splitter.get_splitable_nodes()
+        print(f"Found {len(splitable_nodes)} splitable nodes")
+        print("=====================================")
+        for i, (prior_node, relu_node) in enumerate(splitable_nodes):
+            masks = relu_splitter.get_split_masks((prior_node, relu_node))
+            print(  f">>> Splitable ReLU layer {i} <<<\n"
+                    f"Gemm node: {prior_node.name}\n"
+                    f"ReLU node: {relu_node.name}\n"
+                    f"======== Neuron composition ========\n"
+                    f"stable+: {torch.sum(masks['stable+'])}\t stable-: {torch.sum(masks['stable-'])}\n"
+                    f"unstable: {torch.sum(masks['unstable'])}\t Total: {torch.sum(masks['all'])}\n"
+                    "=====================================")
+            

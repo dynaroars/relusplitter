@@ -46,6 +46,7 @@ def get_parser():
     # Subparser for the info command
     info_parser = subparsers.add_parser('info', help='Info command help')
     info_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
+    info_parser.add_argument('--spec', type=str, required=False, help='Path to the VNNLIB file')
 
     return parser
 
@@ -105,7 +106,10 @@ if __name__ == '__main__':
             print(verifier.execute(conf2))
 
     elif args.command == 'info':
-        ReluSplitter.info_net_only(Path(args.net))
+        if args.spec is not None:
+            ReluSplitter.info(Path(args.net), Path(args.spec))
+        else:
+            ReluSplitter.info_net_only(Path(args.net))
     else:
         parser.print_help()
         sys.exit(1)

@@ -2,12 +2,12 @@ import sys
 
 
 default_config = {
-    'seed': 0,
-    'mask': 'stable',
+    'random_seed': 0,
+    'split_mask': 'stable',
     'split_idx': 0,
     'split_strategy': 'single',
-    'max_splits': sys.maxsize,
+    'min_splits': 1,
+    'max_splits': 1,
     'atol': 1e-5,
     'rtol': 1e-5,
-    'output': "splitted.onnx"
 }

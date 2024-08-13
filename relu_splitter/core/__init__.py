@@ -50,10 +50,10 @@ class ReluSplitter():
         assert self._conf["atol"] >= 0
         assert self._conf["rtol"] >= 0
         assert self._conf["random_seed"] >= 0
-        assert self._conf["split_strategy"] in ["single", "random", "unstable+", "unstable-", "adaptive"], f"Unknown split strategy {self._conf['split_strategy']}"
+        assert self._conf["split_strategy"] in ["single", "random", "reluS+", "reluS-", "adaptive"], f"Unknown split strategy {self._conf['split_strategy']}"
         assert self._conf["split_mask"] in ["stable+", "stable-", "stable", "unstable", "all"], f"Unknown split mask {self._conf['split_mask']}"
         
-        invalid_combinations = [("unstable+", "stable-"), ("unstable-", "stable+"), ("unstable+", "stable"), ("unstable-", "stable")]
+        invalid_combinations = [("reluS+", "stable-"), ("reluS-", "stable+"), ("reluS+", "stable"), ("reluS-", "stable")]
         assert (self._conf["split_strategy"], self._conf["split_mask"]) not in invalid_combinations, f"Invalid combination of split strategy and mask"
 
 
@@ -89,7 +89,7 @@ class ReluSplitter():
             return lambda **kwargs: split_loc
         elif split_strategy == "random":
             return lambda **kwargs: (torch.rand_like(lb) * (ub - lb) + lb)
-        elif split_strategy == "unstable+":
+        elif split_strategy == "reluS+":
             def split_loc_fn(**kwargs):
                 w, b = kwargs["w"], kwargs["b"]
                 # while True:
@@ -99,7 +99,7 @@ class ReluSplitter():
                 #         return split_loc
                 return find_feasible_point(lb, ub, w, b)
             return split_loc_fn
-        elif split_strategy == "unstable-":
+        elif split_strategy == "reluS-":
             def split_loc_fn(**kwargs):
                 w, b = kwargs["w"], kwargs["b"]
                 # while True:

@@ -33,7 +33,7 @@ def get_parser():
     split_parser.add_argument('--mask', type=str, default='stable+', help='Mask for splitting',
                               choices=['stable+', 'stable-', 'stable', 'unstable', 'all'])
     split_parser.add_argument('--split_strategy', type=str, default='single', help='Splitting strategy',
-                              choices=['single', 'random', 'unstable+', 'unstable-', 'adaptive'])
+                              choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
     
     split_parser.add_argument('--seed', type=int, default=0, help='Seed for random number generation')
     split_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')

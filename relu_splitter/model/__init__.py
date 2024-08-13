@@ -1,18 +1,16 @@
 import logging
 from pathlib import Path
-from typing import Union, Tuple
+from typing import Tuple
 from functools import reduce
+from copy import copy, deepcopy
 
 import onnx
 import torch
 
-from auto_LiRPA import BoundedModule, BoundedTensor, PerturbationLpNorm
-from onnx import helper, numpy_helper, TensorProto
+from onnx import helper, numpy_helper
 from onnxruntime import InferenceSession
 from onnx2pytorch import ConvertModel
-
-
-from copy import copy, deepcopy
+from auto_LiRPA import BoundedModule, BoundedTensor
 
 from ..utils.onnx_utils import truncate_onnx_model, compute_model_bound
 from ..utils.misc import get_random_id

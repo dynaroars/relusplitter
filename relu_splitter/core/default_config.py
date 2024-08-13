@@ -1,6 +1,3 @@
-import sys
-
-
 default_config = {
     'random_seed': 0,
     'split_mask': 'stable',

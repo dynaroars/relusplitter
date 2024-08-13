@@ -19,7 +19,7 @@ def get_parser():
 
     subparsers = parser.add_subparsers(dest='command', help='Sub-command help')
 
-    # Subparser for the main command
+    # Subparser for the split command
     split_parser = subparsers.add_parser('split', help='split command help')
     split_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
     split_parser.add_argument('--spec', type=str, required=True, help='Path to the VNNLIB file')
@@ -41,7 +41,6 @@ def get_parser():
     
     split_parser.add_argument('--verify', type=str, default=False, help='run verification with verifier',
                               choices=['neuralsat', 'abcrown', 'marabou'])
-
 
     # Subparser for the info command
     info_parser = subparsers.add_parser('info', help='Info command help')

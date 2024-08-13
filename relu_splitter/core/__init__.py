@@ -4,8 +4,8 @@ import os
 from pathlib import Path
 from typing import Union
 from functools import reduce
-from tqdm import tqdm
 
+from tqdm import tqdm
 import onnx
 import torch
 
@@ -20,7 +20,7 @@ TOOL_NAME = os.environ.get("TOOL_NAME", "ReluSplitter")
 default_logger = logging.getLogger(__name__)
 
 class ReluSplitter():
-    def __init__(self, network: Union[Path], spec: Union[Path, str, None], logger = default_logger, conf=default_config) -> None:
+    def __init__(self, network: Path, spec: Path, logger=default_logger, conf=default_config) -> None:
         self.onnx_path = network
         self.spec_path = spec
         self._conf = conf
@@ -42,7 +42,6 @@ class ReluSplitter():
     def check_config(self):
         assert self.onnx_path.exists(), f"Model file <{self.onnx_path}> does not exist"
         assert self.spec_path.exists(), f"Spec file <{self.spec_path}> does not exist"
-
         params = ["min_splits", "max_splits", "random_seed", "split_strategy", "split_mask", "atol", "rtol"]
         missing_params = [param for param in params if param not in self._conf]
         assert len(missing_params) == 0, f"Missing parameters in config: {missing_params}"
@@ -52,10 +51,8 @@ class ReluSplitter():
         assert self._conf["random_seed"] >= 0
         assert self._conf["split_strategy"] in ["single", "random", "reluS+", "reluS-", "adaptive"], f"Unknown split strategy {self._conf['split_strategy']}"
         assert self._conf["split_mask"] in ["stable+", "stable-", "stable", "unstable", "all"], f"Unknown split mask {self._conf['split_mask']}"
-        
-        invalid_combinations = [("reluS+", "stable-"), ("reluS-", "stable+"), ("reluS+", "stable"), ("reluS-", "stable")]
+        invalid_combinations = [("reluS+", "stable-"), ("reluS-", "stable+"), ("reluS+", "stable"), ("reluS-", "stable"), ("reluS+", "all"), ("reluS-", "all")]
         assert (self._conf["split_strategy"], self._conf["split_mask"]) not in invalid_combinations, f"Invalid combination of split strategy and mask"
-
 
 
     def init_vnnlib(self):
@@ -63,10 +60,10 @@ class ReluSplitter():
         input_lb, input_ub = torch.tensor([[[[i[0] for i in input_bound]]]]), torch.tensor([[[[i[1] for i in input_bound]]]])
         spec_num_inputs = reduce(lambda x, y: x*y, input_lb.shape)
         model_num_inputs = self.warpped_model.num_inputs
-
         assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
         assert model_num_inputs == spec_num_inputs, f"Spec number of inputs does not match model inputs {spec_num_inputs} != {model_num_inputs}"
         self.bounded_input = BoundedTensor(input_lb, PerturbationLpNorm(x_L=input_lb, x_U=input_ub))
+
 
     def init_model(self):
         model = onnx.load(self.onnx_path)
@@ -74,10 +71,12 @@ class ReluSplitter():
         assert len(model.graph.output) == 1, f"Model has more than one output {model.graph.output}"
         self.warpped_model = WarppedOnnxModel(model)
 
+
     def init_seeds(self):
         random_seed = self._conf.get("random_seed")
         random.seed(random_seed)
         torch.manual_seed(random_seed)
+
 
     def get_split_loc_fn(self, nodes, **kwargs):
         gemm_node, relu_node = nodes
@@ -92,27 +91,18 @@ class ReluSplitter():
         elif split_strategy == "reluS+":
             def split_loc_fn(**kwargs):
                 w, b = kwargs["w"], kwargs["b"]
-                # while True:
-                #     split_loc = (torch.rand_like(lb) * (ub - lb) + lb)
-                #     if split_loc @ w + b > 0:
-                #         self.logger.debug(f"Split location: {split_loc}")
-                #         return split_loc
                 return find_feasible_point(lb, ub, w, b)
             return split_loc_fn
         elif split_strategy == "reluS-":
             def split_loc_fn(**kwargs):
                 w, b = kwargs["w"], kwargs["b"]
-                # while True:
-                #     split_loc = (torch.rand_like(lb) * (ub - lb) + lb)
-                #     if split_loc @ w + b <= 0:
-                #         self.logger.debug(f"Split location: {split_loc}")
-                #         return split_loc
                 return find_feasible_point(lb, ub, -w, -b)
             return split_loc_fn
         elif split_strategy == "adaptive":
             raise NotImplementedError
         else:
             raise ValueError(f"Unknown split strategy {split_strategy}")
+
 
     def get_split_masks(self, nodes):
         node1, node2 = nodes
@@ -145,6 +135,7 @@ class ReluSplitter():
                     splitable_nodes.append( (prior_node, node) )
         return splitable_nodes
     
+
     def split(self, split_idx=0):
         splitable_nodes = self.get_splitable_nodes()
         assert split_idx < len(splitable_nodes), f"Split location <{split_idx}> is out of bound"
@@ -191,9 +182,7 @@ class ReluSplitter():
         merge_weights = torch.zeros((num_out, num_out + n_splits))
         merge_bias = torch.zeros(num_out)
         
-        idx = 0
-        # for i in range(len(split_mask)): 
-        # progress bar tqdm
+        idx = 0     # index of neuron in the new split layer
         for i in tqdm(range(len(split_mask)), desc="Constructing new layers"):
             if split_mask[i]:
                 split_loc = split_loc_fn(w=grad[i], b=offset[i])
@@ -271,7 +260,7 @@ class ReluSplitter():
                                                                 additional_initializers=new_initializers,
                                                                 graph_name=f"{self.onnx_path.stem}_split_{split_idx}",
                                                                 producer_name="ReluSplitter")
-        self.logger.debug("=========== Model created ===========")
+        self.logger.info("=========== Model created ===========")
         self.logger.debug(f"Checking model closeness with atol: {self._conf['atol']} and rtol: {self._conf['rtol']}")
         input_shape = list(self.warpped_model.input_shapes.values())[0]
         equiv, diff = check_model_closeness(self.warpped_model, 
@@ -283,7 +272,7 @@ class ReluSplitter():
             self.logger.error(f"Model closeness check failed with diff {diff}")
             raise ValueError("Model closeness check failed")
         else:
-            self.logger.debug(f"Model closeness check passed with worst diff {diff}")
+            self.logger.info(f"Model closeness check passed with worst diff {diff}")
         return new_model
 
 
@@ -309,6 +298,7 @@ class ReluSplitter():
                     f"ReLU node: {relu_node.name}\n"
                     "=====================================")
         return splitable_nodes
+    
     
     @classmethod
     def info(cls, onnx_path, spec_path):

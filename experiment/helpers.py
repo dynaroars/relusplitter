@@ -2,8 +2,6 @@ import os
 import subprocess
 from tinydb import Query
 
-import signal
-import time
 
 
 def get_instances(benchmark):
@@ -45,19 +43,17 @@ def insert_into_db(db, task, val):
                         }
                     )
     
-global sigint_flag
-sigint_flag = False
-def set_flag(sig, frame):
-    sigint_flag = True
+def run_splitter(onnx_path, vnnlib_path, output_dir, log_dir, split_idx, strat_n_mask, nsplits, seed, atol, rtol):
+    wd = os.environ["TOOL_ROOT"]
+    strat, mask = strat_n_mask
+    fname = f"{onnx_path.stem}_{vnnlib_path.stem}_RS_{split_idx}_{mask}_{strat}_{nsplits}_{seed}"
+    output_path = output_dir / f"{fname}.onnx"
+    log_path  = log_dir / f"{fname}.log"
 
-def exec_ignor_sigint(fn, params):
-    original_handler = signal.getsignal(signal.SIGINT)
-    signal.signal(signal.SIGINT, set_flag)
-    try:
-        fn(*params)
-    finally:
-        # Restore the original SIGINT handler
-        signal.signal(signal.SIGINT, original_handler)
-    if sigint_flag:
-        raise KeyboardInterrupt
-    
+    cmd =   f"python main.py split --net {onnx_path} --spec {vnnlib_path} --output {output_path} "\
+            f"--split_strategy {strat} --mask {mask} --split_idx {split_idx} "\
+            f"--n_splits {nsplits} --seed {seed} --atol {atol} --rtol {rtol}"
+    with open(log_path, "w") as f:
+        subprocess.run(cmd, shell=True, cwd=wd, stdout=f, stderr=f)
+
+

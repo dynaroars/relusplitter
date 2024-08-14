@@ -69,7 +69,7 @@ if __name__ == "__main__":
             log_dir.mkdir(parents=True, exist_ok=True)
 
             # for onnx_path, vnnlib_path in tqdm(instances):
-            for onnx_path, vnnlib_path in tqdm(instances):
+            for i, (onnx_path, vnnlib_path) in tqdm(enumerate(instances)):
                 onnx_path = benchmark["path"] / onnx_path
                 vnnlib_path = benchmark["path"] / vnnlib_path
                 max_nsplits = ReluSplitter.info_s(onnx_path, vnnlib_path)[split_idx]
@@ -90,6 +90,7 @@ if __name__ == "__main__":
 
                 tasks_todo      = [task for task in valid_tasks if not already_in_db(db, task)]
                 # {"tasks_todo": len(tasks_todo), "valid_tasks": len(valid_tasks), "total_tasks": len(tasks)}
+                tqdm.write(f"Instance: {i+1}/{len(instances)}")
                 tqdm.write(f"Tasks to do: {len(tasks_todo)} \n Valid tasks: {len(valid_tasks)} \n Total tasks: {len(tasks)}")
 
                 with mp.Pool(num_workers) as pool:

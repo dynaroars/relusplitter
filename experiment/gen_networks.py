@@ -38,7 +38,7 @@ atol, rtol = 1e-5, 1e-5
 invalid_combinations    = [("reluS+", "stable-"), ("reluS-", "stable+"), ("reluS+", "stable"), ("reluS-", "stable"), ("reluS+", "all"), ("reluS-", "all")]
 valid_strat_n_mask      = [pair for pair in product(p_split_strat, p_masks) if pair not in invalid_combinations]
 
-num_workers = 10
+num_workers = 90 if mp.cpu_count()>100 else 10
 
 acasxu = {
     "name"      : "acasxu",   
@@ -98,10 +98,12 @@ if __name__ == "__main__":
                 original_handler = signal.getsignal(signal.SIGINT)
                 signal.signal(signal.SIGINT, set_flag)
                 
+                tqdm.write(">>> writing to db...")
                 for task in valid_tasks:
                     insert_into_db(db, task, "DONE")
                 for task in invalid_tasks:
                     insert_into_db(db, task, "SKIP: not_enough_neurons")
+                tqdm.write(">>> finished")
 
                 signal.signal(signal.SIGINT, original_handler)
                 if sigint_flag:

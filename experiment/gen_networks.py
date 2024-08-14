@@ -86,8 +86,10 @@ if __name__ == "__main__":
 
                 tasks_todo      = [task for task in valid_tasks if not already_in_db(db, benchmark_name, task)]
                 # {"tasks_todo": len(tasks_todo), "valid_tasks": len(valid_tasks), "total_tasks": len(tasks)}
-                tqdm.write(f"Tasks to do: {len(tasks_todo)} \n Valid tasks: {len(valid_tasks)} \n Total tasks: {len(tasks)}")
-
+                tqdm.write(f"Tasks to do: {len(tasks_todo)}\tValid tasks: {len(valid_tasks)}\tTotal tasks: {len(tasks)}")
+                if len(tasks_todo) == 0:
+                    tqdm.write("All tasks already in db, skipping...")
+                    continue
                 with mp.Pool(num_workers) as pool:
                     pool.starmap(run_splitter, tasks_todo)
 

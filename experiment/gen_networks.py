@@ -51,7 +51,7 @@ benchmarks = [acasxu, mnist_fc]
 def run_splitter(onnx_path, vnnlib_path, output_dir, log_dir, split_idx, strat_n_mask, nsplits, seed, atol, rtol):
     wd = os.environ["TOOL_ROOT"]
     strat, mask = strat_n_mask
-    fname = f"{onnx_path.stem}_{vnnlib_path.stem}_{split_idx}_{mask}_{strat}_{nsplits}_{seed}"
+    fname = f"{onnx_path.stem}_{vnnlib_path.stem}_RS_{split_idx}_{mask}_{strat}_{nsplits}_{seed}"
     output_path = output_dir / f"{fname}.onnx"
     log_path  = log_dir / f"{fname}.log"
 

@@ -11,7 +11,8 @@ import torch
 
 from ..utils.misc import adjust_mask_random_k, find_feasible_point
 from ..utils.read_vnnlib import read_vnnlib
-from ..utils.onnx_utils import truncate_onnx_model, check_model_closeness
+from ..utils.onnx_utils import check_model_closeness
+from ..utils.errors import NOT_ENOUGH_NEURON, INVALID_PARAMETER, MODEL_NOT_EQUIV
 from ..model import WarppedOnnxModel
 from auto_LiRPA import BoundedTensor, PerturbationLpNorm
 from .default_config import default_config
@@ -98,10 +99,8 @@ class ReluSplitter():
                 w, b = kwargs["w"], kwargs["b"]
                 return find_feasible_point(lb, ub, -w, -b)
             return split_loc_fn
-        elif split_strategy == "adaptive":
-            raise NotImplementedError
         else:
-            raise ValueError(f"Unknown split strategy {split_strategy}")
+            raise INVALID_PARAMETER(f"Unknown split strategy {split_strategy}")
 
 
     def get_split_masks(self, nodes):
@@ -123,23 +122,23 @@ class ReluSplitter():
         return masks
 
 
-    def get_splitable_nodes(self):
+    def get_splittable_nodes(self):
         # parrtern 1: Gemm -> Relu
-        splitable_nodes = []
+        splittable_nodes = []
         for node in self.warpped_model.nodes:
             if TOOL_NAME in node.name:
                 continue
             if node.op_type == "Relu":
                 prior_node = self.warpped_model.get_prior_node(node)
                 if prior_node.op_type == "Gemm":
-                    splitable_nodes.append( (prior_node, node) )
-        return splitable_nodes
+                    splittable_nodes.append( (prior_node, node) )
+        return splittable_nodes
     
 
     def split(self, split_idx=0):
-        splitable_nodes = self.get_splitable_nodes()
-        assert split_idx < len(splitable_nodes), f"Split location <{split_idx}> is out of bound"
-        gemm_node, relu_node = splitable_nodes[split_idx][0], splitable_nodes[split_idx][1]
+        splittable_nodes = self.get_splittable_nodes()
+        assert split_idx < len(splittable_nodes), f"Split location <{split_idx}> is out of bound"
+        gemm_node, relu_node = splittable_nodes[split_idx][0], splittable_nodes[split_idx][1]
         assert all(attri.i == 0 for attri in gemm_node.attribute if attri.name == "TransA"), "TransA == 1 is not supported yet"
 
         self.logger.debug("=====================================")
@@ -150,7 +149,7 @@ class ReluSplitter():
         self.logger.debug(f"Split mask: {self._conf['split_mask']}")
         self.logger.debug(f"min_splits: {self._conf['min_splits']}, max_splits: {self._conf['max_splits']}")
 
-        split_masks = self.get_split_masks(splitable_nodes[split_idx])
+        split_masks = self.get_split_masks(splittable_nodes[split_idx])
         split_mask = split_masks[self._conf["split_mask"]]
         mask_size  = torch.sum(split_mask).item()
         min_splits, max_splits = self._conf["min_splits"], self._conf["max_splits"]
@@ -161,19 +160,17 @@ class ReluSplitter():
         self.logger.info(f"unstable: {torch.sum(split_masks['unstable'])}\t"
                             f"all: {torch.sum(split_masks['all'])}")
         
-        if mask_size == 0:
-            self.logger.error("No splitable ReLUs found")
-            raise ValueError("No splitable ReLUs")
-        elif mask_size < min_splits:
+
+        if mask_size < min_splits:
             self.logger.error(f"Not enough ReLUs to split, found {mask_size} ReLUs, but min_splits is {min_splits}")
-            raise ValueError("Not enough ReLUs to split")
+            raise NOT_ENOUGH_NEURON("CANNOT-SPLITE: Not enough ReLUs to split")
         elif mask_size > max_splits:
             self.logger.info(f"Randomly selecting {max_splits}/{mask_size} ReLUs to split")
             split_mask = adjust_mask_random_k(split_mask, max_splits)
         n_splits = torch.sum(split_mask).item()  # actual number of splits
         assert min_splits <= n_splits <= max_splits, f"Number of splits {n_splits} is out of range [{min_splits}, {max_splits}]"
 
-        split_loc_fn = self.get_split_loc_fn(splitable_nodes[split_idx])   # kwargs here
+        split_loc_fn = self.get_split_loc_fn(splittable_nodes[split_idx])   # kwargs here
         grad, offset = self.warpped_model.get_gemm_wb(gemm_node)    # w,b of the layer to be splitted
         # create new layers
         num_out, num_in = grad.shape
@@ -270,9 +267,10 @@ class ReluSplitter():
                                             rtol=self._conf["rtol"])
         if not equiv:
             self.logger.error(f"Model closeness check failed with diff {diff}")
-            raise ValueError("Model closeness check failed")
+            raise MODEL_NOT_EQUIV("SPLITE-ERROR: Model closeness check failed")
         else:
             self.logger.info(f"Model closeness check passed with worst diff {diff}")
+        self.logger.info("====== DONE ======")
         return new_model
 
 
@@ -288,16 +286,16 @@ class ReluSplitter():
         model.info()
         fake_splitter = EmptyObject()
         fake_splitter.warpped_model = model
-        splitable_nodes = cls.get_splitable_nodes(fake_splitter)
-        print(f"Found {len(splitable_nodes)} splitable nodes")
+        splittable_nodes = cls.get_splittable_nodes(fake_splitter)
+        print(f"Found {len(splittable_nodes)} splittable nodes")
         print("=====================================")
 
-        for i, (prior_node, relu_node) in enumerate(splitable_nodes):
-            print(  f">>> Splitable ReLU layer {i} <<<\n"
+        for i, (prior_node, relu_node) in enumerate(splittable_nodes):
+            print(  f">>> splittable ReLU layer {i} <<<\n"
                     f"Gemm node: {prior_node.name}\n"
                     f"ReLU node: {relu_node.name}\n"
                     "=====================================")
-        return splitable_nodes
+        return splittable_nodes
     
     
     @classmethod
@@ -307,12 +305,12 @@ class ReluSplitter():
         print(f"Spec: {spec_path}\n")
         print("=====================================")
         relu_splitter = cls(onnx_path, spec_path, logger=default_logger, conf=default_config)
-        splitable_nodes = relu_splitter.get_splitable_nodes()
-        print(f"Found {len(splitable_nodes)} splitable nodes")
+        splittable_nodes = relu_splitter.get_splittable_nodes()
+        print(f"Found {len(splittable_nodes)} splittable nodes")
         print("=====================================")
-        for i, (prior_node, relu_node) in enumerate(splitable_nodes):
+        for i, (prior_node, relu_node) in enumerate(splittable_nodes):
             masks = relu_splitter.get_split_masks((prior_node, relu_node))
-            print(  f">>> Splitable ReLU layer {i} <<<\n"
+            print(  f">>> splittable ReLU layer {i} <<<\n"
                     f"Gemm node: {prior_node.name}\n"
                     f"ReLU node: {relu_node.name}\n"
                     f"======== Neuron composition ========\n"

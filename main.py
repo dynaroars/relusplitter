@@ -15,7 +15,7 @@ from relu_splitter.verify import init_verifier
 
 def get_parser():
     parser = argparse.ArgumentParser(description='Parser for network verification arguments')
-    parser.add_argument('--verbosity', type=int, default=10, help='Verbosity level (10=DEBUG, 20=INFO, 30=WARNING, 40=ERROR, 50=CRITICAL)')
+    parser.add_argument('--verbosity', type=int, default=20, help='Verbosity level (10=DEBUG, 20=INFO, 30=WARNING, 40=ERROR, 50=CRITICAL)')
 
     subparsers = parser.add_subparsers(dest='command', help='Sub-command help')
 
@@ -103,6 +103,7 @@ if __name__ == '__main__':
             logger.info(f'Start verification using {args.verify}')
             print(verifier.execute(conf1))
             print(verifier.execute(conf2))
+        logger.info(f'=== Done ===')
 
     elif args.command == 'info':
         if args.spec is not None:

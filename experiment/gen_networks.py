@@ -104,6 +104,7 @@ if __name__ == "__main__":
                     insert_into_db(db, task, "DONE")
                 for task in invalid_tasks:
                     insert_into_db(db, task, "SKIP: not_enough_neurons")
+                tqdm.write(f"db length: {len(db)}")
                 tqdm.write(">>> finished")
 
                 signal.signal(signal.SIGINT, original_handler)

@@ -18,7 +18,8 @@ import signal
 global sigint_flag
 sigint_flag = False
 def set_flag(sig, frame):
-    sigint_flag = True
+    if sigint_flag == False:
+        sigint_flag = True
 
 
 
@@ -69,7 +70,7 @@ if __name__ == "__main__":
             log_dir.mkdir(parents=True, exist_ok=True)
 
             # for onnx_path, vnnlib_path in tqdm(instances):
-            for i, (onnx_path, vnnlib_path) in tqdm(enumerate(instances)):
+            for onnx_path, vnnlib_path in tqdm(instances):
                 onnx_path = benchmark["path"] / onnx_path
                 vnnlib_path = benchmark["path"] / vnnlib_path
                 max_nsplits = ReluSplitter.info_s(onnx_path, vnnlib_path)[split_idx]

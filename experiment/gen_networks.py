@@ -91,7 +91,6 @@ if __name__ == "__main__":
 
                 tasks_todo      = [task for task in valid_tasks if not already_in_db(db, task)]
                 # {"tasks_todo": len(tasks_todo), "valid_tasks": len(valid_tasks), "total_tasks": len(tasks)}
-                tqdm.write(f"Instance: {i+1}/{len(instances)}")
                 tqdm.write(f"Tasks to do: {len(tasks_todo)} \n Valid tasks: {len(valid_tasks)} \n Total tasks: {len(tasks)}")
 
                 with mp.Pool(num_workers) as pool:

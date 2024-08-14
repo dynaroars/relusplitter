@@ -1,3 +1,6 @@
+experiment/logs
+experiment/onnx
+
 benchmark/
 benchmark
 ref/

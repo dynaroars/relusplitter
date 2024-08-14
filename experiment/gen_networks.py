@@ -4,7 +4,7 @@ from pathlib import Path
 from itertools import product
 import multiprocessing as mp
 
-import tqdm
+from tqdm import tqdm
 
 from time import sleep
 
@@ -58,7 +58,6 @@ def run_splitter(onnx_path, vnnlib_path, output_dir, log_dir, split_idx, strat_n
     cmd =   f"python main.py split --net {onnx_path} --spec {vnnlib_path} --output {output_path} "\
             f"--split_strategy {strat} --mask {mask} --split_idx {split_idx} "\
             f"--n_splits {nsplits} --seed {seed} --atol {atol} --rtol {rtol}"
-    print(cmd)
     with open(log_path, "w") as f:
         subprocess.run(cmd, shell=True, cwd=wd, stdout=f, stderr=f)
 
@@ -76,7 +75,7 @@ if __name__ == "__main__":
         log_dir.mkdir(parents=True, exist_ok=True)
 
         # for onnx_path, vnnlib_path in tqdm(instances):
-        for onnx_path, vnnlib_path in instances:
+        for onnx_path, vnnlib_path in tqdm(instances):
             onnx_path = benchmark["path"] / onnx_path
             vnnlib_path = benchmark["path"] / vnnlib_path
             

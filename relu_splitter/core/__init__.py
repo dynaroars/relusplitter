@@ -308,13 +308,30 @@ class ReluSplitter():
         splittable_nodes = relu_splitter.get_splittable_nodes()
         print(f"Found {len(splittable_nodes)} splittable nodes")
         print("=====================================")
+        node_info = []
         for i, (prior_node, relu_node) in enumerate(splittable_nodes):
             masks = relu_splitter.get_split_masks((prior_node, relu_node))
             print(  f">>> splittable ReLU layer {i} <<<\n"
                     f"Gemm node: {prior_node.name}\n"
                     f"ReLU node: {relu_node.name}\n"
                     f"======== Neuron composition ========\n"
-                    f"stable+: {torch.sum(masks['stable+'])}\t stable-: {torch.sum(masks['stable-'])}\n"
-                    f"unstable: {torch.sum(masks['unstable'])}\t Total: {torch.sum(masks['all'])}\n"
+                    f"stable+: {torch.sum(masks['stable+'])}\n"
+                    f"stable-: {torch.sum(masks['stable-'])}\n"
+                    f"unstable: {torch.sum(masks['unstable'])}\n"
+                    f"Total: {torch.sum(masks['all'])}\n"
                     "=====================================")
+            counts = {k: torch.sum(v).item() for k, v in masks.items()}
+            node_info.append(counts)
+        return node_info
             
+
+    @classmethod
+    def info_s(cls, onnx_path, spec_path):
+        relu_splitter = cls(onnx_path, spec_path, logger=default_logger, conf=default_config)
+        splittable_nodes = relu_splitter.get_splittable_nodes()
+        node_info = []
+        for i, (prior_node, relu_node) in enumerate(splittable_nodes):
+            masks = relu_splitter.get_split_masks((prior_node, relu_node))
+            counts = {k: torch.sum(v).item() for k, v in masks.items()}
+            node_info.append(counts)
+        return node_info

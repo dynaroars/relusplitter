@@ -1,5 +1,6 @@
 experiment/logs
 experiment/onnx
+experiment/db.json
 
 benchmark/
 benchmark

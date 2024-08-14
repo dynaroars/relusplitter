@@ -14,11 +14,6 @@ from relu_splitter.core import ReluSplitter
 from relu_splitter.verify import init_verifier
 
 import signal
-global sigint_flag
-sigint_flag = False
-def set_flag(sig, frame):
-    if sigint_flag == False:
-        sigint_flag = True
 
 
 
@@ -26,7 +21,6 @@ tool_root   = Path(os.environ["TOOL_ROOT"])
 exp_root    = Path(tool_root/'experiment')
 output_root = Path(exp_root/'onnx')
 log_root    = Path(exp_root/'logs/relusplitter')
-db          = get_db(exp_root/'gen_network.db')
 
 p_split_strat           = ["reluS+", "reluS-", "random"]   # "single" 
 p_masks                 = ["stable+", "stable-", "unstable"] # "all", "stable"
@@ -67,6 +61,8 @@ if __name__ == "__main__":
             log_dir = Path(log_root / benchmark['name'])
             output_dir.mkdir(parents=True, exist_ok=True)
             log_dir.mkdir(parents=True, exist_ok=True)
+            db = get_db(exp_root/f'gen_network_{benchmark_name}.db')
+
 
             # for onnx_path, vnnlib_path in tqdm(instances):
             for onnx_path, vnnlib_path in tqdm(instances):
@@ -96,7 +92,7 @@ if __name__ == "__main__":
                     pool.starmap(run_splitter, tasks_todo)
 
                 original_handler = signal.getsignal(signal.SIGINT)
-                signal.signal(signal.SIGINT, set_flag)
+                signal.signal(signal.SIGINT, signal.SIG_IGN)
                 
                 tqdm.write(">>> writing to db...ignoring sigint")
                 for task in valid_tasks:
@@ -107,6 +103,8 @@ if __name__ == "__main__":
                 tqdm.write(">>> finished, restoring sigint")
 
                 signal.signal(signal.SIGINT, original_handler)
+            db.close()
+            
                 
     except KeyboardInterrupt:
         db.close()

@@ -5,7 +5,6 @@ from itertools import product
 import multiprocessing as mp
 
 from tqdm import tqdm
-from tinydb import TinyDB, Query
 from time import sleep
 
 from helpers import *
@@ -27,7 +26,7 @@ tool_root   = Path(os.environ["TOOL_ROOT"])
 exp_root    = Path(tool_root/'experiment')
 output_root = Path(exp_root/'onnx')
 log_root    = Path(exp_root/'logs/relusplitter')
-db          = TinyDB(exp_root/'db.json')
+db          = get_db(exp_root/'gen_network.db')
 
 p_split_strat           = ["reluS+", "reluS-", "random"]   # "single" 
 p_masks                 = ["stable+", "stable-", "unstable"] # "all", "stable"
@@ -61,7 +60,7 @@ if __name__ == "__main__":
     try:
         for benchmark in benchmarks:
             print(f"Processing {benchmark['name']}\n\n\n")
-
+            benchmark_name = benchmark["name"]
             instances = get_instances(benchmark)
             timeout = benchmark["timeout"]
             output_dir = Path(output_root / benchmark['name'])
@@ -89,7 +88,7 @@ if __name__ == "__main__":
                 valid_tasks     = [task for task in tasks if task[6] <= max_nsplits[task[5][1]]]
                 invalid_tasks   = [task for task in tasks if task not in valid_tasks]
 
-                tasks_todo      = [task for task in valid_tasks if not already_in_db(db, task)]
+                tasks_todo      = [task for task in valid_tasks if not already_in_db(db, benchmark_name, task)]
                 # {"tasks_todo": len(tasks_todo), "valid_tasks": len(valid_tasks), "total_tasks": len(tasks)}
                 tqdm.write(f"Tasks to do: {len(tasks_todo)} \n Valid tasks: {len(valid_tasks)} \n Total tasks: {len(tasks)}")
 
@@ -99,17 +98,15 @@ if __name__ == "__main__":
                 original_handler = signal.getsignal(signal.SIGINT)
                 signal.signal(signal.SIGINT, set_flag)
                 
-                tqdm.write(">>> writing to db...")
+                tqdm.write(">>> writing to db...ignoring sigint")
                 for task in valid_tasks:
-                    insert_into_db(db, task, "DONE")
+                    insert_into_db(db, benchmark_name, task, "DONE")
                 for task in invalid_tasks:
-                    insert_into_db(db, task, "SKIP: not_enough_neurons")
-                tqdm.write(f"db length: {len(db)}")
-                tqdm.write(">>> finished")
+                    insert_into_db(db, benchmark_name, task, "SKIP: not_enough_neurons")
+                tqdm.write(f"db length: {size_of_db(db)}")
+                tqdm.write(">>> finished, restoring sigint")
 
                 signal.signal(signal.SIGINT, original_handler)
-                if sigint_flag:
-                    raise KeyboardInterrupt
                 
     except KeyboardInterrupt:
         db.close()

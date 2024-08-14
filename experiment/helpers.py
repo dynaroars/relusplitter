@@ -1,7 +1,33 @@
 import os
 import subprocess
-from tinydb import Query
+import sqlite3
 
+def get_db(db_root):
+    db = sqlite3.connect(db_root)
+    cursor = db.cursor()
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS tasks (
+        benchmark TEXT,
+        onnx TEXT,
+        vnnlib TEXT,
+        split_idx INTEGER,
+        split_strat TEXT,
+        mask TEXT,
+        nsplits INTEGER,
+        seed INTEGER,
+        atol REAL,
+        rtol REAL,
+        status TEXT,
+        PRIMARY KEY (onnx, vnnlib, split_idx, split_strat, mask, nsplits, seed, atol, rtol)
+    )
+''')
+    db.commit()
+    return db
+
+def size_of_db(db):
+    cursor = db.cursor()
+    cursor.execute('SELECT COUNT(*) FROM tasks')
+    return cursor.fetchone()[0]
 
 
 def get_instances(benchmark):
@@ -12,36 +38,59 @@ def get_instances(benchmark):
             instances.append((onnx_path, vnnlib_path))
     return instances
 
-def already_in_db(db, task):
-    Task = Query()
-    return db.search(
-        (Task.onnx == str(task[0].stem)) &
-        (Task.vnnlib == str(task[1].stem)) &
-        (Task.split_idx == task[4]) &
-        (Task.split_strat == task[5][0]) &
-        (Task.mask == task[5][1]) &
-        (Task.nsplits == task[6]) &
-        (Task.seed == task[7]) &
-        (Task.atol == task[8]) &
-        (Task.rtol == task[9])
-    ) != []
+def already_in_db(db, benchmark, task):
+    cursor = db.cursor()
+    query = '''
+        SELECT 1 FROM tasks WHERE
+        benchmark = ? AND
+        onnx = ? AND
+        vnnlib = ? AND
+        split_idx = ? AND
+        split_strat = ? AND
+        mask = ? AND
+        nsplits = ? AND
+        seed = ? AND
+        atol = ? AND
+        rtol = ?
+    '''
+    cursor.execute(query, (
+        benchmark,
+        str(task[0].stem),
+        str(task[1].stem),
+        task[4],
+        task[5][0],
+        task[5][1],
+        task[6],
+        task[7],
+        task[8],
+        task[9]
+    ))
+    result = cursor.fetchone()
+    return result is not None
 
-def insert_into_db(db, task, val):
-    if not already_in_db(db, task):
-        db.insert(
-                        {
-                            "onnx"      : str(task[0].stem),
-                            "vnnlib"    : str(task[1].stem),
-                            "split_idx" : task[4],
-                            "split_strat": task[5][0],
-                            "mask"      : task[5][1],
-                            "nsplits"   : task[6],
-                            "seed"      : task[7],
-                            "atol"      : task[8],
-                            "rtol"      : task[9],
-                            "status"    : val,
-                        }
-                    )
+
+def insert_into_db(db, benchmark, task, val):
+    if not already_in_db(db, benchmark, task):
+        cursor = db.cursor()
+        cursor.execute('''
+            INSERT INTO tasks (
+                benchmark, onnx, vnnlib, split_idx, split_strat, mask, nsplits, seed, atol, rtol, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            benchmark,
+            str(task[0].stem),
+            str(task[1].stem),
+            task[4],
+            task[5][0],
+            task[5][1],
+            task[6],
+            task[7],
+            task[8],
+            task[9],
+            val
+        ))
+        db.commit()
+
     
 def run_splitter(onnx_path, vnnlib_path, output_dir, log_dir, split_idx, strat_n_mask, nsplits, seed, atol, rtol):
     wd = os.environ["TOOL_ROOT"]

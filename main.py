@@ -12,6 +12,7 @@ from relu_splitter.model import WarppedOnnxModel
 from relu_splitter.verify import init_verifier
 
 
+default_device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_parser():
     parser = argparse.ArgumentParser(description='Parser for network verification arguments')
@@ -36,9 +37,11 @@ def get_parser():
                               choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
     
     split_parser.add_argument('--seed', type=int, default=0, help='Seed for random number generation')
+    
     split_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')
     split_parser.add_argument('--rtol', type=float, default=1e-5, help='Relative tolerance for closeness check')
-    
+    split_parser.add_argument('--device', type=str, default=default_device, help='Device for the model closeness check',)
+
     split_parser.add_argument('--verify', type=str, default=False, help='run verification with verifier',
                               choices=['neuralsat', 'abcrown', 'marabou'])
 
@@ -68,7 +71,8 @@ if __name__ == '__main__':
             'split_idx': args.split_idx,
             'random_seed': args.seed,
             'atol': args.atol,
-            'rtol': args.rtol
+            'rtol': args.rtol,
+            'device': args.device
         }
         if args.n_splits is not None:
             conf['min_splits'] = args.n_splits

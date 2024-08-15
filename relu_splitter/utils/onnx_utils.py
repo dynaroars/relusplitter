@@ -22,6 +22,19 @@ def check_model_closeness(m1, m2, input_shape, n=50, **kwargs):
             return False, worst_diff
     return True, worst_diff
 
+def check_model_closeness_gpu(m1, m2, input_shape, n=50, **kwargs):
+    worst_diff = 0
+    for i in range(n):
+        x = torch.randn(input_shape).cuda()
+        y1,y2 = m1.forward_gpu(x), m2.forward_gpu(x)
+        worst_diff = max(worst_diff, torch.abs(y1-y2).max())
+        if not torch.allclose(y1, y2, **kwargs):
+            logger.error(f"Outputs are not the same for input {x}\n{y1}\n{y2}")
+            logger.error(f"Diff: {torch.abs(y1-y2).max()}")
+            logger.error(f"{i}/{n} tests passed")
+            return False, worst_diff
+    return True, worst_diff
+
 def compute_model_bound(model: onnx.ModelProto, bounded_input: BoundedTensor, method="backward"):
     model = ConvertModel(model)
     model = BoundedModule(model, bounded_input)

@@ -145,6 +145,11 @@ class WarppedOnnxModel():
 
         return w,b
     
+    def forward_gpu(self, x: torch.Tensor) -> torch.Tensor:
+        if not hasattr(self, "_bounded_model_gpu"):
+            self._bounded_model_gpu = BoundedModule(ConvertModel(self._model), x, device='cuda')
+        return self._bounded_model_gpu(x)
+    
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if not hasattr(self, "_bounded_model"):
             self._bounded_model = BoundedModule(ConvertModel(self._model), x)

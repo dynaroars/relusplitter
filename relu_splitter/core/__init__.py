@@ -11,7 +11,7 @@ import torch
 
 from ..utils.misc import adjust_mask_random_k, find_feasible_point
 from ..utils.read_vnnlib import read_vnnlib
-from ..utils.onnx_utils import check_model_closeness
+from ..utils.onnx_utils import check_model_closeness, check_model_closeness_gpu
 from ..utils.errors import NOT_ENOUGH_NEURON, INVALID_PARAMETER, MODEL_NOT_EQUIV
 from ..model import WarppedOnnxModel
 from auto_LiRPA import BoundedTensor, PerturbationLpNorm
@@ -54,7 +54,9 @@ class ReluSplitter():
         assert self._conf["split_mask"] in ["stable+", "stable-", "stable", "unstable", "all"], f"Unknown split mask {self._conf['split_mask']}"
         invalid_combinations = [("reluS+", "stable-"), ("reluS-", "stable+"), ("reluS+", "stable"), ("reluS-", "stable"), ("reluS+", "all"), ("reluS-", "all")]
         assert (self._conf["split_strategy"], self._conf["split_mask"]) not in invalid_combinations, f"Invalid combination of split strategy and mask"
-
+        assert self._conf["device"] in ["cpu", "cuda"], f"Invalid device {self._conf['device']}"
+        if self._conf["device"] == "cuda":
+            assert torch.cuda.is_available(), "CUDA is not available"
 
     def init_vnnlib(self):
         input_bound, output_bound = read_vnnlib(str(self.spec_path))[0]
@@ -260,11 +262,18 @@ class ReluSplitter():
         self.logger.info("=========== Model created ===========")
         self.logger.debug(f"Checking model closeness with atol: {self._conf['atol']} and rtol: {self._conf['rtol']}")
         input_shape = list(self.warpped_model.input_shapes.values())[0]
-        equiv, diff = check_model_closeness(self.warpped_model, 
-                                            new_model, 
-                                            input_shape, 
-                                            atol=self._conf["atol"], 
-                                            rtol=self._conf["rtol"])
+        if self._conf["device"] == "cpu":
+            equiv, diff = check_model_closeness(self.warpped_model, 
+                                                new_model, 
+                                                input_shape, 
+                                                atol=self._conf["atol"], 
+                                                rtol=self._conf["rtol"])
+        else:
+            equiv, diff = check_model_closeness_gpu(self.warpped_model, 
+                                                new_model, 
+                                                input_shape, 
+                                                atol=self._conf["atol"], 
+                                                rtol=self._conf["rtol"])
         if not equiv:
             self.logger.error(f"Model closeness check failed with diff {diff}")
             raise MODEL_NOT_EQUIV("SPLITE-ERROR: Model closeness check failed")

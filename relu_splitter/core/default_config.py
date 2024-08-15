@@ -7,4 +7,5 @@ default_config = {
     'max_splits': 1,
     'atol': 1e-5,
     'rtol': 1e-5,
+    'device': 'cpu'
 }

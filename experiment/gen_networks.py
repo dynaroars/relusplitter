@@ -1,12 +1,10 @@
 import os
 import sys
-from time import sleep
+
+from tqdm import tqdm
 from pathlib import Path
 from itertools import product
 import multiprocessing as mp
-
-from tqdm import tqdm
-from time import sleep
 
 from helpers import *
 from benchmarks import benchmarks

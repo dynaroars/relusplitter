@@ -1,14 +1,11 @@
 import os
 import sys
 import signal
-from pathlib import Path
-
-from multiprocessing import cpu_count
-
 import sqlite3
 
-
+from pathlib import Path
 from tqdm import tqdm
+from multiprocessing import cpu_count
 
 from helpers import *
 from benchmarks import benchmarks
@@ -26,7 +23,9 @@ db_root.mkdir(parents=True, exist_ok=True)
 
 
 
-repeat = 5
+repeat = 3
+marabou_cpu = 32 if cpu_count() > 100 else 10
+marabou_ram = "24G"
 
 
 if __name__=="__main__":
@@ -59,9 +58,18 @@ if __name__=="__main__":
                     'timeout': benchmark['timeout'],
                 }
                 if verifier_name == "marabou":
-                    conf['num_workers'] = 32 if cpu_count() > 100 else 10
-                    conf['ram']         = "64G"
+                    conf['num_workers'] = marabou_cpu
+                    conf['ram']         = marabou_ram
                 res, time = verifier.execute(conf)
+
+                if res not in ["sat", "unsat"]:     # skip any other results
+                    tqdm.write(f"res: {res}: {onnx_name}~{vnnlib_name}~{verifier_name}, skipping")
+                    original_handler = signal.getsignal(signal.SIGINT)
+                    signal.signal(signal.SIGINT, signal.SIG_IGN)
+                    for j in range(i, repeat):
+                        insert_into_veri_db(db, benchmark_name, onnx_name, vnnlib_name, verifier_name, j, res, time)
+                    signal.signal(signal.SIGINT, original_handler)
+                    break
 
                 original_handler = signal.getsignal(signal.SIGINT)
                 signal.signal(signal.SIGINT, signal.SIG_IGN)

@@ -9,6 +9,7 @@ from tqdm import tqdm
 from time import sleep
 
 from helpers import *
+from benchmarks import benchmarks
 
 from relu_splitter.utils import logger
 from relu_splitter.core import ReluSplitter
@@ -20,8 +21,11 @@ import signal
 
 tool_root   = Path(os.environ["TOOL_ROOT"])
 exp_root    = Path(tool_root/'experiment')
-output_root = Path(exp_root/'onnx')
-log_root    = Path(exp_root/'logs/relusplitter')
+output_root = exp_root/'onnx'
+log_root    = exp_root/'logs/relusplitter'
+db_root     = exp_root/'dbs'
+db_root.mkdir(parents=True, exist_ok=True)
+
 
 p_split_strat           = ["reluS+", "reluS-", "random"]   # "single" 
 p_masks                 = ["stable+", "stable-", "unstable"] # "all", "stable"
@@ -32,21 +36,6 @@ atol, rtol = 1e-5, 1e-5
 
 invalid_combinations    = [("reluS+", "stable-"), ("reluS-", "stable+"), ("reluS+", "stable"), ("reluS-", "stable"), ("reluS+", "all"), ("reluS-", "all")]
 valid_strat_n_mask      = [pair for pair in product(p_split_strat, p_masks) if pair not in invalid_combinations]
-
-acasxu = {
-    "name"      : "acasxu",   
-    "path"      : Path(tool_root/'data'/'acasxu_converted'),
-    "timeout"   : 300,
-}
-mnist_fc = {
-    "name"      : "mnist_fc",
-    "path"      : Path(tool_root/'data'/'mnist_fc'),
-    "timeout"   : 600,
-}
-benchmarks = {
-    'acasxu': acasxu,
-    'mnist_fc': mnist_fc,
-}
 
 
 
@@ -64,7 +53,7 @@ if __name__ == "__main__":
         log_dir = Path(log_root / benchmark['name'])
         output_dir.mkdir(parents=True, exist_ok=True)
         log_dir.mkdir(parents=True, exist_ok=True)
-        db = get_db(exp_root/f'gen_network_{benchmark_name}.db')
+        db = get_gen_network_db(db_root/f'gen_network_{benchmark_name}.db')
 
 
         # for onnx_path, vnnlib_path in tqdm(instances):
@@ -87,7 +76,7 @@ if __name__ == "__main__":
             valid_tasks     = [task for task in tasks if task[6] <= max_nsplits[task[5][1]]]
             invalid_tasks   = [task for task in tasks if task not in valid_tasks]
 
-            tasks_todo      = [task for task in valid_tasks if not already_in_db(db, benchmark_name, task)]
+            tasks_todo      = [task for task in valid_tasks if not already_in_gen_network_db(db, benchmark_name, task)]
             # {"tasks_todo": len(tasks_todo), "valid_tasks": len(valid_tasks), "total_tasks": len(tasks)}
             tqdm.write(f"Tasks to do: {len(tasks_todo)}\tValid tasks: {len(valid_tasks)}\tTotal tasks: {len(tasks)}")
             if len(tasks_todo) == 0:
@@ -101,9 +90,9 @@ if __name__ == "__main__":
             
             tqdm.write(">>> writing to db...ignoring sigint")
             for task in valid_tasks:
-                insert_into_db(db, benchmark_name, task, "DONE")
+                insert_into_gen_network_db(db, benchmark_name, task, "DONE")
             for task in invalid_tasks:
-                insert_into_db(db, benchmark_name, task, "SKIP: not_enough_neurons")
+                insert_into_gen_network_db(db, benchmark_name, task, "SKIP: not_enough_neurons")
             tqdm.write(f"db length: {size_of_db(db)}")
             tqdm.write(">>> finished, restoring sigint")
 

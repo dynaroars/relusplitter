@@ -2,11 +2,54 @@ import os
 import subprocess
 import sqlite3
 
-def get_db(db_root):
+def get_init_veri_db(db_root):
     db = sqlite3.connect(db_root)
     cursor = db.cursor()
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS tasks (
+    CREATE TABLE IF NOT EXISTS my_table (
+        benchmark TEXT,
+        onnx TEXT,
+        vnnlib TEXT,
+        verifier TEXT,
+        repeat INTEGER,
+        status TEXT,
+        time REAL,
+        PRIMARY KEY (benchmark, onnx, vnnlib, verifier, repeat)
+    )
+''')
+    db.commit()
+    return db
+
+def already_in_veri_db(db, benchmark, onnx, vnnlib, verifier, repeat):
+    cursor = db.cursor()
+    query = '''
+        SELECT 1 FROM my_table WHERE
+        benchmark = ? AND
+        onnx = ? AND
+        vnnlib = ? AND
+        verifier = ? AND
+        repeat = ?
+    '''
+    cursor.execute(query, (benchmark, onnx, vnnlib, verifier, repeat))
+    result = cursor.fetchone()
+    return result is not None
+
+def insert_into_veri_db(db, benchmark, onnx, vnnlib, verifier, repeat, status, time):
+    if not already_in_veri_db(db, benchmark, onnx, vnnlib, verifier, repeat):
+        cursor = db.cursor()
+        cursor.execute('''
+            INSERT INTO my_table (
+                benchmark, onnx, vnnlib, verifier, repeat, status, time
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (benchmark, onnx, vnnlib, verifier, repeat, status, time))
+        db.commit()
+
+
+def get_gen_network_db(db_root):
+    db = sqlite3.connect(db_root)
+    cursor = db.cursor()
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS my_table (
         benchmark TEXT,
         onnx TEXT,
         vnnlib TEXT,
@@ -24,9 +67,9 @@ def get_db(db_root):
     db.commit()
     return db
 
-def size_of_db(db):
+def size_of_db(db, table="my_table"):
     cursor = db.cursor()
-    cursor.execute('SELECT COUNT(*) FROM tasks')
+    cursor.execute(f'SELECT COUNT(*) FROM {table}')
     return cursor.fetchone()[0]
 
 
@@ -38,10 +81,10 @@ def get_instances(benchmark):
             instances.append((onnx_path, vnnlib_path))
     return instances
 
-def already_in_db(db, benchmark, task):
+def already_in_gen_network_db(db, benchmark, task):
     cursor = db.cursor()
     query = '''
-        SELECT 1 FROM tasks WHERE
+        SELECT 1 FROM my_table WHERE
         benchmark = ? AND
         onnx = ? AND
         vnnlib = ? AND
@@ -69,11 +112,11 @@ def already_in_db(db, benchmark, task):
     return result is not None
 
 
-def insert_into_db(db, benchmark, task, val):
-    if not already_in_db(db, benchmark, task):
+def insert_into_gen_network_db(db, benchmark, task, val):
+    if not already_in_gen_network_db(db, benchmark, task):
         cursor = db.cursor()
         cursor.execute('''
-            INSERT INTO tasks (
+            INSERT INTO my_table (
                 benchmark, onnx, vnnlib, split_idx, split_strat, mask, nsplits, seed, atol, rtol, status
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (

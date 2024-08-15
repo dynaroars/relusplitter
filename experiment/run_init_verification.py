@@ -49,13 +49,13 @@ if __name__=="__main__":
             
             for i in range(repeat):
                 if already_in_veri_db(db, benchmark_name, onnx_name, vnnlib_name, verifier_name, i):
-                    tqdm.write(f"Already in db: {onnx_name}-{vnnlib_name}-{verifier_name}, skipping")
+                    tqdm.write(f"Already in db: {onnx_name}~{vnnlib_name}~{verifier_name}, skipping")
                     continue
 
                 conf = {
                     'onnx_path': onnx_path,
                     'vnnlib_path': vnnlib_path,
-                    'log_path': log_root/f"{onnx_name}-{vnnlib_name}-{verifier_name}-{i}.log",
+                    'log_path': log_root/f"{onnx_name}~{vnnlib_name}~{verifier_name}~{i}.log",
                     'timeout': benchmark['timeout'],
                 }
                 if verifier_name == "marabou":

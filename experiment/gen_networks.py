@@ -1,5 +1,6 @@
 import os
 import sys
+import signal
 
 from tqdm import tqdm
 from pathlib import Path
@@ -13,8 +14,8 @@ from relu_splitter.utils import logger
 from relu_splitter.core import ReluSplitter
 from relu_splitter.verify import init_verifier
 
-import signal
 
+original_handler = signal.getsignal(signal.SIGINT)
 
 
 tool_root   = Path(os.environ["TOOL_ROOT"])
@@ -83,9 +84,7 @@ if __name__ == "__main__":
             with mp.Pool(num_workers) as pool:
                 pool.starmap(run_splitter, tasks_todo)
 
-            original_handler = signal.getsignal(signal.SIGINT)
             signal.signal(signal.SIGINT, signal.SIG_IGN)
-            
             tqdm.write(">>> writing to db...ignoring sigint")
             for task in valid_tasks:
                 insert_into_gen_network_db(db, benchmark_name, task, "DONE")
@@ -93,7 +92,6 @@ if __name__ == "__main__":
                 insert_into_gen_network_db(db, benchmark_name, task, "SKIP: not_enough_neurons")
             tqdm.write(f"db length: {size_of_db(db)}")
             tqdm.write(">>> finished, restoring sigint")
-
             signal.signal(signal.SIGINT, original_handler)
         db.close()
             

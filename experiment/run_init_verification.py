@@ -3,8 +3,9 @@ import sys
 import signal
 import sqlite3
 
-from pathlib import Path
 from tqdm import tqdm
+from time import sleep
+from pathlib import Path
 from multiprocessing import cpu_count
 
 from helpers import *
@@ -50,6 +51,7 @@ if __name__=="__main__":
             for i in range(repeat):
                 if already_in_veri_db(db, benchmark_name, onnx_name, vnnlib_name, verifier_name, i):
                     tqdm.write(f"Already in db: {onnx_name}~{vnnlib_name}~{verifier_name}~{i}, skipping")
+                    sleep(0.01)
                     continue
 
                 conf = {

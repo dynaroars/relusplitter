@@ -1,12 +1,14 @@
 import pathlib
 from ..verifier import Verifier
 
+default_config = f"{pathlib.Path(__file__).parent}/onnx_with_one_vnnlib.yaml"
 
 class AlphaBetaCrown(Verifier):
     @classmethod
     def _gen_prog(cls, prog_conf):
         model_path = prog_conf.get('onnx_path')
         property_path = prog_conf.get('vnnlib_path')
+        config_path = prog_conf.get('config_path', default_config)
 
         cmd = f"{pathlib.Path(__file__).parent}/run_abcrown.sh"
 
@@ -24,7 +26,7 @@ class AlphaBetaCrown(Verifier):
         # if timeout is not None:
         #     cmd += f" -t {timeout}"
         
-        cmd += f" --onnx_path {model_path} --vnnlib_path {property_path}"
+        cmd += f" --onnx_path {model_path} --vnnlib_path {property_path} --config {config_path}"
         return cmd
 
     @classmethod

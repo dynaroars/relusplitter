@@ -23,12 +23,16 @@ db_root     = exp_root/'dbs'
 log_root.mkdir(parents=True, exist_ok=True)
 db_root.mkdir(parents=True, exist_ok=True)
 
-
-
-repeat = 3
+# special config for verifiers
 marabou_cpu = 32 if cpu_count() > 100 else 10
 marabou_ram = "64G"
 
+abcrown_acasxu_config       = f"{tool_root}/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp23/acasxu.yaml"
+abcrown_mnist_x2_config     = f"{tool_root}/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/mnistfc_small.yaml"
+abcrown_mnist_x4x6_config   = f"{tool_root}/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/mnistfc.yaml"
+
+
+repeat = 3
 
 if __name__=="__main__":
     benchmark_name = sys.argv[1]
@@ -65,6 +69,16 @@ if __name__=="__main__":
                 if verifier_name == "marabou":
                     conf['num_workers'] = marabou_cpu
                     conf['ram']         = marabou_ram
+                elif verifier_name == "abcrown" and benchmark_name=="acasxu":
+                    conf['config_path'] = abcrown_acasxu_config
+                elif verifier_name == "abcrown" and benchmark_name=="mnist_fc":
+                    if "x2" in onnx_name:
+                        conf['config_path'] = abcrown_mnist_x2_config
+                    else:
+                        conf['config_path'] = abcrown_mnist_x4x6_config
+                else:
+                    pass
+
                 res, time = verifier.execute(conf)
 
                 if res not in ["sat", "unsat"]:     # skip any other results

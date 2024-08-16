@@ -47,6 +47,8 @@ if __name__=="__main__":
             vnnlib_path = benchmark_path/vnnlib_path
             onnx_name = onnx_path.stem
             vnnlib_name = vnnlib_path.stem
+
+            (log_root/benchmark_name).mkdir(parents=True, exist_ok=True)
             
             for i in range(repeat):
                 if already_in_veri_db(db, benchmark_name, onnx_name, vnnlib_name, verifier_name, i):
@@ -57,7 +59,7 @@ if __name__=="__main__":
                 conf = {
                     'onnx_path': onnx_path,
                     'vnnlib_path': vnnlib_path,
-                    'log_path': log_root/f"{onnx_name}~{vnnlib_name}~{verifier_name}~{i}.log",
+                    'log_path': log_root/benchmark_name/f"{onnx_name}~{vnnlib_name}~{verifier_name}~{i}.log",
                     'timeout': benchmark['timeout'],
                 }
                 if verifier_name == "marabou":

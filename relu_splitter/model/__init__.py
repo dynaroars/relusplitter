@@ -16,6 +16,26 @@ from ..utils.onnx_utils import truncate_onnx_model, compute_model_bound
 from ..utils.misc import get_random_id
 
 SINGLE_INPUT_OPS = ["Relu", "MatMul", "Add"]
+
+custom_quirks = {
+    'Reshape': {
+        'fix_batch_size': True
+    },
+    'Transpose': {
+        'merge_batch_size_with_channel': True,
+        'remove_gdvb_transpose': True,
+    },
+    'Softmax' :{
+        'skip_last_layer': True
+    },
+    'Squeeze' :{
+        'skip_last_layer': True
+    },
+    'Conv' :{
+        'merge_batch_norm': True
+    },
+}
+
 default_logger = logging.getLogger(__name__)
 
 class WarppedOnnxModel():
@@ -156,12 +176,12 @@ class WarppedOnnxModel():
     
     def forward_gpu(self, x: torch.Tensor) -> torch.Tensor:
         if not hasattr(self, "_bounded_model_gpu"):
-            self._bounded_model_gpu = BoundedModule(ConvertModel(self._model), x, device='cuda')
+            self._bounded_model_gpu = BoundedModule(ConvertModel(self._model, experimental=True, quirks=custom_quirks), x, device='cuda')
         return self._bounded_model_gpu(x)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if not hasattr(self, "_bounded_model"):
-            self._bounded_model = BoundedModule(ConvertModel(self._model), x)
+            self._bounded_model = BoundedModule(ConvertModel(self._model, experimental=True, quirks=custom_quirks), x)
         return self._bounded_model(x)
 
     def save(self, fname: Path):

@@ -15,7 +15,7 @@ from auto_LiRPA import BoundedModule, BoundedTensor
 from ..utils.onnx_utils import truncate_onnx_model, compute_model_bound
 from ..utils.misc import get_random_id
 
-SINGLE_INPUT_OPS = ["Relu"]
+SINGLE_INPUT_OPS = ["Relu", "MatMul", "Add"]
 default_logger = logging.getLogger(__name__)
 
 class WarppedOnnxModel():
@@ -61,7 +61,7 @@ class WarppedOnnxModel():
         while self.has_node(name):
             name = f"{prefix}_{get_random_id()}"
         return name
-
+    
     def has_node(self, node_name: str):
         return node_name in self._nodes_mapping.keys()
 
@@ -78,6 +78,15 @@ class WarppedOnnxModel():
                 self._tensor_names.update(node.input)
                 self._tensor_names.update(node.output)
         return tensor_name in self._tensor_names
+    
+    def has_initializer(self, initializer_name: str):
+        return initializer_name in self._initializers_mapping.keys()
+    
+    def get_node_initializers(self, node):
+        return [i for i in node.input if self.has_initializer(i)]
+    
+    def get_node_inputs_no_initializers(self, node):
+        return [i for i in node.input if not self.has_initializer(i)]
 
     @property
     def nodes(self):
@@ -175,6 +184,7 @@ class WarppedOnnxModel():
         visited = set([model_input_name])
         avaliable_nodes = [n for n in self._nodes if n not in nodes_to_replace] + additional_nodes
         avaliable_initializers = {i.name:i for i in (self._initializers+additional_initializers)}
+        added_initializers = set()
         while model_output_name not in visited:
             updated = False
             for node in avaliable_nodes:
@@ -183,7 +193,13 @@ class WarppedOnnxModel():
                 else:
                     if all((i in visited or i in avaliable_initializers) for i in node.input):
                         new_nodes.append(node)
-                        new_initializers.extend([avaliable_initializers[i] for i in node.input if i in avaliable_initializers])
+
+                        # new_initializers.extend([avaliable_initializers[i] for i in node.input if i in avaliable_initializers])
+                        # initializer that are used multiple times produce invialid onnx model
+                        initilizer_to_add = [i for i in node.input if i in avaliable_initializers and i not in added_initializers]
+                        new_initializers.extend([avaliable_initializers[i] for i in initilizer_to_add])
+                        added_initializers.update(initilizer_to_add)
+
                         visited.update(node.output)
                         updated = True
             if not updated:

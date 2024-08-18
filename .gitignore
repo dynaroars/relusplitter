@@ -1,6 +1,6 @@
 experiment/logs
 experiment/onnx
-
+data/*
 
 benchmark/
 benchmark

@@ -8,6 +8,24 @@ from auto_LiRPA import BoundedModule, BoundedTensor, PerturbationLpNorm
 
 logger = logging.getLogger(__name__)
 
+def check_model_closeness_ort(m1, m2, input_names, input_shapes, n=50):
+    import onnxruntime as ort
+    sess1 = ort.InferenceSession(m1.SerializeToString())
+    sess2 = ort.InferenceSession(m2.SerializeToString())
+    worst_diff = 0
+    for i in range(n):
+        x = {name: np.random.randn(*shape).astype(np.float32) for name, shape in zip(input_names, input_shapes)}
+        y1 = sess1.run(None, x)
+        y2 = sess2.run(None, x)
+        for y1_, y2_ in zip(y1, y2):
+            worst_diff = max(worst_diff, np.abs(y1_-y2_).max())
+            if not np.allclose(y1_, y2_):
+                logger.error(f"Outputs are not the same for input {x}\n{y1_}\n{y2_}")
+                logger.error(f"Diff: {np.abs(y1_-y2_).max()}")
+                logger.error(f"{i}/{n} tests passed")
+                return False, worst_diff
+    return True, worst_diff
+
 
 def check_model_closeness(m1, m2, input_shape, n=50, **kwargs):
     worst_diff = 0

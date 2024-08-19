@@ -19,7 +19,7 @@ SINGLE_INPUT_OPS = ["Relu", "MatMul", "Add"]
 
 custom_quirks = {
     'Reshape': {
-        'fix_batch_size': True
+        'fix_batch_size': False
     },
     'Transpose': {
         'merge_batch_size_with_channel': True,

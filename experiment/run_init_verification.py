@@ -30,7 +30,7 @@ marabou_ram = "64G"
 abcrown_acasxu_config       = f"{tool_root}/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp23/acasxu.yaml"
 abcrown_mnist_x2_config     = f"{tool_root}/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/mnistfc_small.yaml"
 abcrown_mnist_x4x6_config   = f"{tool_root}/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/mnistfc.yaml"
-
+abcrown_tll_config          = f"{tool_root}/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp23/tllVerifyBench.yaml"
 
 repeat = 3
 
@@ -66,16 +66,20 @@ if __name__=="__main__":
                     'log_path': log_root/benchmark_name/f"{onnx_name}~{vnnlib_name}~{verifier_name}~{i}.log",
                     'timeout': benchmark['timeout'],
                 }
+                
                 if verifier_name == "marabou":
                     conf['num_workers'] = marabou_cpu
                     conf['ram']         = marabou_ram
-                elif verifier_name == "abcrown" and benchmark_name=="acasxu":
-                    conf['config_path'] = abcrown_acasxu_config
-                elif verifier_name == "abcrown" and benchmark_name=="mnist_fc":
-                    if "x2" in onnx_name:
-                        conf['config_path'] = abcrown_mnist_x2_config
-                    else:
-                        conf['config_path'] = abcrown_mnist_x4x6_config
+                elif verifier_name == "abcrown":
+                    if benchmark_name=="acasxu":
+                        conf['config_path'] = abcrown_acasxu_config
+                    elif benchmark_name=="mnist_fc":
+                        if "x2" in onnx_name:
+                            conf['config_path'] = abcrown_mnist_x2_config
+                        else:
+                            conf['config_path'] = abcrown_mnist_x4x6_config
+                    elif benchmark_name=="tll":
+                        conf['config_path'] = abcrown_tll_config
                 else:
                     pass
 

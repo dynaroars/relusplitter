@@ -12,7 +12,26 @@ mnist_fc = {
     "path"      : Path(tool_root/'data'/'mnist_fc'),
     "timeout"   : 300,
 }
+nn4sys = {
+    "name"      : "nn4sys",
+    "path"      : Path(tool_root/'data'/'nn4sys'),
+    "timeout"   : 300,
+}
+tll = {
+    "name"      : "tllverifybench",
+    "path"      : Path(tool_root/'data'/'tllverifybench'),
+    "timeout"   : 300,
+}
+collins_cnn = {
+    "name"      : "collins_rul_cnn",
+    "path"      : Path(tool_root/'data'/'collins_rul_cnn'),
+    "timeout"   : 300,
+}
+
 benchmarks = {
     'acasxu': acasxu,
     'mnist_fc': mnist_fc,
+    'nn4sys': nn4sys,
+    'collins_cnn': collins_cnn,
+    'tll': tll,
 }

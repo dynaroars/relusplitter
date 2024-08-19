@@ -15,17 +15,17 @@ mnist_fc = {
 nn4sys = {
     "name"      : "nn4sys",
     "path"      : Path(tool_root/'data'/'nn4sys'),
-    "timeout"   : 300,
+    # "timeout"   : 300,
 }
 tll = {
     "name"      : "tllverifybench",
     "path"      : Path(tool_root/'data'/'tllverifybench'),
-    "timeout"   : 300,
+    "timeout"   : 600,
 }
 collins_cnn = {
     "name"      : "collins_rul_cnn",
     "path"      : Path(tool_root/'data'/'collins_rul_cnn'),
-    "timeout"   : 300,
+    # "timeout"   : 300,
 }
 
 benchmarks = {

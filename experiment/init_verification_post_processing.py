@@ -107,7 +107,8 @@ else:
             # only keep instance where all verifiers agree on the result
             usable_instances.add(i)
         else:
-            print(f"{i} was removed for {[ (verifier, res[0].upper(), int(res[1]) if res[0] not in ['sat', 'unsat'] else res[0]) for verifier,res in instance_x_verifier[i].items()]}")
+            temp = [ (verifier, res[0].upper() if res[0] not in ['sat', 'unsat'] else res[0], res[1]) for verifier,res in instance_x_verifier[i].items()]
+            print(f"{i} was removed for {temp}")
 print(f"Number of instances: {len(instance_x_verifier)}")
 print(f"Number of usable instances: {len(usable_instances)}")
         

@@ -35,10 +35,10 @@ abcrown_tll_config          = f"{exp_root}/config/tllVerifyBench.yaml"
 repeat = 3
 
 if __name__=="__main__":
-    benchmark_name = sys.argv[1]
+    benchmark = sys.argv[1]
     verifier_name = sys.argv[2]
     
-    benchmark       = benchmarks[benchmark_name]
+    benchmark_name       = benchmarks[benchmark]
     verifier = init_verifier(verifier_name)
 
 
@@ -78,7 +78,7 @@ if __name__=="__main__":
                             conf['config_path'] = abcrown_mnist_x2_config
                         else:
                             conf['config_path'] = abcrown_mnist_x4x6_config
-                    elif benchmark_name=="tll":
+                    elif benchmark_name=="tllverifybench":
                         # pass # this config gives error when using converted tll
                         conf['config_path'] = abcrown_tll_config
                 else:

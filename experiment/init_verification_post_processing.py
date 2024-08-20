@@ -102,12 +102,12 @@ if benchmark_name == "tllverifybench":
     usable_instances = set(instance_x_verifier.keys())
 else:
     for i in instance_x_verifier:
-        results = [ i[0] for i in instance_x_verifier[i].values()]
-        if all( [ i in ['sat','unsat'] for i in results]) and len(set(results)) == 1:
+        results = [ res[0] for res in instance_x_verifier[i].values()]
+        if all( [ status in ['sat','unsat'] for status in results]) and len(set(results)) == 1:
             # only keep instance where all verifiers agree on the result
             usable_instances.add(i)
         else:
-            print(f"{i} was removed for {results}")
+            print(f"{i} was removed for {[ (verifier,res[0]) for verifier,res in instance_x_verifier[i].items()]}")
 print(f"Number of instances: {len(instance_x_verifier)}")
 print(f"Number of usable instances: {len(usable_instances)}")
         

@@ -117,7 +117,7 @@ with open(fname, 'w') as f:
     for i in usable_instances:
         onnx, vnnlib = i
         result = list(instance_x_verifier[i].values())[0][0]
-        (v1, t1), (v2, t2), (v3, t3) = [ (verifier, time) for verifier, (status, time) in instance_x_verifier[i].items()]
-        f.write(f'{onnx},{vnnlib},{result},{v1},{t1},{v2},{t2},{v3},{t3}\n')
+        (v1,s1,t1), (v2,s2,t2), (v3,s3,t3) = [ (verifier, status, time) for verifier, (status, time) in instance_x_verifier[i].items()]
+        f.write(f'{onnx},{vnnlib},{result},{v1},{s1},{t1},{v2},{s2},{t2},{v3},{s3},{t3}\n')
 
 db.close()

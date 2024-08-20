@@ -92,6 +92,8 @@ results  = [i for i in results if i[0] == benchmark_name]
 instance_x_verifier = {}
 for i in results:
     benchmark, onnx, vnnlib, verifier, status, time = i
+    if verifier == "marabou":
+        continue # skip marabou
     if (onnx, vnnlib) not in instance_x_verifier:
         instance_x_verifier[(onnx, vnnlib)] = {verifier: (status,time)}
     else:
@@ -116,11 +118,11 @@ print(f"Number of usable instances: {len(usable_instances)}")
 fname = tool_root/f"experiment/selected_instances_{benchmark_name}.csv"
 
 with open(fname, 'w') as f:
-    f.write('onnx,vnnlib,result, v1, t1, v2, t2, v3, t3\n')
+    f.write('onnx,vnnlib,result, v1, t1, v2, t2\n')
     for i in usable_instances:
         onnx, vnnlib = i
         result = list(instance_x_verifier[i].values())[0][0]
-        (v1,s1,t1), (v2,s2,t2), (v3,s3,t3) = [ (verifier, status, time) for verifier, (status, time) in instance_x_verifier[i].items()]
-        f.write(f'{onnx},{vnnlib},{result},{v1},{s1},{t1},{v2},{s2},{t2},{v3},{s3},{t3}\n')
+        (v1,s1,t1), (v2,s2,t2) = [ (verifier, status, time) for verifier, (status, time) in instance_x_verifier[i].items()]
+        f.write(f'{onnx},{vnnlib},{result},{v1},{s1},{t1},{v2},{s2},{t2}\n')
 
 db.close()

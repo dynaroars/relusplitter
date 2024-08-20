@@ -107,7 +107,7 @@ else:
             # only keep instance where all verifiers agree on the result
             usable_instances.add(i)
 
-    
+print(f"Number of usable instances: {len(usable_instances)}")
         
 
 fname = tool_root/f"experiment/selected_instances_{benchmark_name}.csv"

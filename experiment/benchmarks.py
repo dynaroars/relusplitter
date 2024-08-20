@@ -19,7 +19,7 @@ nn4sys = {
 }
 tll = {
     "name"      : "tllverifybench",
-    "path"      : Path(tool_root/'data'/'tllverifybench'),
+    "path"      : Path(tool_root/'data'/'tllverifybench_converted'),
     "timeout"   : 600,
 }
 collins_cnn = {

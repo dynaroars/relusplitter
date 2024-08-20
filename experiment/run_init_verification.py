@@ -35,10 +35,10 @@ abcrown_tll_config          = f"{exp_root}/config/tllVerifyBench.yaml"
 repeat = 3
 
 if __name__=="__main__":
-    benchmark = sys.argv[1]
+    benchmark = benchmarks[sys.argv[1]]
     verifier_name = sys.argv[2]
     
-    benchmark_name       = benchmarks[benchmark]
+    benchmark_name       = benchmark[benchmark]
     verifier = init_verifier(verifier_name)
 
 

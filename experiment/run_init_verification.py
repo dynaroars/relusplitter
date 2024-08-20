@@ -38,7 +38,7 @@ if __name__=="__main__":
     benchmark = benchmarks[sys.argv[1]]
     verifier_name = sys.argv[2]
     
-    benchmark_name       = benchmark[benchmark]
+    benchmark_name       = benchmark['name']
     verifier = init_verifier(verifier_name)
 
 

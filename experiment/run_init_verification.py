@@ -27,10 +27,10 @@ db_root.mkdir(parents=True, exist_ok=True)
 marabou_cpu = 32 if cpu_count() > 100 else 10
 marabou_ram = "64G"
 
-abcrown_acasxu_config       = f"{tool_root}/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp23/acasxu.yaml"
-abcrown_mnist_x2_config     = f"{tool_root}/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/mnistfc_small.yaml"
-abcrown_mnist_x4x6_config   = f"{tool_root}/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/mnistfc.yaml"
-abcrown_tll_config          = f"{tool_root}/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp23/tllVerifyBench.yaml"
+abcrown_acasxu_config       = f"{exp_root}/config/acasxu.yaml"
+abcrown_mnist_x2_config     = f"{exp_root}/config/mnistfc_small.yaml"
+abcrown_mnist_x4x6_config   = f"{exp_root}/config/mnistfc.yaml"
+abcrown_tll_config          = f"{exp_root}/config/tllVerifyBench.yaml"
 
 repeat = 3
 
@@ -79,6 +79,7 @@ if __name__=="__main__":
                         else:
                             conf['config_path'] = abcrown_mnist_x4x6_config
                     elif benchmark_name=="tll":
+                        # pass # this config gives error when using converted tll
                         conf['config_path'] = abcrown_tll_config
                 else:
                     pass

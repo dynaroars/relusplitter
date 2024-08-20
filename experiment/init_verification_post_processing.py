@@ -106,7 +106,7 @@ else:
         if all( [ i in ['sat','unsat'] for i in results]) and len(set(results)) == 1:
             # only keep instance where all verifiers agree on the result
             usable_instances.add(i)
-
+print(f"Number of instances: {len(instance_x_verifier)}")
 print(f"Number of usable instances: {len(usable_instances)}")
         
 

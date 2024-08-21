@@ -171,7 +171,8 @@ class ReluSplitter():
             split_mask = adjust_mask_random_k(split_mask, max_splits)
         n_splits = torch.sum(split_mask).item()  # actual number of splits
         assert min_splits <= n_splits <= max_splits, f"Number of splits {n_splits} is out of range [{min_splits}, {max_splits}]"
-
+        self.logger.info(f"Splitting {n_splits} {self._conf['split_mask']} ReLUs")
+        
         split_loc_fn = self.get_split_loc_fn(splittable_nodes[split_idx])   # kwargs here
         grad, offset = self.warpped_model.get_gemm_wb(gemm_node)    # w,b of the layer to be splitted
         # create new layers

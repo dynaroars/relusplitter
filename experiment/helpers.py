@@ -81,6 +81,18 @@ def get_instances(benchmark):
             instances.append((onnx_path, vnnlib_path))
     return instances
 
+def get_selected_instances(exp_home, benchmark):
+    instances = []
+    benchmark_name = benchmark["name"]
+    with open(exp_home/f"selected_instances_{benchmark_name}.csv", "r") as f:
+        # skip header
+        f.readline()
+        for line in f:
+            cols = line.strip().split(',')
+            onnx_path, vnnlib_path = cols[0], cols[1]
+            instances.append((onnx_path, vnnlib_path))
+    return instances
+
 def already_in_gen_network_db(db, benchmark, task):
     cursor = db.cursor()
     query = '''

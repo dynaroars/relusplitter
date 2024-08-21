@@ -28,6 +28,19 @@ def adjust_mask_random_k(mask, k):
         return mask
     raise ValueError("Something wrong")
 
+def adjust_mask_first_k(mask, k):
+    assert k >= 0
+    count = torch.sum(mask).item()
+    if count > k:
+        indices = torch.nonzero(mask, as_tuple=True)[0]
+        selected_indices = indices[:k]  # Select the first k indices in order
+        mask = torch.zeros_like(mask, dtype=torch.bool)
+        mask[selected_indices] = True
+        return mask
+    elif count <= k:
+        return mask
+    raise ValueError("Something wrong")
+
 def find_feasible_point(lb, ub, w, b, step_rate=1e-2, max_iters=10000):
     """
     Finds a point x within the bounds [lb, ub] that satisfies w @ x + b > 0

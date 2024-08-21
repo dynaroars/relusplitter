@@ -9,7 +9,7 @@ from tqdm import tqdm
 import onnx
 import torch
 
-from ..utils.misc import adjust_mask_random_k, find_feasible_point
+from ..utils.misc import adjust_mask_random_k, adjust_mask_first_k, find_feasible_point
 from ..utils.read_vnnlib import read_vnnlib
 from ..utils.onnx_utils import check_model_closeness, check_model_closeness_gpu
 from ..utils.errors import NOT_ENOUGH_NEURON, INVALID_PARAMETER, MODEL_NOT_EQUIV
@@ -168,7 +168,8 @@ class ReluSplitter():
             raise NOT_ENOUGH_NEURON("CANNOT-SPLITE: Not enough ReLUs to split")
         elif mask_size > max_splits:
             self.logger.info(f"Randomly selecting {max_splits}/{mask_size} ReLUs to split")
-            split_mask = adjust_mask_random_k(split_mask, max_splits)
+            # split_mask = adjust_mask_random_k(split_mask, max_splits)
+            split_mask = adjust_mask_first_k(split_mask, max_splits)
         n_splits = torch.sum(split_mask).item()  # actual number of splits
         assert min_splits <= n_splits <= max_splits, f"Number of splits {n_splits} is out of range [{min_splits}, {max_splits}]"
         self.logger.info(f"Splitting {n_splits} {self._conf['split_mask']} ReLUs")

@@ -1,5 +1,7 @@
 from pathlib import Path
 import os
+from multiprocessing import cpu_count
+
 
 tool_root   = Path(os.environ["TOOL_ROOT"])
 acasxu = {
@@ -35,3 +37,16 @@ benchmarks = {
     'collins_cnn': collins_cnn,
     'tll': tll,
 }
+
+
+# special config for verifiers
+tool_root   = Path(os.environ["TOOL_ROOT"])
+exp_root    = Path(tool_root/'experiment')
+
+marabou_cpu = 32 if cpu_count() > 100 else 10
+marabou_ram = "64G"
+
+abcrown_acasxu_config       = f"{exp_root}/config/acasxu.yaml"
+abcrown_mnist_x2_config     = f"{exp_root}/config/mnistfc_small.yaml"
+abcrown_mnist_x4x6_config   = f"{exp_root}/config/mnistfc.yaml"
+abcrown_tll_config          = f"{exp_root}/config/tllVerifyBench.yaml"

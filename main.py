@@ -32,7 +32,7 @@ def get_parser():
     
     split_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
     split_parser.add_argument('--mask', type=str, default='stable+', help='Mask for splitting',
-                              choices=['stable+', 'stable-', 'stable', 'unstable', 'all'])
+                              choices=['stable+', 'stable-', 'stable', 'unstable', 'all', 'unstable_n_stable+'])
     split_parser.add_argument('--split_strategy', type=str, default='single', help='Splitting strategy',
                               choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
     

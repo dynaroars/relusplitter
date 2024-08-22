@@ -4,6 +4,7 @@ from ..verifier import Verifier
 default_config = f"{pathlib.Path(__file__).parent}/onnx_with_one_vnnlib.yaml"
 
 class AlphaBetaCrown(Verifier):
+    name = "abcrown"
     @classmethod
     def _gen_prog(cls, prog_conf):
         model_path = prog_conf.get('onnx_path')

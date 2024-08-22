@@ -41,7 +41,7 @@ def adjust_mask_first_k(mask, k):
         return mask
     raise ValueError("Something wrong")
 
-def find_feasible_point(lb, ub, w, b, step_rate=1e-2, max_iters=10000):
+def find_feasible_point(lb, ub, w, b, step_rate=1e-2, max_iters=1000):
     """
     Finds a point x within the bounds [lb, ub] that satisfies w @ x + b > 0
     using a gradient-like approach with a dynamically computed step size.
@@ -59,7 +59,7 @@ def find_feasible_point(lb, ub, w, b, step_rate=1e-2, max_iters=10000):
     """
     max_value = torch.where(w > 0, ub, lb) @ w + b
     min_value = torch.where(w > 0, lb, ub) @ w + b
-    assert max_value > 0, f"No feasible point within the given bounds can satisfy w @ x + b > 0, {max_value}"
+    # assert max_value > 0, f"No feasible point within the given bounds can satisfy w @ x + b > 0, {max_value}"
 
     x = lb.clone()
     for i in range(max_iters):

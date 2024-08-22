@@ -3,6 +3,7 @@ from ..verifier import Verifier
 
 
 class Neuralsat(Verifier):
+    name = "neuralsat"
     @classmethod
     def _gen_prog(cls, prog_conf):
         model_path = prog_conf.get('onnx_path')

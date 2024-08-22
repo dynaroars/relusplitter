@@ -3,6 +3,7 @@ from ..verifier import Verifier
 
 
 class Marabou(Verifier):
+    name = "marabou"
     @classmethod
     def _gen_prog(cls, prog_conf):
         model_path = prog_conf.get('onnx_path')

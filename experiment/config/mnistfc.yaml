@@ -2,7 +2,7 @@
 general:
   root_path: ../../vnncomp2022_benchmarks/benchmarks/mnist_fc
   csv_name: instances.csv
-  complete_verifier: bab-refine
+  complete_verifier: bab
   # complete_verifier: bab-refine
 model:
   input_shape: [-1, 1, 28, 28]  # This onnx model has input shape [-1, 784] which is not compatible with our MIP solution

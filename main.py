@@ -50,6 +50,15 @@ def get_parser():
     info_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
     info_parser.add_argument('--spec', type=str, required=False, help='Path to the VNNLIB file')
 
+    # Subparser for the baseline command
+    baseline_parser = subparsers.add_parser('baseline', help='baseline command help')
+    baseline_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
+    baseline_parser.add_argument('--output', type=str, default='baseline.onnx', help='Output path for the new model')
+    baseline_parser.add_argument('--n_splits', type=int, default=1, help='Number of splits')
+    baseline_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
+    baseline_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')
+    baseline_parser.add_argument('--rtol', type=float, default=1e-5, help='Relative tolerance for closeness check')
+
     return parser
 
 
@@ -114,6 +123,11 @@ if __name__ == '__main__':
             ReluSplitter.info(Path(args.net), Path(args.spec))
         else:
             ReluSplitter.info_net_only(Path(args.net))
+    elif args.command == 'baseline':
+        onnx_path = Path(args.net)
+        output_path = Path(args.output)
+        new_model = ReluSplitter.get_baseline_split(onnx_path, args.n_splits, args.split_idx, args.atol, args.rtol)
+        new_model.save(output_path)
     else:
         parser.print_help()
         sys.exit(1)

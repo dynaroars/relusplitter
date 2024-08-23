@@ -114,3 +114,12 @@ if __name__=="__main__":
 
         csv.close()
         print(f"Results saved at {output_csv}")
+
+
+    elif option == "exp2":
+        # we splitted all stable,
+        # now try stable+ and stable- neurons
+        # and unstable on different strategies?
+
+    elif option == "exp3":
+        # iterative split for instances that are not so good with exp1

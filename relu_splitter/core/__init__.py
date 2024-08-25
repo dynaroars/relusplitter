@@ -54,7 +54,7 @@ class ReluSplitter():
         assert self._conf["split_mask"] in ["stable+", "stable-", "stable", "unstable", "all", "unstable_n_stable+"], f"Unknown split mask {self._conf['split_mask']}"
         invalid_combinations = [("reluS+", "stable-"), ("reluS-", "stable+"), ("reluS+", "stable"), ("reluS-", "stable"), ("reluS+", "all"), ("reluS-", "all"),
                                 ("reluS-", "unstable_n_stable+")]
-        # assert (self._conf["split_strategy"], self._conf["split_mask"]) not in invalid_combinations, f"Invalid combination of split strategy and mask"
+        assert (self._conf["split_strategy"], self._conf["split_mask"]) not in invalid_combinations, f"Invalid combination of split strategy and mask"
         assert self._conf["device"] in ["cpu", "cuda"], f"Invalid device {self._conf['device']}"
         if self._conf["device"] == "cuda":
             assert torch.cuda.is_available(), "CUDA is not available"

@@ -133,7 +133,7 @@ if __name__=="__main__":
 
         # ====
         for strategy, mask, in product(strategy, masks):
-            invalid_combinations = [("stable+", "reluS-"), ("stable-", "reluS+"), ("unstable", "reluS+"), ("unstable", "reluS-")]
+            invalid_combinations = [("reluS-", "stable+"), ("reluS+", "stable-"), ("reluS+", "unstable"), ("reluS-", "unstable")]
             if (strategy, mask) in invalid_combinations:
                 continue
             split_idx = 0

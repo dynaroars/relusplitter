@@ -30,7 +30,7 @@ def run_splitter(onnx_path, vnnlib_path, output_dir, log_dir, split_idx, strat_n
             f"--min_splits {min_splits} --max_splits {max_splits} --seed {seed} --atol {atol} --rtol {rtol}"
     with open(log_path, "w") as f:
         ret = subprocess.run(cmd, shell=True, cwd=wd, stdout=f, stderr=f)
-    return ret.returncode, output_path
+    return ret.returncode, output_path, log_path
 
 def get_splitter_baseline(onnx_path, output_dir, n_splits, split_idx=0, atol=1e-4, rtol=1e-4):
     wd = os.environ["TOOL_ROOT"]

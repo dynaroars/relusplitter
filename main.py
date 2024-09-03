@@ -35,6 +35,8 @@ def get_parser():
                               choices=['stable+', 'stable-', 'stable', 'unstable', 'all', 'unstable_n_stable+'])
     split_parser.add_argument('--split_strategy', type=str, default='single', help='Splitting strategy',
                               choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
+
+    split_parser.add_argument('--scale_factor', type=float, nargs=2, default=[1.0,-1.0], help='Scale factor for the')
     
     split_parser.add_argument('--seed', type=int, default=0, help='Seed for random number generation')
     
@@ -78,6 +80,7 @@ if __name__ == '__main__':
             'min_splits': args.min_splits,
             'max_splits': args.max_splits,
             'split_idx': args.split_idx,
+            'scale_factor': args.scale_factor,
             'random_seed': args.seed,
             'atol': args.atol,
             'rtol': args.rtol,
@@ -104,14 +107,16 @@ if __name__ == '__main__':
                 'vnnlib_path': spec_path,
                 'log_path': Path('veri_1.log'),
                 'verbosity': 1,
-                'num_workers': 10
+                'num_workers': 10,
+                # 'config_path': "/home/lli/tools/relusplitter/experiment/config/mnistfc.yaml"
             }
             conf2 = {
                 'onnx_path': output_path,
                 'vnnlib_path': spec_path,
                 'log_path': Path('veri_2.log'),
                 'verbosity': 1,
-                'num_workers': 10
+                'num_workers': 10,
+                # 'config_path': "/home/lli/tools/relusplitter/experiment/config/mnistfc.yaml"
             }
             logger.info(f'Start verification using {args.verify}')
             print(verifier.execute(conf1))

@@ -47,6 +47,7 @@ class ReluSplitter():
         missing_params = [param for param in params if param not in self._conf]
         assert len(missing_params) == 0, f"Missing parameters in config: {missing_params}"
         assert 0 < self._conf["min_splits"] <= self._conf["max_splits"]
+        assert self._conf["scale_factor"][0] > 0 and self._conf["scale_factor"][1] < 0
         assert self._conf["atol"] >= 0
         assert self._conf["rtol"] >= 0
         assert self._conf["random_seed"] >= 0
@@ -193,13 +194,19 @@ class ReluSplitter():
                 split_loc = split_loc_fn(w=grad[i], b=offset[i])
                 w = grad[i]
                 b = grad[i] @ split_loc
-                
-                split_weights[idx]      = w
-                split_weights[idx+1]    = -w
-                split_bias[idx]         = -b
-                split_bias[idx+1]       = b
-                merge_weights[i][idx]   = 1
-                merge_weights[i][idx+1] = -1
+                scale_ratio_pos, scale_ratio_neg = self._conf["scale_factor"]
+                # split_weights[idx]      = w
+                # split_weights[idx+1]    = -w
+                # split_bias[idx]         = -b
+                # split_bias[idx+1]       = b
+
+                split_weights[idx]      = scale_ratio_pos * w
+                split_weights[idx+1]    = scale_ratio_neg * w
+                split_bias[idx]         = -scale_ratio_pos * b
+                split_bias[idx+1]       = -scale_ratio_neg * b
+
+                merge_weights[i][idx]   = 1/scale_ratio_pos
+                merge_weights[i][idx+1] = 1/scale_ratio_neg
                 merge_bias[i] = offset[i] + b
                 idx += 2
             else:

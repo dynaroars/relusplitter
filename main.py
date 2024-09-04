@@ -120,7 +120,9 @@ if __name__ == '__main__':
                 # 'config_path': "/home/lli/tools/relusplitter/experiment/config/mnistfc.yaml"
             }
             logger.info(f'Start verification using {args.verify}')
+            print("Original instance:")
             print(colored(verifier.execute(conf1), 'green'))
+            print("Splitted instance:")
             print(colored(verifier.execute(conf2), 'yellow'))
         logger.info(f'=== Done ===')
 

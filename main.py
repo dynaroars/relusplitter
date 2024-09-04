@@ -5,6 +5,7 @@ import onnx
 import argparse
 import sys
 from pathlib import Path
+from termcolor import colored
 
 
 from relu_splitter.core import ReluSplitter
@@ -33,7 +34,7 @@ def get_parser():
     split_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
     split_parser.add_argument('--mask', type=str, default='stable+', help='Mask for splitting',
                               choices=['stable+', 'stable-', 'stable', 'unstable', 'all', 'unstable_n_stable+'])
-    split_parser.add_argument('--split_strategy', type=str, default='single', help='Splitting strategy',
+    split_parser.add_argument('--split_strategy', type=str, default='random', help='Splitting strategy',
                               choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
 
     split_parser.add_argument('--scale_factor', type=float, nargs=2, default=[1.0,-1.0], help='Scale factor for the')
@@ -119,8 +120,8 @@ if __name__ == '__main__':
                 # 'config_path': "/home/lli/tools/relusplitter/experiment/config/mnistfc.yaml"
             }
             logger.info(f'Start verification using {args.verify}')
-            print(verifier.execute(conf1))
-            print(verifier.execute(conf2))
+            print(colored(verifier.execute(conf1), 'green'))
+            print(colored(verifier.execute(conf2), 'yellow'))
         logger.info(f'=== Done ===')
 
     elif args.command == 'info':

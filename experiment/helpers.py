@@ -18,16 +18,20 @@ def get_instances(benchmark):
             instances.append((path / onnx, path / vnnlib))
     return instances
 
-def run_splitter(onnx_path, vnnlib_path, output_dir, log_dir, split_idx, strat_n_mask, min_splits, max_splits, seed, atol, rtol):
+def run_splitter(onnx_path, vnnlib_path, output_dir, log_dir, split_idx, strat_n_mask, min_splits, max_splits, seed, atol, rtol, lambdas = None):
     wd = os.environ["TOOL_ROOT"]
     strat, mask = strat_n_mask
     fname = f"{onnx_path.stem}~{vnnlib_path.stem}~RS~{split_idx}~{mask}~{strat}~{min_splits}~{max_splits}~{seed}"
+    if lambdas:
+        fname += f"~{lambdas[0]}~{lambdas[1]}"
     output_path = output_dir / f"{fname}.onnx"
     log_path  = log_dir / f"{fname}.log"
 
     cmd =   f"python main.py split --net {onnx_path} --spec {vnnlib_path} --output {output_path} "\
             f"--split_strategy {strat} --mask {mask} --split_idx {split_idx} "\
             f"--min_splits {min_splits} --max_splits {max_splits} --seed {seed} --atol {atol} --rtol {rtol}"
+    if lambdas:
+        cmd += f"  --scale_factor {lambdas[0]} {lambdas[1]}"
     with open(log_path, "w") as f:
         ret = subprocess.run(cmd, shell=True, cwd=wd, stdout=f, stderr=f)
     return ret.returncode, output_path, log_path

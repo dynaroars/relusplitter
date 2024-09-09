@@ -25,39 +25,13 @@ if __name__=="__main__":
         benchmark = benchmarks[sys.argv[2]]
         verifier = init_verifier(sys.argv[3])
     except:
-        print("Usage: python3 run.py <benchmark> <verifier>")
+        print("Usage: python3 run.py <option> <benchmark> <verifier>")
         sys.exit(1)
 
-    if option == "info":
-        instances = get_instances(benchmark)
-        instance_x_counts = []
-        with mp.Pool(num_cores) as pool:
-            temp = pool.starmap(ReluSplitter.info_s, instances)
-            temp = [x[0] for x in temp]
-        instance_x_counts = [(onnx_path, vnnlib_path, summary) for (onnx_path, vnnlib_path), summary in zip(instances, temp)]
-        # for onnx_path, vnnlib_path in tqdm(instances):
-        #     summary = ReluSplitter.info_s( onnx_path, vnnlib_path )
-        #     instance_x_counts.append( (onnx_path, vnnlib_path, summary[0]) )
-        
-        idx_25p = int(0.25*len(instance_x_counts))
-        idx_50p = int(0.50*len(instance_x_counts))
-        idx_75p = int(0.75*len(instance_x_counts))
-
-
-        for mask in ["stable+", "stable-", "unstable"]:
-            total = sum([x[2][mask] for x in instance_x_counts])
-            instance_x_counts.sort(key=lambda x: x[2][mask])
-            print(f"Mask: {mask}")
-            print(f"25th percentile: {instance_x_counts[idx_25p][2][mask]}")
-            print(f"50th percentile: {instance_x_counts[idx_50p][2][mask]}")
-            print(f"75th percentile: {instance_x_counts[idx_75p][2][mask]}")
-            print(f"Average: {total/len(instance_x_counts)}")
-        
-    elif option == "exp1":
+    if option == "exp1":
         # Experiment 1: Split all stable neurons
         split_idx = 0
         strategy, mask = "random", "stable"
-        # strategy, mask = "random", "unstable_n_stable+"
         min_splits, max_splits = 1, 99999999
         seed = 1
         stol = 1e-4
@@ -123,9 +97,7 @@ if __name__=="__main__":
 
 
     elif option == "exp2":
-        # we splitted all stable,
-        # now try stable+ and stable- neurons
-        # and unstable on different strategies?
+        # different combination of masks/strategies
         split_idx = 0
         strategy = ["random", "reluS+", "reluS-"]
         masks = ["stable+", "stable-", "unstable"]
@@ -200,3 +172,69 @@ if __name__=="__main__":
     elif option == "exp3":
         # iterative split for instances that are not so good with exp1
         pass
+
+    elif option == "exp4":
+        # Experiment 4: different lambda values
+        split_idx = 0
+        strategy, mask = "random", "stable"
+        min_splits, max_splits = 1, 99999999
+        seed = 1
+        stol = 1e-4
+        atol = 1e-4
+        lambdas = [(i, -i) for i in [0.001, 0.01, 0.1, 0.2, 0.4, 0.8, 1.0, 2.0, 4.0, 8.0]]
+
+        instances = get_instances(benchmark)
+        timeout = benchmark["timeout"]
+        extra_time = 30
+        log_dir = exp_root / "logs" / option / benchmark["name"] 
+        log_dir_veri  = log_dir / "veri" / verifier.name
+        log_dir_split = log_dir / "split"
+        output_dir = exp_root/ "onnx" / option / benchmark["name"]
+
+        log_dir_veri.mkdir(parents=True, exist_ok=True)
+        log_dir_split.mkdir(parents=True, exist_ok=True)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        output_csv = exp_root / "results" / option / f"{benchmark['name']}-{verifier.name}-{mask}~{strategy}~{seed}~lambda.csv"
+        output_csv.parent.mkdir(parents=True, exist_ok=True)
+        csv = open(output_csv, "w")
+        csv.write("onnx,vnnlib,strategy,mask,n_splits,original_r,original_t")
+        for l1,l2 in lambdas:
+            csv.write(f",{l1}_r,{l1}_t")
+        csv.write("\n")
+        csv.flush()
+
+        for onnx_path, vnnlib_path in tqdm(get_instances(benchmark)):
+            # init veri
+            log_path = log_dir_veri / f"{onnx_path.stem}~{vnnlib_path.stem}~original.log"
+            conf = get_verification_config(verifier, benchmark, onnx_path, vnnlib_path, log_path, timeout)
+            r,t = verifier.execute(conf)
+            if r not in ["sat", "unsat"]:
+                tqdm.write(f"Original instance is {r} for {onnx_path.stem}~{vnnlib_path.stem} cannot be verified, skipping")
+                csv.write(f"{onnx_path.stem},{vnnlib_path.stem},{strategy},{mask},SKIPPED,{r},{t}\n")
+                for l1,l2 in lambdas:
+                    csv.write(f",-1,-1")
+                continue
+            tqdm.write("====================================")
+            tqdm.write(f"Original instance: {onnx_path.stem}~{vnnlib_path.stem}~{verifier.name}")
+            tqdm.write(f"Original : {r}, {t}")
+
+            n_splits = ReluSplitter.info_s(onnx_path, vnnlib_path)[0][mask]
+            csv.write(f"{onnx_path.stem},{vnnlib_path.stem},{strategy},{mask},{n_splits},{r},{t}")
+
+            for l1,l2 in lambdas:
+                ret, splitted_onnx_path,splitter_log_path = run_splitter(onnx_path, vnnlib_path, output_dir, log_dir_split, split_idx, (strategy, mask), min_splits, max_splits, seed, atol, rtol, (l1,l2))
+                if ret != 0:
+                    tqdm.write(f"Splitting failed for {onnx_path.stem}~{vnnlib_path.stem}, log:{splitter_log_path}")
+                    csv.write(f",{-1},{-1}")
+                else:
+                    log_path = log_dir_veri / f"{splitted_onnx_path.stem}.log"
+                    tqdm.write(f"Verifying: {splitter_log_path}, logging to: {log_path}")
+                    conf = get_verification_config(verifier, benchmark, splitted_onnx_path, vnnlib_path, log_path, timeout + extra_time)
+                    sr,st = verifier.execute(conf)
+                    csv.write(f",{sr},{st}")
+            csv.write("\n")
+            csv.flush()
+
+        csv.close()
+        print(f"Results saved at {output_csv}")

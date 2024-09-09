@@ -1,0 +1,2 @@
+onnx,vnnlib,strategy,mask,n_splits,original_r,original_t,0.001_r,0.001_t,0.01_r,0.01_t,0.1_r,0.1_t,0.2_r,0.2_t,0.4_r,0.4_t,0.8_r,0.8_t,1.0_r,1.0_t,2.0_r,2.0_t,4.0_r,4.0_t,8.0_r,8.0_t
+ACASXU_run2a_1_1_batch_2000_converted,prop_1,random,stable,32,unsat,2.371992826461792,unsat,2.4334349632263184

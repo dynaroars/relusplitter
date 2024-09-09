@@ -49,7 +49,7 @@ if __name__=="__main__":
         log_dir_split.mkdir(parents=True, exist_ok=True)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        output_csv = exp_root / "results" / "exp1" / f"{benchmark['name']}-{verifier.name}-{mask}~{strategy}~{seed}.csv"
+        output_csv = exp_root / "results" / "exp1" / f"{benchmark['name']}~{verifier.name}~{mask}~{strategy}~{seed}.csv"
         output_csv.parent.mkdir(parents=True, exist_ok=True)
         csv = open(output_csv, "w")
         csv.write("onnx,vnnlib,strategy,mask,n_splits,original_r,original_t,splitted_r,splitted_t,baseline_r,baseline_t\n")
@@ -126,7 +126,7 @@ if __name__=="__main__":
             log_dir_split.mkdir(parents=True, exist_ok=True)
             output_dir.mkdir(parents=True, exist_ok=True)
 
-            output_csv = exp_root / "results" / option / f"{benchmark['name']}-{verifier.name}-{mask}~{strategy}~{seed}.csv"
+            output_csv = exp_root / "results" / option / f"{benchmark['name']}~{verifier.name}~{mask}~{strategy}~{seed}.csv"
             output_csv.parent.mkdir(parents=True, exist_ok=True)
             csv = open(output_csv, "w")
             csv.write("onnx,vnnlib,strategy,mask,n_splits,original_r,original_t,splitted_r,splitted_t,baseline_r,baseline_t\n")
@@ -195,7 +195,7 @@ if __name__=="__main__":
         log_dir_split.mkdir(parents=True, exist_ok=True)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        output_csv = exp_root / "results" / option / f"{benchmark['name']}-{verifier.name}-{mask}~{strategy}~{seed}~lambda.csv"
+        output_csv = exp_root / "results" / option / f"{benchmark['name']}~{verifier.name}~{mask}~{strategy}~{seed}~lambda.csv"
         output_csv.parent.mkdir(parents=True, exist_ok=True)
         csv = open(output_csv, "w")
         csv.write("onnx,vnnlib,strategy,mask,n_splits,original_r,original_t")

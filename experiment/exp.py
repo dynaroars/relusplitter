@@ -211,9 +211,10 @@ if __name__=="__main__":
             r,t = verifier.execute(conf)
             if r not in ["sat", "unsat"]:
                 tqdm.write(f"Original instance is {r} for {onnx_path.stem}~{vnnlib_path.stem} cannot be verified, skipping")
-                csv.write(f"{onnx_path.stem},{vnnlib_path.stem},{strategy},{mask},SKIPPED,{r},{t}\n")
+                csv.write(f"{onnx_path.stem},{vnnlib_path.stem},{strategy},{mask},SKIPPED,{r},{t}")
                 for l1,l2 in lambdas:
                     csv.write(f",-1,-1")
+                csv.write("\n")
                 continue
             tqdm.write("====================================")
             tqdm.write(f"Original instance: {onnx_path.stem}~{vnnlib_path.stem}~{verifier.name}")

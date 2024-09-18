@@ -17,8 +17,8 @@ class NNEnum(Verifier):
     def _analyze(cls, lines):
         veri_ans = None
         veri_time = None
-        
-        for l in lines[-100:]:
+
+        for l in lines[:]:
             if "Result: network is SAFE" in l:
                 veri_ans = "unsat"
             elif "Result: network is UNSAFE with confirmed counterexample" in l:
@@ -37,10 +37,15 @@ class NNEnum(Verifier):
             error_pattern = [
                 "FloatingPointError: underflow encountered in multiply",
                 "underflow encountered in divide",
+                "Exception occured during execution"
             ]
             if any([True for x in error_pattern if x in l]):
                 veri_ans = "error"
                 veri_time = -1
+
+            if "Proven safe before enumerate" in l:
+                veri_ans = "sat"
+                veri_time = cls.get_exec_time(lines)
 
             if veri_ans and veri_time:
                 break

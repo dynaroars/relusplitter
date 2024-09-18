@@ -99,6 +99,15 @@ class Verifier:
         return veri_ans, veri_time
 
     @classmethod
+    def get_exec_time(cls, lines):
+        for l in lines:
+            if " (resmonitor) Process finished successfully" in l:
+                return float(l.split()[-3].split("s")[0])
+        cls.logger.warning(f"Execution time not found in {log_path}")
+        return None
+
+
+    @classmethod
     def analyze(cls, prog_conf):
         log_path = prog_conf.get('log_path')
 

@@ -81,7 +81,10 @@ def terminate(signum=None, frame=None):
     p = psutil.Process()
     children = p.children(recursive=True)
     for child in children:
-        child.terminate()
+        try:
+            child.terminate()
+        except psutil.NoSuchProcess:
+            pass
 
 
 def dispatch(prog, max_memory=-1, timeout=-1, log_period=2):

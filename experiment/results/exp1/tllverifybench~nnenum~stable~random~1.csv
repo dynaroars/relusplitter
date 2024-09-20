@@ -1,0 +1,2 @@
+onnx,vnnlib,strategy,mask,n_splits,original_r,original_t,splitted_r,splitted_t,baseline_r,baseline_t
+tllBench_n=2_N=M=8_m=1_instance_0_0_converted,property_N=8_0,random,stable,34,unsat,0.6,None,None,None,None

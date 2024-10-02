@@ -1,7 +1,7 @@
 onnx,vnnlib,strategy,mask,n_splits,original_r,original_t,splitted_r,splitted_t,baseline_r,baseline_t
-tllBench_n=2_N=M=8_m=1_instance_0_0_converted,property_N=8_0,reluS+,stable+,SPLIT_FAILED,unsat,5.3441,-1,-1,-1,-1, 
-tllBench_n=2_N=M=8_m=1_instance_0_1_converted,property_N=8_1,reluS+,stable+,SPLIT_FAILED,unsat,5.2962,-1,-1,-1,-1, 
-tllBench_n=2_N=M=8_m=1_instance_0_2_converted,property_N=8_2,reluS+,stable+,SPLIT_FAILED,sat,1.6605,-1,-1,-1,-1, 
+tllBench_n=2_N=M=8_m=1_instance_0_0_converted,property_N=8_0,reluS+,stable+,SPLIT_FAILED,unsat,5.3441,-1,-1,-1,-1
+tllBench_n=2_N=M=8_m=1_instance_0_1_converted,property_N=8_1,reluS+,stable+,SPLIT_FAILED,unsat,5.2962,-1,-1,-1,-1
+tllBench_n=2_N=M=8_m=1_instance_0_2_converted,property_N=8_2,reluS+,stable+,SPLIT_FAILED,sat,1.6605,-1,-1,-1,-1
 tllBench_n=2_N=M=8_m=1_instance_0_3_converted,property_N=8_3,reluS+,stable+,1,unsat,5.4303,unsat,5.3592,unsat,5.3562
 tllBench_n=2_N=M=16_m=1_instance_1_0_converted,property_N=16_0,reluS+,stable+,4,sat,1.7073,sat,1.7637,sat,1.7813
 tllBench_n=2_N=M=16_m=1_instance_1_1_converted,property_N=16_1,reluS+,stable+,33,sat,1.678,sat,1.9067,sat,1.9918

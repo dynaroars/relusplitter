@@ -1,7 +1,7 @@
 onnx,vnnlib,strategy,mask,n_splits,original_r,original_t,splitted_r,splitted_t,baseline_r,baseline_t
-tllBench_n=2_N=M=8_m=1_instance_0_0_converted,property_N=8_0,random,stable+,SPLIT_FAILED,unsat,3.1526670455932617,-1,-1,-1,-1, 
-tllBench_n=2_N=M=8_m=1_instance_0_1_converted,property_N=8_1,random,stable+,SPLIT_FAILED,unsat,3.109071731567383,-1,-1,-1,-1, 
-tllBench_n=2_N=M=8_m=1_instance_0_2_converted,property_N=8_2,random,stable+,SPLIT_FAILED,sat,1.920069932937622,-1,-1,-1,-1, 
+tllBench_n=2_N=M=8_m=1_instance_0_0_converted,property_N=8_0,random,stable+,SPLIT_FAILED,unsat,3.1526670455932617,-1,-1,-1,-1
+tllBench_n=2_N=M=8_m=1_instance_0_1_converted,property_N=8_1,random,stable+,SPLIT_FAILED,unsat,3.109071731567383,-1,-1,-1,-1
+tllBench_n=2_N=M=8_m=1_instance_0_2_converted,property_N=8_2,random,stable+,SPLIT_FAILED,sat,1.920069932937622,-1,-1,-1,-1
 tllBench_n=2_N=M=8_m=1_instance_0_3_converted,property_N=8_3,random,stable+,1,unsat,3.0698962211608887,unsat,3.056330919265747,unsat,3.0628812313079834
 tllBench_n=2_N=M=16_m=1_instance_1_0_converted,property_N=16_0,random,stable+,4,sat,1.9556381702423096,sat,2.0676369667053223,sat,2.0773887634277344
 tllBench_n=2_N=M=16_m=1_instance_1_1_converted,property_N=16_1,random,stable+,33,sat,1.977562665939331,sat,2.090940237045288,sat,2.0520455837249756

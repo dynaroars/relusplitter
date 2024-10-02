@@ -181,7 +181,7 @@ ACASXU_run2a_5_8_batch_2000_converted,prop_4,reluS+,stable+,15,unsat,5.3796,unsa
 ACASXU_run2a_5_9_batch_2000_converted,prop_4,reluS+,stable+,8,unsat,5.2145,unsat,5.5812,unsat,5.4232
 ACASXU_run2a_1_1_batch_2000_converted,prop_5,reluS+,stable+,28,unsat,16.2853,unsat,17.6056,unsat,17.1255
 ACASXU_run2a_1_1_batch_2000_converted,prop_6,reluS+,stable+,11,unsat,13.3678,unsat,17.3971,unsat,14.9382
-ACASXU_run2a_1_9_batch_2000_converted,prop_7,reluS+,stable+,SPLIT_FAILED,sat,10.9987,-1,-1,-1,-1, 
+ACASXU_run2a_1_9_batch_2000_converted,prop_7,reluS+,stable+,SPLIT_FAILED,sat,10.9987,-1,-1,-1,-1
 ACASXU_run2a_2_9_batch_2000_converted,prop_8,reluS+,stable+,10,sat,5.8757,sat,5.9723,sat,2.1137
 ACASXU_run2a_3_3_batch_2000_converted,prop_9,reluS+,stable+,28,unsat,12.3814,unsat,16.5538,unsat,14.128
 ACASXU_run2a_4_5_batch_2000_converted,prop_10,reluS+,stable+,12,unsat,12.2483,unsat,16.3508,unsat,16.1783

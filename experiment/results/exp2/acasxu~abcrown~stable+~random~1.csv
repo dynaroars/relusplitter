@@ -181,7 +181,7 @@ ACASXU_run2a_5_8_batch_2000_converted,prop_4,random,stable+,15,unsat,3.176720857
 ACASXU_run2a_5_9_batch_2000_converted,prop_4,random,stable+,8,unsat,3.0892882347106934,unsat,3.2013022899627686,unsat,3.115476608276367
 ACASXU_run2a_1_1_batch_2000_converted,prop_5,random,stable+,28,unsat,17.10536479949951,unsat,20.20034885406494,unsat,19.434396743774414
 ACASXU_run2a_1_1_batch_2000_converted,prop_6,random,stable+,11,unsat,12.677850484848022,unsat,14.421361923217773,unsat,13.881334066390991
-ACASXU_run2a_1_9_batch_2000_converted,prop_7,random,stable+,SPLIT_FAILED,sat,2.1905159950256348,-1,-1,-1,-1, 
+ACASXU_run2a_1_9_batch_2000_converted,prop_7,random,stable+,SPLIT_FAILED,sat,2.1905159950256348,-1,-1,-1,-1
 ACASXU_run2a_2_9_batch_2000_converted,prop_8,random,stable+,10,sat,1.8953089714050293,sat,1.9236717224121094,sat,1.923905372619629
 ACASXU_run2a_3_3_batch_2000_converted,prop_9,random,stable+,28,unsat,6.990376234054565,unsat,7.575424671173096,unsat,7.5658118724823
 ACASXU_run2a_4_5_batch_2000_converted,prop_10,random,stable+,12,unsat,6.288636207580566,unsat,6.913660287857056,unsat,6.733728885650635

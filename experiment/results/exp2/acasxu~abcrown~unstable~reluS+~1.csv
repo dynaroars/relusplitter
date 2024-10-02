@@ -142,7 +142,7 @@ ACASXU_run2a_1_5_batch_2000_converted,prop_4,reluS+,unstable,3,unsat,1.797452926
 ACASXU_run2a_1_6_batch_2000_converted,prop_4,reluS+,unstable,6,unsat,1.7156651020050049,unsat,1.917435884475708,unsat,1.7407112121582031
 ACASXU_run2a_1_7_batch_2000_converted,prop_4,reluS+,unstable,4,sat,0.46015191078186035,sat,0.46393847465515137,sat,0.4652097225189209
 ACASXU_run2a_1_8_batch_2000_converted,prop_4,reluS+,unstable,6,sat,0.4630157947540283,sat,0.4580371379852295,sat,0.468808650970459
-ACASXU_run2a_1_9_batch_2000_converted,prop_4,reluS+,unstable,SPLIT_FAILED,sat,0.4533975124359131,-1,-1,-1,-1, 
+ACASXU_run2a_1_9_batch_2000_converted,prop_4,reluS+,unstable,SPLIT_FAILED,sat,0.4533975124359131,-1,-1,-1,-1
 ACASXU_run2a_2_1_batch_2000_converted,prop_4,reluS+,unstable,2,unsat,1.8120884895324707,unsat,2.0490760803222656,unsat,1.8810396194458008
 ACASXU_run2a_2_2_batch_2000_converted,prop_4,reluS+,unstable,6,unsat,1.8301341533660889,unsat,1.8058395385742188,unsat,1.8388805389404297
 ACASXU_run2a_2_3_batch_2000_converted,prop_4,reluS+,unstable,4,unsat,1.734656572341919,unsat,1.7674670219421387,unsat,1.7577087879180908

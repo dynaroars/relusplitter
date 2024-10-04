@@ -37,8 +37,8 @@ for benchmark in ["acasxu", "mnist_fc"]:
         print(f"Total Instances: {len(instances)}")
         # max, min, mean, median
         print(f"Mean: {sum(counts)/len(counts)}")
-        print(f"25th percentile: {counts[len(counts)//4]}")
         print(f"Min: {min(counts)}")
+        print(f"25th percentile: {counts[len(counts)//4]}")
         print(f"Median: {counts[len(counts)//2]}")
         print(f"75th percentile: {counts[3*len(counts)//4]}")
         print(f"Max: {max(counts)}")
@@ -64,8 +64,8 @@ for benchmark in ["tll"]:
         print(f"Total Instances: {len(instances)}")
         # max, min, mean, median
         print(f"Mean: {sum(counts)/len(counts)}")
-        print(f"25th percentile: {counts[len(counts)//4]}")
         print(f"Min: {min(counts)}")
+        print(f"25th percentile: {counts[len(counts)//4]}")
         print(f"Median: {counts[len(counts)//2]}")
         print(f"75th percentile: {counts[3*len(counts)//4]}")
         print(f"Max: {max(counts)}")

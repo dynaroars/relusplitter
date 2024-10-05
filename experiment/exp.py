@@ -24,6 +24,7 @@ if __name__=="__main__":
         option = sys.argv[1]
         benchmark = benchmarks[sys.argv[2]]
         verifier = init_verifier(sys.argv[3])
+        seed = int(sys.argv[4])   # 1 already done
     except:
         print("Usage: python3 run.py <option> <benchmark> <verifier>")
         sys.exit(1)
@@ -33,7 +34,6 @@ if __name__=="__main__":
         split_idx = 0
         strategy, mask = "random", "stable"
         min_splits, max_splits = 1, 99999999
-        seed = 1
         stol = 1e-4
         atol = 1e-4
 
@@ -110,7 +110,6 @@ if __name__=="__main__":
                 continue
             split_idx = 0
             min_splits, max_splits = 1, 99999999
-            seed = 1
             stol = 1e-4
             atol = 1e-4
 
@@ -178,7 +177,6 @@ if __name__=="__main__":
         split_idx = 0
         strategy, mask = "random", "stable"
         min_splits, max_splits = 1, 99999999
-        seed = 1
         stol = 1e-4
         atol = 1e-4
         lambdas = [(i, -i) for i in [0.001, 0.01, 0.1, 0.2, 0.4, 0.8, 1.0, 2.0, 4.0, 8.0]]

@@ -29,7 +29,7 @@ def run_splitter(onnx_path, vnnlib_path, output_dir, log_dir, split_idx, strat_n
 
     cmd =   f"python main.py split --net {onnx_path} --spec {vnnlib_path} --output {output_path} "\
             f"--split_strategy {strat} --mask {mask} --split_idx {split_idx} "\
-            f"--min_splits {min_splits} --max_splits {max_splits} --seed {seed} --atol {atol} --rtol {rtol}"
+            f"--min_splits {min_splits} --max_splits {max_splits} --seed {seed} --atol {atol} --rtol {rtol} --device cuda"
     if lambdas:
         cmd += f"  --scale_factor {lambdas[0]} {lambdas[1]}"
     with open(log_path, "w") as f:

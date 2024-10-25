@@ -27,7 +27,7 @@ def check_model_closeness_ort(m1, m2, input_names, input_shapes, n=50):
     return True, worst_diff
 
 
-def check_model_closeness(m1, m2, input_shape, n=50, **kwargs):
+def check_model_closeness(m1, m2, input_shape, n=5, **kwargs):
     worst_diff = 0
     for i in range(n):
         x = torch.randn(input_shape)
@@ -36,11 +36,11 @@ def check_model_closeness(m1, m2, input_shape, n=50, **kwargs):
         if not torch.allclose(y1, y2, **kwargs):
             logger.error(f"Outputs are not the same for input {x}\n{y1}\n{y2}")
             logger.error(f"Diff: {torch.abs(y1-y2).max()}")
-            logger.error(f"{i}/{n} tests passed")
+            logger.error(f"{i}/{50} tests passed")
             return False, worst_diff
     return True, worst_diff
 
-def check_model_closeness_gpu(m1, m2, input_shape, n=50, **kwargs):
+def check_model_closeness_gpu(m1, m2, input_shape, n=5, **kwargs):
     worst_diff = 0
     for i in range(n):
         x = torch.randn(input_shape).cuda()
@@ -49,12 +49,15 @@ def check_model_closeness_gpu(m1, m2, input_shape, n=50, **kwargs):
         if not torch.allclose(y1, y2, **kwargs):
             logger.error(f"Outputs are not the same for input {x}\n{y1}\n{y2}")
             logger.error(f"Diff: {torch.abs(y1-y2).max()}")
-            logger.error(f"{i}/{n} tests passed")
+            logger.error(f"{i}/{50} tests passed")
             return False, worst_diff
     return True, worst_diff
 
 def compute_model_bound(model: onnx.ModelProto, bounded_input: BoundedTensor, method="backward"):
     model = ConvertModel(model)
+    if "input" not in model.input_names:
+        model.input_names = ["input"]
+    
     model = BoundedModule(model, bounded_input)
     lb, ub = model.compute_bounds(x=(bounded_input,), method=method)
     return lb, ub

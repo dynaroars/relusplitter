@@ -30,6 +30,11 @@ collins_cnn = {
     "path"      : Path(tool_root/'data'/'collins_rul_cnn'),
     # "timeout"   : 300,
 }
+reach_prob = {
+    "name"      : "reach_prob_density",
+    "path"      : Path(tool_root/'data'/'reach_prob_density'),
+    "timeout"   : 600,
+}
 
 benchmarks = {
     'acasxu': acasxu,
@@ -37,6 +42,7 @@ benchmarks = {
     'nn4sys': nn4sys,
     'collins_cnn': collins_cnn,
     'tll': tll,
+    'reach_prob': reach_prob
 }
 
 

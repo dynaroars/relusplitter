@@ -127,10 +127,14 @@ if __name__=="__main__":
 
             output_csv = exp_root / "results" / option / f"{benchmark['name']}~{verifier.name}~{mask}~{strategy}~{seed}.csv"
             output_csv.parent.mkdir(parents=True, exist_ok=True)
-            csv = open(output_csv, "w")
-            csv.write("onnx,vnnlib,strategy,mask,n_splits,original_r,original_t,splitted_r,splitted_t,baseline_r,baseline_t\n")
-
-            for onnx_path, vnnlib_path in tqdm(get_instances(benchmark)):
+            # if file doesn't exist, create it and write the header
+            if not output_csv.exists():
+                csv = open(output_csv, "w")
+                csv.write("onnx,vnnlib,strategy,mask,n_splits,original_r,original_t,splitted_r,splitted_t,baseline_r,baseline_t\n")
+                csv.flush()
+            else:
+                csv = open(output_csv, "a")
+            for onnx_path, vnnlib_path in tqdm(get_remaining(output_csv, get_instances(benchmark))):
                 # init veri
                 log_path = log_dir_veri / f"{onnx_path.stem}~{vnnlib_path.stem}~original.log"
                 conf = get_verification_config(verifier, benchmark, onnx_path, vnnlib_path, log_path, timeout)
@@ -195,14 +199,25 @@ if __name__=="__main__":
 
         output_csv = exp_root / "results" / option / f"{benchmark['name']}~{verifier.name}~{mask}~{strategy}~{seed}~lambda.csv"
         output_csv.parent.mkdir(parents=True, exist_ok=True)
-        csv = open(output_csv, "w")
-        csv.write("onnx,vnnlib,strategy,mask,n_splits,original_r,original_t")
-        for l1,l2 in lambdas:
-            csv.write(f",{l1}_r,{l1}_t")
-        csv.write("\n")
-        csv.flush()
+        # if file doesn't exist, create it and write the header
+        if not output_csv.exists():
+            csv = open(output_csv, "w")
+            csv.write("onnx,vnnlib,strategy,mask,n_splits,original_r,original_t")
+            for l1,l2 in lambdas:
+                csv.write(f",{l1}_r,{l1}_t")
+            csv.write("\n")
+            csv.flush()
+        else:
+            csv = open(output_csv, "a")
+        # csv = open(output_csv, "w")
+        # csv.write("onnx,vnnlib,strategy,mask,n_splits,original_r,original_t")
+        # for l1,l2 in lambdas:
+        #     csv.write(f",{l1}_r,{l1}_t")
+        # csv.write("\n")
+        # csv.flush()
 
-        for onnx_path, vnnlib_path in tqdm(get_instances(benchmark)):
+        # for onnx_path, vnnlib_path in tqdm(get_instances(benchmark)):
+        for onnx_path, vnnlib_path in tqdm(get_remaining(output_csv, get_instances(benchmark))):
             # init veri
             log_path = log_dir_veri / f"{onnx_path.stem}~{vnnlib_path.stem}~original.log"
             conf = get_verification_config(verifier, benchmark, onnx_path, vnnlib_path, log_path, timeout)

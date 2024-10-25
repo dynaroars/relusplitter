@@ -77,3 +77,39 @@ def get_verification_config(verifier, benchmark, onnx, vnnlib, log_path, timeout
             conf["config_path"] = abcrown_tll_config
     return conf
 
+
+
+def get_remaining(log_fname, benchmark_instances):
+    with open(log_fname, "r") as f:
+        lines = f.readlines()
+
+    print(f"last line: {lines[-1]}")
+
+    # with open(log_fname, "a") as f:
+    #     f.write("[RESUMING]\n")            
+
+    if len(lines) == 1:
+        print(f"LINE 1 of log: {log_fname}")
+        print(lines)
+        return benchmark_instances
+    if len(lines) == benchmark_instances:
+        print("all DONE")
+        return []
+    
+    last_completed = lines[-1].strip().split(",")
+    last_onnx, last_vnnlib = last_completed[:2]
+
+    instance_onnx, instance_vnnlib = benchmark_instances[len(lines) - 2]
+    instance_onnx, instance_vnnlib = Path(instance_onnx).stem, Path(instance_vnnlib).stem
+
+    assert last_onnx == instance_onnx and last_vnnlib == instance_vnnlib, f"last_completed: {last_onnx} {last_vnnlib} != instance: {instance_onnx} {instance_vnnlib}"
+
+    print(f"last_completed: {last_onnx} {last_vnnlib}")
+    print(f"resuming from: {instance_onnx} {instance_vnnlib}")
+
+    return benchmark_instances[len(lines) - 1:]
+
+    # print(f"last_completed: {last_onnx} {last_vnnlib}")
+    # print(f"instance: {Path(instance_onnx).stem} {Path(instance_vnnlib).stem}")
+
+

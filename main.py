@@ -46,7 +46,7 @@ def get_parser():
     split_parser.add_argument('--device', type=str, default=default_device, help='Device for the model closeness check',)
 
     split_parser.add_argument('--verify', type=str, default=False, help='run verification with verifier',
-                              choices=['neuralsat', 'abcrown', 'marabou'])
+                              choices=['neuralsat', 'abcrown', 'marabou', 'nnenum'])
 
     # Subparser for the info command
     info_parser = subparsers.add_parser('info', help='Info command help')
@@ -110,6 +110,7 @@ if __name__ == '__main__':
                 'verbosity': 1,
                 'num_workers': 10,
                 # 'config_path': "/home/lli/tools/relusplitter/experiment/config/mnistfc.yaml"
+                # 'config_path': "/home/lli/tools/relusplitter/experiment/config/reach_probability.yaml"
             }
             conf2 = {
                 'onnx_path': output_path,
@@ -118,6 +119,7 @@ if __name__ == '__main__':
                 'verbosity': 1,
                 'num_workers': 10,
                 # 'config_path': "/home/lli/tools/relusplitter/experiment/config/mnistfc.yaml"
+                # 'config_path': "/home/lli/tools/relusplitter/experiment/config/reach_probability.yaml"
             }
             logger.info(f'Start verification using {args.verify}')
             print("Original instance:")

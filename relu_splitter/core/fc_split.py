@@ -25,6 +25,25 @@ class RSplitter_fc():
         else:
             raise INVALID_PARAMETER(f"Unknown split strategy {split_strategy}")
 
+    def get_split_masks_fc(self, nodes):
+        node1, node2 = nodes
+        assert node1.op_type == "Gemm" and node2.op_type == "Relu", f"Invalid nodes:{node1.op_type} -> {node2.op_type}"
+        input_lb, input_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.input[0])          # the input bound of the Gemm node, from which the split location is sampled
+        output_lb, output_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.output[0])       # the output bound for determining the stability of the neurons
+        assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
+        masks = {}
+        masks["all"] = torch.ones_like(output_lb, dtype=torch.bool).squeeze()
+        masks["stable"] = torch.logical_or(output_lb > 0, output_ub <= 0).squeeze()
+        masks["unstable"] = ~masks["stable"]
+        masks["stable+"] = (output_lb > 0).squeeze()
+        masks["stable-"] = (output_ub <= 0).squeeze()
+        masks["unstable_n_stable+"] = torch.logical_or(masks["unstable"], masks["stable+"])
+        assert torch.all(masks["stable"] == (masks["stable+"] | masks["stable-"])), "stable is not equal to stable+ AND stable-"
+        assert not torch.any(masks["stable+"] & masks["stable-"]), "stable+ and stable- are not mutually exclusive"
+        assert not torch.any(masks["unstable"] & masks["stable"]), "unstable and stable are not mutually exclusive"
+        assert torch.all((masks["unstable"] | masks["stable"]) == masks["all"]), "The union of unstable and stable does not cover all elements"
+        return masks
+
     def split_fc(self, split_idx=0):
         splittable_nodes = self.get_splittable_nodes()
         assert split_idx < len(splittable_nodes), f"Split location <{split_idx}> is out of bound"

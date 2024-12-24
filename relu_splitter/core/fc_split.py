@@ -25,7 +25,7 @@ class RSplitter_fc():
         else:
             raise INVALID_PARAMETER(f"Unknown split strategy {split_strategy}")
 
-    def get_split_masks_fc(self, nodes):
+    def get_split_masks(self, nodes):
         node1, node2 = nodes
         assert node1.op_type == "Gemm" and node2.op_type == "Relu", f"Invalid nodes:{node1.op_type} -> {node2.op_type}"
         input_lb, input_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.input[0])          # the input bound of the Gemm node, from which the split location is sampled

@@ -67,6 +67,12 @@ class WarppedOnnxModel():
             # assert len(node.output) == 1, f"Node {node.name} produces more than one output"
             # allowed op_types
             # ...
+        # remove initializer from model input
+        for initializer in model.graph.initializer:
+            for i, input_tensor in enumerate(model.graph.input):
+                if input_tensor.name == initializer.name:
+                    del model.graph.input[i]
+                    break
 
     def info(self):
         s = "\n"
@@ -75,6 +81,7 @@ class WarppedOnnxModel():
             s += f"\t\t\tInputs: {node.input}\n"
             s += f"\t\t\tOutputs: {node.output}\n"
         self.logger.info(s)
+        return s
 
     def gen_node_name(self, prefix: str):
         name = f"{prefix}_{get_random_id()}"
@@ -155,6 +162,13 @@ class WarppedOnnxModel():
         trunated_model = truncate_onnx_model(self._model, tensor_name)
         return compute_model_bound(trunated_model, input_bound, method=method)
     
+    def get_conv_wb(self, node):
+        assert node.op_type == "Conv"
+        _, w, b = node.input
+        w = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[w]) )
+        b = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[b]) )
+        return w,b
+
     def get_gemm_wb(self, node):
         # Get the weights and bias for a GEMM node
         assert node.op_type == "Gemm"

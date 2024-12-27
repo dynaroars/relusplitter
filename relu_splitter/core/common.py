@@ -19,3 +19,4 @@ from .default_config import default_config
 
 TOOL_NAME = os.environ.get("TOOL_NAME", "ReluSplitter")
 default_logger = logging.getLogger(__name__)
+logger = default_logger

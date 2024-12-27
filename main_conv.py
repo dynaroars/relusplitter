@@ -1,146 +1,133 @@
-from relu_splitter.utils.logger import logger
 
-import torch
 import onnx
-import argparse
-import sys
+import torch
 from pathlib import Path
-from termcolor import colored
-
-
-from relu_splitter.core import ReluSplitter
+from functools import reduce
 from relu_splitter.model import WarppedOnnxModel
 from relu_splitter.verify import init_verifier
+from relu_splitter.utils.read_vnnlib import read_vnnlib
 
 
-default_device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# onnx_path = '/storage/lli/tools/relusplitter/data/collins_rul_cnn/onnx/NN_rul_small_window_20.onnx'
+# vnnlib_path = '/home/lli/tools/relusplitter/data/collins_rul_cnn/vnnlib/robustness_2perturbations_delta5_epsilon10_w40.vnnlib'
 
-def get_parser():
-    parser = argparse.ArgumentParser(description='Parser for network verification arguments')
-    parser.add_argument('--verbosity', type=int, default=20, help='Verbosity level (10=DEBUG, 20=INFO, 30=WARNING, 40=ERROR, 50=CRITICAL)')
+onnx_path = '/home/lli/tools/relusplitter/data/vggnet16/onnx/vgg16-7.onnx'
+vnnlib_path = '/home/lli/tools/relusplitter/data/vggnet16/vnnlib/spec1_football_helmet.vnnlib'
 
-    subparsers = parser.add_subparsers(dest='command', help='Sub-command help')
+model = onnx.load(onnx_path)
+warpped = WarppedOnnxModel(model)
+graph = model.graph
 
-    # Subparser for the split command
-    split_parser = subparsers.add_parser('split', help='split command help')
-    split_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
-    split_parser.add_argument('--spec', type=str, required=True, help='Path to the VNNLIB file')
-    split_parser.add_argument('--output', type=str, default='splitted.onnx', help='Output path for the new model')
-    
-    split_parser.add_argument('--n_splits', type=int, default=None, help='Number of splits (strict), this will override min_splits and max_splits')
-    split_parser.add_argument('--min_splits', type=int, default=1, help='Minimum number of splits')
-    split_parser.add_argument('--max_splits', type=int, default=sys.maxsize, help='Maximum number of splits')
-    
-    split_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
-    split_parser.add_argument('--mask', type=str, default='stable+', help='Mask for splitting',
-                              choices=['stable+', 'stable-', 'stable', 'unstable', 'all', 'unstable_n_stable+'])
-    split_parser.add_argument('--split_strategy', type=str, default='random', help='Splitting strategy',
-                              choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
-
-    split_parser.add_argument('--scale_factor', type=float, nargs=2, default=[1.0,-1.0], help='Scale factor for the')
-    
-    split_parser.add_argument('--seed', type=int, default=0, help='Seed for random number generation')
-    
-    split_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')
-    split_parser.add_argument('--rtol', type=float, default=1e-5, help='Relative tolerance for closeness check')
-    split_parser.add_argument('--device', type=str, default=default_device, help='Device for the model closeness check',)
-
-    split_parser.add_argument('--verify', type=str, default=False, help='run verification with verifier',
-                              choices=['neuralsat', 'abcrown', 'marabou', 'nnenum'])
-
-    # Subparser for the info command
-    info_parser = subparsers.add_parser('info', help='Info command help')
-    info_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
-    info_parser.add_argument('--spec', type=str, required=False, help='Path to the VNNLIB file')
-
-    # Subparser for the baseline command
-    baseline_parser = subparsers.add_parser('baseline', help='baseline command help')
-    baseline_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
-    baseline_parser.add_argument('--output', type=str, default='baseline.onnx', help='Output path for the new model')
-    baseline_parser.add_argument('--n_splits', type=int, default=1, help='Number of splits')
-    baseline_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
-    baseline_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')
-    baseline_parser.add_argument('--rtol', type=float, default=1e-5, help='Relative tolerance for closeness check')
-
-    return parser
+input_bound, output_bound = read_vnnlib(vnnlib_path)[0]
+input_lb, input_ub = torch.tensor([[[[i[0] for i in input_bound]]]]), torch.tensor([[[[i[1] for i in input_bound]]]])
+spec_num_inputs = reduce(lambda x, y: x*y, input_lb.shape)
+model_num_inputs = warpped.num_inputs
 
 
-if __name__ == '__main__':
-    parser = get_parser()
-    args = parser.parse_args()
-    logger.setLevel(args.verbosity)
+# get 1st Conv layer
+Conv_1st = warpped.nodes[2]
+original_input = warpped.get_node_inputs_no_initializers(Conv_1st)[0]
+original_output = Conv_1st.output[0]
 
-    if args.command == 'split':
-        onnx_path = Path(args.net)
-        spec_path = Path(args.spec)
-        output_path = Path(args.output)
+print(Conv_1st.op_type)
+input("continue?")
+for i in range(len(Conv_1st.attribute)):
+    print(Conv_1st.attribute[i])
+original_groups = Conv_1st.attribute[0].i
+original_dilations = Conv_1st.attribute[1].ints
+original_kernel_shape = Conv_1st.attribute[2].ints
+original_pads = Conv_1st.attribute[3].ints
+original_strides = Conv_1st.attribute[4].ints
 
-        conf = {
-            'split_mask': args.mask,
-            'split_strategy': args.split_strategy,
-            'min_splits': args.min_splits,
-            'max_splits': args.max_splits,
-            'split_idx': args.split_idx,
-            'scale_factor': args.scale_factor,
-            'random_seed': args.seed,
-            'atol': args.atol,
-            'rtol': args.rtol,
-            'device': args.device
-        }
-        if args.n_splits is not None:
-            conf['min_splits'] = args.n_splits
-            conf['max_splits'] = args.n_splits
-        relusplitter = ReluSplitter(onnx_path, 
-                                    spec_path, 
-                                    logger = logger, 
-                                    conf = conf)
-        logger.info(f'Start splitting...')
-        logger.info(f'Conf: {conf}')
-        new_model = relusplitter.split_fc(args.split_idx)
-        new_model.save(output_path)
-        logger.info(f'Model saved to {output_path}')
+if not original_dilations:
+    original_dilations = [1,1]
 
-        if args.verify:
-            verifier = init_verifier(args.verify)
-            verifier.set_logger(logger)
-            conf1 = {
-                'onnx_path': onnx_path,
-                'vnnlib_path': spec_path,
-                'log_path': Path('veri_1.log'),
-                'verbosity': 1,
-                'num_workers': 10,
-                # 'config_path': "/home/lli/tools/relusplitter/experiment/config/mnistfc.yaml"
-                # 'config_path': "/home/lli/tools/relusplitter/experiment/config/reach_probability.yaml"
-            }
-            conf2 = {
-                'onnx_path': output_path,
-                'vnnlib_path': spec_path,
-                'log_path': Path('veri_2.log'),
-                'verbosity': 1,
-                'num_workers': 10,
-                # 'config_path': "/home/lli/tools/relusplitter/experiment/config/mnistfc.yaml"
-                # 'config_path': "/home/lli/tools/relusplitter/experiment/config/reach_probability.yaml"
-            }
-            logger.info(f'Start verification using {args.verify}')
-            print("Original instance:")
-            print(colored(verifier.execute(conf1), 'green'))
-            print("Splitted instance:")
-            print(colored(verifier.execute(conf2), 'yellow'))
-        logger.info(f'=== Done ===')
-
-    elif args.command == 'info':
-        if args.spec is not None:
-            ReluSplitter.info(Path(args.net), Path(args.spec))
-        else:
-            ReluSplitter.info_net_only(Path(args.net))
-    elif args.command == 'baseline':
-        onnx_path = Path(args.net)
-        output_path = Path(args.output)
-        new_model = ReluSplitter.get_fc_baseline_split(onnx_path, args.n_splits, args.split_idx, args.atol, args.rtol)
-        new_model.save(output_path)
-    else:
-        parser.print_help()
-        sys.exit(1)
+w,b = warpped.get_conv_wb(Conv_1st)
+print("Wshape: ", w.shape)
+print("Bshape: ", b.shape)
+# [OutChannels,InChannels,KernelHeight,KernelWidth]
+original_oC, original_iC, original_kH, original_kW = w.shape
 
 
+# make new W and B
+new_w = torch.zeros( (original_oC+1, original_iC, original_kH, original_kW))
+new_b = torch.zeros( (original_oC+1,) )
 
+for i in range(original_oC):
+    new_w[i] = w[i]
+    new_b[i] = b[i]
+new_w[-1], new_w[-2] = w[-1]/2, w[-1]/2
+new_b[-1], new_b[-2] = b[-1]/2, b[-1]/2
+
+# assertions
+print( torch.all(new_w[-1] == w[-1]/2) )
+print( torch.all(new_w[-2] == w[-1]/2) )
+print( torch.all(new_b[-1] == b[-1]/2) )
+print( torch.all(new_b[-2] == b[-1]/2) )
+print( torch.all(new_w[:-2] == w[:-1]) )
+print( torch.all(new_b[:-2] == b[:-1]) )
+
+print("New Wshape: ", new_w.shape)
+print("New Bshape: ", new_b.shape)
+
+# TODO resume here
+# [OutChannels,InChannels,KernelHeight,KernelWidth]
+conv1w = torch.zeros( (original_oC, original_oC+1, 1, 1) )
+conv1b = torch.zeros( (original_oC) )
+for i in range(original_oC):
+    conv1w[i,i,0,0] = 1
+    conv1b[i] = 0
+conv1w[-1,-1,0,0] = 0.5
+conv1w[-1,-2,0,0] = 0.5
+conv1b[-1] = 0
+
+# make initializers
+new_w_init = onnx.helper.make_tensor("new_w", onnx.TensorProto.FLOAT, new_w.shape, new_w.flatten())
+new_b_init = onnx.helper.make_tensor("new_b", onnx.TensorProto.FLOAT, new_b.shape, new_b.flatten())
+conv1w_init = onnx.helper.make_tensor("conv1w", onnx.TensorProto.FLOAT, conv1w.shape, conv1w.flatten())
+conv1b_init = onnx.helper.make_tensor("conv1b", onnx.TensorProto.FLOAT, conv1b.shape, conv1b.flatten())
+
+new_node = onnx.helper.make_node(
+    "Conv",
+    [original_input, "new_w", "new_b"],
+    ["Conv_1st_new_lli"],
+    name="Conv_1st_new",
+    kernel_shape=original_kernel_shape,
+    strides=original_strides,
+    pads=original_pads,
+    dilations=original_dilations,
+    # groups=original_groups,
+)
+new_conv1_node = onnx.helper.make_node(
+    "Conv",
+    ["Conv_1st_new_lli", "conv1w", "conv1b"],
+    [original_output],
+    name="Conv_1st_new_lli_conv1x1",
+    kernel_shape=[1,1],
+    strides=original_strides,
+    pads=original_pads,
+    dilations=original_dilations,
+    # groups=original_groups,
+)
+# print([n.name for n in warpped._model.graph.input])
+new_model = warpped.generate_updated_model(
+    nodes_to_replace = [Conv_1st],
+    additional_nodes = [new_node, new_conv1_node],
+    additional_initializers = [new_w_init, new_b_init, conv1w_init, conv1b_init],
+    graph_name = "test_conv_split",
+    producer_name = "RSplitter_conv"
+)
+
+new_model.save(Path("TEST_CONV_SPLIT_1x1.onnx"))
+# split one kernel (add one kernel and one bias)
+# add a 1x1 Conv layer to merge the additional channel
+# connect the new Conv layer to the original Relu layer
+# print(warpped.info())
+
+# other checks
+
+print(warpped.input_shapes)
+print(new_model.input_shapes)
+
+print(warpped.forward_gpu(input_lb))
+print(new_model.forward_gpu(input_lb))

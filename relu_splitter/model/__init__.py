@@ -46,6 +46,7 @@ class WarppedOnnxModel():
         self._sanity_check(model)
 
         self._model = model
+        self.op_set = model.opset_import
         self._initializers = [initializer for initializer in model.graph.initializer]
         self._initializers_mapping = {initializer.name: initializer for initializer in model.graph.initializer}
         self._nodes = [node for node in model.graph.node]
@@ -71,11 +72,16 @@ class WarppedOnnxModel():
         for initializer in model.graph.initializer:
             for i, input_tensor in enumerate(model.graph.input):
                 if input_tensor.name == initializer.name:
+                    self.logger.info(f"Removing initializer {initializer.name} from model input")
                     del model.graph.input[i]
                     break
 
     def info(self):
-        s = "\n"
+        s = f"Model info:\n"
+        s += f"\tModel input: {self.input_shapes}\n"
+        s += f"\tModel output: {self._model.graph.output[0].name}\n"
+        s += f"\tModel opset: {self.op_set}\n"
+        s += "====================\n"
         for node in self._nodes:
             s += f"\t\tNode name: {node.name}, Node type: {node.op_type}\n"
             s += f"\t\t\tInputs: {node.input}\n"
@@ -152,15 +158,15 @@ class WarppedOnnxModel():
             input_shapes[input_tensor.name] = shape
         return input_shapes
 
-
     def get_prior_node(self, node):
         assert node.op_type in SINGLE_INPUT_OPS
         assert len(node.input) == 1
         return self._node_produce_output[node.input[0]]
 
     def get_bound_of(self, input_bound:BoundedTensor, tensor_name: str, method: str = "forward+backward") -> Tuple[torch.Tensor, torch.Tensor]:
-        trunated_model = truncate_onnx_model(self._model, tensor_name)
-        return compute_model_bound(trunated_model, input_bound, method=method)
+        # trunated_model = truncate_onnx_model(self._model, tensor_name)
+        trunated_model = self.truncate_model_at(tensor_name)
+        return compute_model_bound(trunated_model._model, input_bound, method=method)
     
     def get_conv_wb(self, node):
         assert node.op_type == "Conv"
@@ -257,7 +263,7 @@ class WarppedOnnxModel():
             model_out,
             new_initializers
         )
-        new_model = helper.make_model(new_graph, producer_name=producer_name)
+        new_model = helper.make_model(new_graph, producer_name=producer_name, opset_imports=self.op_set)
         return WarppedOnnxModel(new_model, force_rename=False, logger=self.logger)
 
     def truncate_model_at(self, target_output_name,
@@ -301,7 +307,7 @@ class WarppedOnnxModel():
             [onnx.helper.make_tensor_value_info(target_output_name, onnx.TensorProto.FLOAT, None)],
             new_initializers
         )
-        new_model = helper.make_model(new_graph, producer_name=producer_name)
+        new_model = helper.make_model(new_graph, producer_name=producer_name, opset_imports=self.op_set)
         return WarppedOnnxModel(new_model, force_rename=False, logger=self.logger)
 
     # method for fixing version compatibility issues

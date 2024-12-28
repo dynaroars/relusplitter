@@ -3,6 +3,7 @@ from .common import *
 class RSplitter_conv():
 
     def check_conv():
+        pass
         # check if is 2d conv
 
     def split_conv():
@@ -23,10 +24,7 @@ class RSplitter_conv():
         # into two kernel with a merge layer, like with the FC layer
         # OR
         # Can use 1x1 conv to merge the additional channel
-
-
-        c_in, c_out = None, None
-        kh, kw = None, None
+        pass
 
 
     def get_baseline_split_conv():

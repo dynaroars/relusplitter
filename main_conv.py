@@ -32,6 +32,8 @@ original_output = Conv_1st.output[0]
 print(Conv_1st.op_type)
 print(original_input)
 print(original_output)
+opset_version = model.opset_import
+print(f"Current opset version: {opset_version}")
 input("continue?")
 # for i in range(len(Conv_1st.attribute)):
 #     print(Conv_1st.attribute[i])
@@ -153,47 +155,16 @@ lb_input = input_lb.reshape(1,3,224,224)
 ori_ans = warpped.forward_gpu(lb_input)
 new_ans = new_model.forward_gpu(lb_input)
 
-# repeat multiple times to see if the difference is from the dropout layer
-ori_1 = warpped.forward_gpu(lb_input)
-new_1 = new_model.forward_gpu(lb_input)
-ori_2 = warpped.forward_gpu(lb_input)
-new_2 = new_model.forward_gpu(lb_input)
-
-# diffs across three original mdoel inf
-print(torch.abs(ori_1-ori_ans).max())
-print(torch.abs(ori_2-ori_ans).max())
-
-# diffs across three new model inf
-print(torch.abs(new_1-new_ans).max())
-print(torch.abs(new_2-new_ans).max())
-
 print("original and new model diff (max)")
 print(torch.abs(ori_ans-new_ans).max())
-print(torch.abs(ori_1-new_1).max())
-print(torch.abs(ori_2-new_2).max())
 
 print("original and new model diff (avg)")
 print(torch.abs(ori_ans-new_ans).mean())
-print(torch.abs(ori_1-new_1).mean())
-print(torch.abs(ori_2-new_2).mean())
 
 print("original and new model diff (median)")
 print(torch.abs(ori_ans-new_ans).median())
-print(torch.abs(ori_1-new_1).median())
-print(torch.abs(ori_2-new_2).median())
 
 idx_max = torch.argmax(torch.abs(ori_ans - new_ans))
 print(f"Max difference location: {idx_max}")
 print(f"Original value: {ori_ans.flatten()[idx_max]}")
 print(f"New value: {new_ans.flatten()[idx_max]}")
-
-
-print("=====================================")
-print(torch.abs(ori_ans-new_ans))
-print("=====================================")
-print(torch.abs(ori_1-new_1))
-print("=====================================")
-print(torch.abs(ori_2-new_2))
-print("=====================================")
-
-

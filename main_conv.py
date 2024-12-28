@@ -30,9 +30,11 @@ original_input = warpped.get_node_inputs_no_initializers(Conv_1st)[0]
 original_output = Conv_1st.output[0]
 
 print(Conv_1st.op_type)
+print(original_input)
+print(original_output)
 input("continue?")
-for i in range(len(Conv_1st.attribute)):
-    print(Conv_1st.attribute[i])
+# for i in range(len(Conv_1st.attribute)):
+#     print(Conv_1st.attribute[i])
 original_groups = Conv_1st.attribute[0].i
 original_dilations = Conv_1st.attribute[1].ints
 original_kernel_shape = Conv_1st.attribute[2].ints
@@ -56,8 +58,14 @@ new_b = torch.zeros( (original_oC+1,) )
 for i in range(original_oC):
     new_w[i] = w[i]
     new_b[i] = b[i]
-new_w[-1], new_w[-2] = w[-1]/2, w[-1]/2
-new_b[-1], new_b[-2] = b[-1]/2, b[-1]/2
+# new_w[-1], new_w[-2] = w[-1]/2, w[-1]/2
+# new_b[-1], new_b[-2] = b[-1]/2, b[-1]/2
+temp_w_last = w[-1]
+new_w[-1] = temp_w_last / 2
+new_w[-2] = temp_w_last / 2
+temp_b_last = b[-1]
+new_b[-1] = temp_b_last / 2
+new_b[-2] = temp_b_last / 2
 
 # assertions
 print( torch.all(new_w[-1] == w[-1]/2) )
@@ -66,6 +74,9 @@ print( torch.all(new_b[-1] == b[-1]/2) )
 print( torch.all(new_b[-2] == b[-1]/2) )
 print( torch.all(new_w[:-2] == w[:-1]) )
 print( torch.all(new_b[:-2] == b[:-1]) )
+assert torch.allclose(new_w[-1] + new_w[-2], w[-1])
+assert torch.allclose(new_b[-1] + new_b[-2], b[-1])
+
 
 print("New Wshape: ", new_w.shape)
 print("New Bshape: ", new_b.shape)
@@ -77,8 +88,8 @@ conv1b = torch.zeros( (original_oC) )
 for i in range(original_oC):
     conv1w[i,i,0,0] = 1
     conv1b[i] = 0
-conv1w[-1,-1,0,0] = 0.5
-conv1w[-1,-2,0,0] = 0.5
+conv1w[-1,-1,0,0] = 1
+conv1w[-1,-2,0,0] = 1
 conv1b[-1] = 0
 
 # make initializers
@@ -104,9 +115,12 @@ new_conv1_node = onnx.helper.make_node(
     [original_output],
     name="Conv_1st_new_lli_conv1x1",
     kernel_shape=[1,1],
-    strides=original_strides,
-    pads=original_pads,
-    dilations=original_dilations,
+    strides=[1,1],
+    pads=[0,0,0,0],
+    dilations=[1,1],
+    # pads=original_pads,
+    # strides=original_strides,
+    # dilations=original_dilations,
     # groups=original_groups,
 )
 # print([n.name for n in warpped._model.graph.input])
@@ -117,7 +131,6 @@ new_model = warpped.generate_updated_model(
     graph_name = "test_conv_split",
     producer_name = "RSplitter_conv"
 )
-
 new_model.save(Path("TEST_CONV_SPLIT_1x1.onnx"))
 # split one kernel (add one kernel and one bias)
 # add a 1x1 Conv layer to merge the additional channel
@@ -129,5 +142,58 @@ new_model.save(Path("TEST_CONV_SPLIT_1x1.onnx"))
 print(warpped.input_shapes)
 print(new_model.input_shapes)
 
-print(warpped.forward_gpu(input_lb))
-print(new_model.forward_gpu(input_lb))
+# vgg0_relu1_fwd
+# warpped = warpped.truncate_model_at(original_output)
+# new_model = new_model.truncate_model_at(original_output)
+warpped.save(Path("warpped.onnx"))
+new_model.save(Path("new_model.onnx"))
+
+# gotta reshape the input to 3 channel input as in vgg16
+lb_input = input_lb.reshape(1,3,224,224)
+ori_ans = warpped.forward_gpu(lb_input)
+new_ans = new_model.forward_gpu(lb_input)
+
+# repeat multiple times to see if the difference is from the dropout layer
+ori_1 = warpped.forward_gpu(lb_input)
+new_1 = new_model.forward_gpu(lb_input)
+ori_2 = warpped.forward_gpu(lb_input)
+new_2 = new_model.forward_gpu(lb_input)
+
+# diffs across three original mdoel inf
+print(torch.abs(ori_1-ori_ans).max())
+print(torch.abs(ori_2-ori_ans).max())
+
+# diffs across three new model inf
+print(torch.abs(new_1-new_ans).max())
+print(torch.abs(new_2-new_ans).max())
+
+print("original and new model diff (max)")
+print(torch.abs(ori_ans-new_ans).max())
+print(torch.abs(ori_1-new_1).max())
+print(torch.abs(ori_2-new_2).max())
+
+print("original and new model diff (avg)")
+print(torch.abs(ori_ans-new_ans).mean())
+print(torch.abs(ori_1-new_1).mean())
+print(torch.abs(ori_2-new_2).mean())
+
+print("original and new model diff (median)")
+print(torch.abs(ori_ans-new_ans).median())
+print(torch.abs(ori_1-new_1).median())
+print(torch.abs(ori_2-new_2).median())
+
+idx_max = torch.argmax(torch.abs(ori_ans - new_ans))
+print(f"Max difference location: {idx_max}")
+print(f"Original value: {ori_ans.flatten()[idx_max]}")
+print(f"New value: {new_ans.flatten()[idx_max]}")
+
+
+print("=====================================")
+print(torch.abs(ori_ans-new_ans))
+print("=====================================")
+print(torch.abs(ori_1-new_1))
+print("=====================================")
+print(torch.abs(ori_2-new_2))
+print("=====================================")
+
+

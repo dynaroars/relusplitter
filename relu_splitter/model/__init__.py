@@ -105,7 +105,7 @@ class WarppedOnnxModel():
                 self._tensor_names.update(node.input)
                 self._tensor_names.update(node.output)
         return tensor_name in self._tensor_names
-    
+
     def has_initializer(self, initializer_name: str):
         return initializer_name in self._initializers_mapping.keys()
     
@@ -189,6 +189,9 @@ class WarppedOnnxModel():
         return w,b
     
     def forward_gpu(self, x: torch.Tensor) -> torch.Tensor:
+        # put tensor on gpu if not already
+        if x.device != 'cuda':
+            x = x.cuda()
         if not hasattr(self, "_bounded_model_gpu"):
             self._bounded_model_gpu = BoundedModule(ConvertModel(self._model, experimental=True, quirks=custom_quirks), x, device='cuda')
         return self._bounded_model_gpu(x)
@@ -197,6 +200,13 @@ class WarppedOnnxModel():
         if not hasattr(self, "_bounded_model"):
             self._bounded_model = BoundedModule(ConvertModel(self._model, experimental=True, quirks=custom_quirks), x)
         return self._bounded_model(x)
+
+    def forward_onnx(self, x: torch.Tensor) -> torch.Tensor:
+        import onnxruntime as ort
+        print(ort.get_device())
+        sess = InferenceSession(self._model.SerializeToString())
+        return torch.tensor(sess.run(None, {'data': x.numpy()})[0])
+        # return torch.tensor(sess.run(None, {'input': x.numpy()})[0])
 
     def save(self, fname: Path):
         if not fname.parent.exists():
@@ -236,6 +246,7 @@ class WarppedOnnxModel():
 
                         visited.update(node.output)
                         updated = True
+                        break
             if not updated:
                 raise ValueError(f"Can't find a node to add to the new model")
 
@@ -248,6 +259,57 @@ class WarppedOnnxModel():
         )
         new_model = helper.make_model(new_graph, producer_name=producer_name)
         return WarppedOnnxModel(new_model, force_rename=False, logger=self.logger)
+
+    def truncate_model_at(self, target_output_name,
+                      graph_name=f"bruh_split_merge",
+                      producer_name="ReluSplitter"):
+        # maybe some assertions
+        new_nodes = []
+        new_initializers = []
+        model_in = self._model.graph.input
+        model_input_name = model_in[0].name
+
+        visited = set([model_input_name])
+        avaliable_nodes = self._nodes
+        avaliable_initializers = {i.name:i for i in self._initializers}
+        added_initializers = set()
+        while target_output_name not in visited:
+            updated = False
+            for node in avaliable_nodes:
+                if node in new_nodes:
+                    continue
+                else:
+                    if all((i in visited or i in avaliable_initializers) for i in node.input):
+                        new_nodes.append(node)
+                        # new_initializers.extend([avaliable_initializers[i] for i in node.input if i in avaliable_initializers])
+                        # initializer that are used multiple times produce invialid onnx model
+                        initilizer_to_add = [i for i in node.input if i in avaliable_initializers and i not in added_initializers]
+                        new_initializers.extend([avaliable_initializers[i] for i in initilizer_to_add])
+                        added_initializers.update(initilizer_to_add)
+                        visited.update(node.output)
+                        updated = True
+                        print("added ",  node.name)
+                        print(visited)
+                        break
+            if not updated:
+                raise ValueError(f"Can't find a node to add to the new model")
+        
+        new_graph = onnx.helper.make_graph(
+            new_nodes,
+            graph_name,
+            model_in,
+            [onnx.helper.make_tensor_value_info(target_output_name, onnx.TensorProto.FLOAT, None)],
+            new_initializers
+        )
+        new_model = helper.make_model(new_graph, producer_name=producer_name)
+        return WarppedOnnxModel(new_model, force_rename=False, logger=self.logger)
+
+    # method for fixing version compatibility issues
+    # dropout ratio became an input instead of an attribute
+    # TODO
+    def fix_dropout_attributes(self):
+        pass
+        
     
     @property
     def onnx(self):

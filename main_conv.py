@@ -145,8 +145,8 @@ print(warpped.input_shapes)
 print(new_model.input_shapes)
 
 # vgg0_relu1_fwd
-# warpped = warpped.truncate_model_at(original_output)
-# new_model = new_model.truncate_model_at(original_output)
+warpped = warpped.truncate_model_at(original_output)
+new_model = new_model.truncate_model_at(original_output)
 warpped.save(Path("warpped.onnx"))
 new_model.save(Path("new_model.onnx"))
 
@@ -154,6 +154,25 @@ new_model.save(Path("new_model.onnx"))
 lb_input = input_lb.reshape(1,3,224,224)
 ori_ans = warpped.forward_gpu(lb_input)
 new_ans = new_model.forward_gpu(lb_input)
+onnx_ori = warpped.forward_onnx(lb_input).to('cuda')
+onnx_new = new_model.forward_onnx(lb_input).to('cuda')
+
+# check onnx and gpu output
+print("onnx and gpu diff (max)")
+print(torch.abs(onnx_ori-ori_ans).max())
+print(torch.abs(onnx_new-new_ans).max())
+print("onnx and gpu diff (avg)")
+print(torch.abs(onnx_ori-ori_ans).mean())
+print(torch.abs(onnx_new-new_ans).mean())
+print("=======")
+print(onnx_new)
+print("=======")
+print(ori_ans)
+print("=======")
+
+
+print(f"Original model output shape: {ori_ans.shape}")
+print(f"New model output shape: {new_ans.shape}")
 
 print("original and new model diff (max)")
 print(torch.abs(ori_ans-new_ans).max())

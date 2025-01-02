@@ -167,7 +167,8 @@ class WarppedOnnxModel():
         # trunated_model = truncate_onnx_model(self._model, tensor_name)
         # return compute_model_bound(trunated_model, input_bound, method=method)
         trunated_model = self.truncate_model_at(tensor_name)
-        return compute_model_bound(trunated_model._model, input_bound, method=method)
+        input_names = [input_tensor.name for input_tensor in trunated_model.onnx.graph.input]
+        return compute_model_bound(trunated_model._model, input_bound, input_names=input_names, method=method)
     
     def get_conv_wb(self, node):
         assert node.op_type == "Conv"

@@ -53,11 +53,9 @@ def check_model_closeness_gpu(m1, m2, input_shape, n=5, **kwargs):
             return False, worst_diff
     return True, worst_diff
 
-def compute_model_bound(model: onnx.ModelProto, bounded_input: BoundedTensor, method="backward"):
+def compute_model_bound(model: onnx.ModelProto, bounded_input: BoundedTensor, input_names=["input"], method="backward"):
     model = ConvertModel(model)
-    if "input" not in model.input_names:
-        model.input_names = ["input"]
-    
+    model.input_names = input_names
     model = BoundedModule(model, bounded_input)
     lb, ub = model.compute_bounds(x=(bounded_input,), method=method)
     return lb, ub

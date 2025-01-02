@@ -6,6 +6,50 @@ class RSplitter_conv():
         pass
         # check if is 2d conv
 
+    def get_conv_patch():
+        # get the idxs of the patch responsible for the output
+        pass
+
+    def compute_split_layer_bias(self, nodes_to_split, kernel_idx, mode="max_unstablize"):
+        # find the appropriate bias for the given kernel in the split layer
+        # a. Compute the output bound of the Conv layer (pre-relu)
+        # b. find the value that satisfied the most patches
+        # c. return the value
+        # ONE PROBLEM: what if the split NVM
+        conv_node, relu_node = nodes_to_split
+        output_lb,output_ub = self.warpped_model.get_bound_of(self.bounded_input, conv_node.output[0], method="ibp")
+        self.logger.debug(f"bound shapes: {output_lb.shape}, {output_ub.shape}")
+        # TODO: filter bounds based on neurons stability
+        # keep only stable neurons lb & ub have same sign (use torch)
+        lb, ub = output_lb.flatten(), output_ub.flatten()
+        stable_idxs = torch.where((lb * ub) > 0)
+        lb, ub = lb[stable_idxs], ub[stable_idxs]
+
+        # find the val to sat most intervals
+        evnts = []
+        for i in range(len(lb)):
+            evnts.append((lb[i].item(), 1))
+            evnts.append((ub[i].item(), -1))
+        evnts.sort(key=lambda x: x[0])
+        active_intervals = 0
+        max_active_intervals = -1
+        start, end = None, None
+        curr_start = evnts[0][0]
+        for val, evnt in evnts:
+            active_intervals += evnt
+            if active_intervals > max_active_intervals:
+                max_active_intervals = active_intervals
+                start = curr_start
+                end = val
+            curr_start = val
+
+        bias = random.uniform(start, end)  
+        self.logger.info(f"Max active intervals: {max_active_intervals}/{len(lb)}/{len(output_lb)}")
+        self.logger.info(f"Max active interval range: [{start}, {end}]")
+        self.logger.info(f"Selected bias: {bias}")
+        # return a random value in the range using random
+        return bias
+
 
 
     def split_conv_node(self, nodes_to_split,kernel_idxs, split_locs, scale_factors=(1.0, -1.0), manual_check_io=False):
@@ -30,6 +74,8 @@ class RSplitter_conv():
         assert ori_w.dim() == 4
         ori_oC, ori_iC, ori_kH, ori_kW = ori_w.shape
 
+
+
         # make weights and bias for split and merge layers
         num_splits = len(kernel_idxs)
         new_oC = ori_oC + num_splits
@@ -44,7 +90,18 @@ class RSplitter_conv():
         for i in tqdm(range(ori_oC), desc="Constructing new Conv layer..."):
             split_loc = split_locs[i]
             temp_w = ori_w[i]
-            temp_b = ori_w[i] @ split_loc
+            # temp_b = ori_w[i] @ split_loc
+            temp_b = self.compute_split_layer_bias(nodes_to_split, i)
+            # for FC the temp_b is one single value, but for conv this is a vector/matrix (the whole output channel). 
+            # Basically each patch has a corresponding temp_b value.
+            # temp_b is the displacement from the origin (0)
+            # so we use the vector to infer a best temp_b vlaue that can unstablize most patches.
+            # 1. during the split point calc, try to minimize the range of temp_b
+            # 2. during the split point calc, instead of using concret split point, use a range.
+            #    this way, in the later calculation of temp_b, we will have a set of ranges, and 
+            #    we can choose the one that can unstablize most patches.
+            #    If the selected patch x kernel is stable on the split range, we can split at any point in the range.
+            #    and any temp_b in the range can make the splitted kernel x patch unstable.
             if i in kernel_idxs:
                 # split the kernel
                 new_w[curr_idx]     = temp_w * scale_ratio_pos

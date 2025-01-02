@@ -165,6 +165,7 @@ class WarppedOnnxModel():
 
     def get_bound_of(self, input_bound:BoundedTensor, tensor_name: str, method: str = "forward+backward") -> Tuple[torch.Tensor, torch.Tensor]:
         # trunated_model = truncate_onnx_model(self._model, tensor_name)
+        # return compute_model_bound(trunated_model, input_bound, method=method)
         trunated_model = self.truncate_model_at(tensor_name)
         return compute_model_bound(trunated_model._model, input_bound, method=method)
     
@@ -209,7 +210,6 @@ class WarppedOnnxModel():
 
     def forward_onnx(self, x: torch.Tensor) -> torch.Tensor:
         import onnxruntime as ort
-        print(ort.get_device())
         sess = InferenceSession(self._model.SerializeToString())
         return torch.tensor(sess.run(None, {'data': x.numpy()})[0])
         # return torch.tensor(sess.run(None, {'input': x.numpy()})[0])
@@ -294,8 +294,6 @@ class WarppedOnnxModel():
                         added_initializers.update(initilizer_to_add)
                         visited.update(node.output)
                         updated = True
-                        print("added ",  node.name)
-                        print(visited)
                         break
             if not updated:
                 raise ValueError(f"Can't find a node to add to the new model")
@@ -310,11 +308,20 @@ class WarppedOnnxModel():
         new_model = helper.make_model(new_graph, producer_name=producer_name, opset_imports=self.op_set)
         return WarppedOnnxModel(new_model, force_rename=False, logger=self.logger)
 
-    # method for fixing version compatibility issues
-    # dropout ratio became an input instead of an attribute
-    # TODO
-    def fix_dropout_attributes(self):
-        pass
+    def replace_initializers(self, dicts):
+        new_initializers = [i for i in self._initializers if i.name not in dicts.keys()]
+        for k,v in dicts.items():
+            # v is a troch tensor, need to compose it to onnx initializer
+            new_initializers.append(onnx.helper.make_tensor(k, onnx.TensorProto.FLOAT, v.shape, v.flatten()))
+        new_graph = onnx.helper.make_graph(
+            self._nodes,
+            self._model.graph.name,
+            self._model.graph.input,
+            self._model.graph.output,
+            new_initializers
+        )
+        new_model = helper.make_model(new_graph, producer_name=self._model.producer_name, opset_imports=self.op_set)
+        return WarppedOnnxModel(new_model, force_rename=False, logger=self.logger)
         
     
     @property

@@ -96,7 +96,7 @@ if __name__ == '__main__':
                                     conf = conf)
         logger.info(f'Start splitting...')
         logger.info(f'Conf: {conf}')
-        new_model = relusplitter.split_fc(args.split_idx)
+        new_model = relusplitter.split(args.split_idx)
         new_model.save(output_path)
         logger.info(f'Model saved to {output_path}')
 

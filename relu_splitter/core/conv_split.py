@@ -21,9 +21,9 @@ class RSplitter_conv():
         self.logger.debug(f"bound shapes: {output_lb.shape}, {output_ub.shape}")
         # TODO: filter bounds based on neurons stability
         # keep only stable neurons lb & ub have same sign (use torch)
-        lb, ub = output_lb.flatten(), output_ub.flatten()
-        stable_idxs = torch.where((lb * ub) > 0)
-        lb, ub = lb[stable_idxs], ub[stable_idxs]
+        output_lb, output_ub = output_lb.flatten(), output_ub.flatten()
+        stable_idxs = torch.where((output_lb * output_ub) > 0)
+        lb, ub = output_lb[stable_idxs], output_ub[stable_idxs]
 
         # find the val to sat most intervals
         evnts = []

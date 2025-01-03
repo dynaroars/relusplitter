@@ -39,6 +39,8 @@ input("continue?")
 #     print(Conv_1st.attribute[i])
 original_groups = Conv_1st.attribute[0].i
 original_dilations = Conv_1st.attribute[1].ints
+if original_dilations = []:
+    original_dilations = [1,1]
 original_kernel_shape = Conv_1st.attribute[2].ints
 original_pads = Conv_1st.attribute[3].ints
 original_strides = Conv_1st.attribute[4].ints

@@ -15,7 +15,7 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         self.logger.debug(f"Spec: {self.spec_path}")
         self.logger.debug(f"Config: {self._conf}")
 
-        self.check_config()
+        # self.check_config()
         self.init_model()
         self.init_vnnlib()
         self.init_seeds()
@@ -47,20 +47,34 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         input_lb, input_ub = torch.tensor([[[[i[0] for i in input_bound]]]]), torch.tensor([[[[i[1] for i in input_bound]]]])
         spec_num_inputs = reduce(lambda x, y: x*y, input_lb.shape)
         model_num_inputs = self.warpped_model.num_inputs
+        # hardcoded for vgg16
+        # input_lb -= 0.0001
+        input_lb, input_ub = input_lb.view(1,3,224,224), input_ub.view(1,3,224,224)
+        # hardcoded reshape done
         assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
         assert model_num_inputs == spec_num_inputs, f"Spec number of inputs does not match model inputs {spec_num_inputs} != {model_num_inputs}"
         self.bounded_input = BoundedTensor(input_lb, PerturbationLpNorm(x_L=input_lb, x_U=input_ub))
 
     def init_model(self):
         model = onnx.load(self.onnx_path)
-        assert len(model.graph.input) == 1, f"Model has more than one input {model.graph.input}"
-        assert len(model.graph.output) == 1, f"Model has more than one output {model.graph.output}"
+        # assert len(model.graph.input) == 1, f"Model has more than one input {model.graph.input}"
+        # assert len(model.graph.output) == 1, f"Model has more than one output {model.graph.output}"
         self.warpped_model = WarppedOnnxModel(model)
 
     def init_seeds(self):
         random_seed = self._conf.get("random_seed")
         random.seed(random_seed)
         torch.manual_seed(random_seed)
+
+    def split(self, idx):
+        splittable_nodes = self.get_splittable_nodes()
+        assert idx < len(splittable_nodes), f"Split location <{idx}> is out of bound"
+        n1, n2 = splittable_nodes[idx][0], splittable_nodes[idx][1]
+        assert n2.op_type == "Relu", f"Node at split location is not a ReLU node"
+        if n1.op_type == "Gemm":
+            return self.split_fc((n1, n2))
+        elif n1.op_type == "Conv":
+            return self.split_conv((n1, n2), [1,3,4])
 
 
 
@@ -107,8 +121,8 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
 
         for i, (prior_node, relu_node) in enumerate(splittable_nodes):
             print(  f">>> splittable ReLU layer {i} <<<\n"
-                    f"Gemm node: {prior_node.name}\n"
-                    f"ReLU node: {relu_node.name}\n"
+                    f"{prior_node.op_type} node: {prior_node.name}\n"
+                    f"{relu_node.op_type} node: {relu_node.name}\n"
                     "=====================================")
         return splittable_nodes
     
@@ -127,8 +141,8 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         for i, (prior_node, relu_node) in enumerate(splittable_nodes):
             masks = relu_splitter.get_split_masks_fc((prior_node, relu_node))
             print(  f">>> splittable ReLU layer {i} <<<\n"
-                    f"Gemm node: {prior_node.name}\n"
-                    f"ReLU node: {relu_node.name}\n"
+                    f"{prior_node.op_type} node: {prior_node.name}\n"
+                    f"{relu_node.op_type} node: {relu_node.name}\n"
                     f"======== Neuron composition ========\n"
                     f"stable+: {torch.sum(masks['stable+'])}\n"
                     f"stable-: {torch.sum(masks['stable-'])}\n"

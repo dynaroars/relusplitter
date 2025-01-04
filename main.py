@@ -23,24 +23,33 @@ def get_parser():
 
     # Subparser for the split command
     split_parser = subparsers.add_parser('split', help='split command help')
+
+    # shared parameters
     split_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
     split_parser.add_argument('--spec', type=str, required=True, help='Path to the VNNLIB file')
     split_parser.add_argument('--output', type=str, default='splitted.onnx', help='Output path for the new model')
     
+    split_parser.add_argument('--split_idx', type=int, default=0, help='Index of the layer to split')
+    
+    split_parser.add_argument('--mask', type=str, default='stable+', help='Mask for splitting',
+                              choices=['stable+', 'stable-', 'stable', 'unstable', 'all', 'unstable_n_stable+'])
     split_parser.add_argument('--n_splits', type=int, default=None, help='Number of splits (strict), this will override min_splits and max_splits')
     split_parser.add_argument('--min_splits', type=int, default=1, help='Minimum number of splits')
     split_parser.add_argument('--max_splits', type=int, default=sys.maxsize, help='Maximum number of splits')
-    
-    split_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
-    split_parser.add_argument('--mask', type=str, default='stable+', help='Mask for splitting',
-                              choices=['stable+', 'stable-', 'stable', 'unstable', 'all', 'unstable_n_stable+'])
+    split_parser.add_argument('--scale_factor', type=float, nargs=2, default=[1.0,-1.0], help='Scale factor for the')
+    # conv parameters
+    # fc parameters
     split_parser.add_argument('--split_strategy', type=str, default='random', help='Splitting strategy',
                               choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
 
-    split_parser.add_argument('--scale_factor', type=float, nargs=2, default=[1.0,-1.0], help='Scale factor for the')
+
+
+    
+    
+
+    
     
     split_parser.add_argument('--seed', type=int, default=0, help='Seed for random number generation')
-    
     split_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')
     split_parser.add_argument('--rtol', type=float, default=1e-5, help='Relative tolerance for closeness check')
     split_parser.add_argument('--device', type=str, default=default_device, help='Device for the model closeness check',)

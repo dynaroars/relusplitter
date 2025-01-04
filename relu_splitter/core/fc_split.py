@@ -3,6 +3,7 @@ from .common import *
 class RSplitter_fc():
 
     def get_split_loc_fn_fc(self, nodes, **kwargs):
+        # come back fix this later, Theres no need to pick from the input interval, just pick from the output interval
         gemm_node, relu_node = nodes
         split_strategy = self._conf["split_strategy"]
         lb, ub = self.warpped_model.get_bound_of(self.bounded_input, gemm_node.input[0])          # the input bound of the Gemm node, from which the split location is sampled
@@ -25,12 +26,27 @@ class RSplitter_fc():
         else:
             raise INVALID_PARAMETER(f"Unknown split strategy {split_strategy}")
 
-    def get_split_masks(self, nodes):
-        node1, node2 = nodes
-        assert node1.op_type == "Gemm" and node2.op_type == "Relu", f"Invalid nodes:{node1.op_type} -> {node2.op_type}"
-        input_lb, input_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.input[0])          # the input bound of the Gemm node, from which the split location is sampled
-        output_lb, output_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.output[0])       # the output bound for determining the stability of the neurons
-        assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
+    # def fc_get_split_masks(self, nodes, method="backward"):
+    #     node1, node2 = nodes
+    #     assert node1.op_type == "Gemm" and node2.op_type == "Relu", f"Invalid nodes:{node1.op_type} -> {node2.op_type}"
+    #     input_lb, input_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.input[0], method=method)          # the input bound of the Gemm node, from which the split location is sampled
+    #     output_lb, output_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.output[0], method=method)       # the output bound for determining the stability of the neurons
+    #     assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
+    #     masks = {}
+    #     masks["all"] = torch.ones_like(output_lb, dtype=torch.bool).squeeze()
+    #     masks["stable"] = torch.logical_or(output_lb > 0, output_ub <= 0).squeeze()
+    #     masks["unstable"] = ~masks["stable"]
+    #     masks["stable+"] = (output_lb > 0).squeeze()
+    #     masks["stable-"] = (output_ub <= 0).squeeze()
+    #     masks["unstable_n_stable+"] = torch.logical_or(masks["unstable"], masks["stable+"])
+    #     assert torch.all(masks["stable"] == (masks["stable+"] | masks["stable-"])), "stable is not equal to stable+ AND stable-"
+    #     assert not torch.any(masks["stable+"] & masks["stable-"]), "stable+ and stable- are not mutually exclusive"
+    #     assert not torch.any(masks["unstable"] & masks["stable"]), "unstable and stable are not mutually exclusive"
+    #     assert torch.all((masks["unstable"] | masks["stable"]) == masks["all"]), "The union of unstable and stable does not cover all elements"
+    #     return masks
+
+    def fc_get_split_masks(self, bounds):
+        output_lb, output_ub = bounds
         masks = {}
         masks["all"] = torch.ones_like(output_lb, dtype=torch.bool).squeeze()
         masks["stable"] = torch.logical_or(output_lb > 0, output_ub <= 0).squeeze()
@@ -44,10 +60,8 @@ class RSplitter_fc():
         assert torch.all((masks["unstable"] | masks["stable"]) == masks["all"]), "The union of unstable and stable does not cover all elements"
         return masks
 
-    def split_fc(self, split_idx=0):
-        splittable_nodes = self.get_splittable_nodes()
-        assert split_idx < len(splittable_nodes), f"Split location <{split_idx}> is out of bound"
-        gemm_node, relu_node = splittable_nodes[split_idx][0], splittable_nodes[split_idx][1]
+    def split_fc(self, nodes_to_split):
+        gemm_node, relu_node = nodes_to_split
         assert all(attri.i == 0 for attri in gemm_node.attribute if attri.name == "TransA"), "TransA == 1 is not supported yet"
 
         self.logger.debug("=====================================")
@@ -58,7 +72,8 @@ class RSplitter_fc():
         self.logger.debug(f"Split mask: {self._conf['split_mask']}")
         self.logger.debug(f"min_splits: {self._conf['min_splits']}, max_splits: {self._conf['max_splits']}")
 
-        split_masks = self.get_split_masks(splittable_nodes[split_idx])
+        bounds = self.warpped_model.get_bound_of(self.bounded_input, gemm_node.output[0], method="backward")
+        split_masks = self.fc_get_split_masks(bounds)
         split_mask = split_masks[self._conf["split_mask"]]
         mask_size  = torch.sum(split_mask).item()
         min_splits, max_splits = self._conf["min_splits"], self._conf["max_splits"]
@@ -81,7 +96,7 @@ class RSplitter_fc():
         assert min_splits <= n_splits <= max_splits, f"Number of splits {n_splits} is out of range [{min_splits}, {max_splits}]"
         self.logger.info(f"Splitting {n_splits} {self._conf['split_mask']} ReLUs")
         
-        split_loc_fn = self.get_split_loc_fn_fc(splittable_nodes[split_idx])   # kwargs here
+        split_loc_fn = self.get_split_loc_fn_fc( (nodes_to_split) )   # kwargs here
         grad, offset = self.warpped_model.get_gemm_wb(gemm_node)    # w,b of the layer to be splitted
         # create new layers
         num_out, num_in = grad.shape
@@ -172,7 +187,8 @@ class RSplitter_fc():
         new_model = self.warpped_model.generate_updated_model(  nodes_to_replace=[gemm_node, relu_node],
                                                                 additional_nodes=new_nodes,
                                                                 additional_initializers=new_initializers,
-                                                                graph_name=f"{self.onnx_path.stem}_split_{split_idx}",
+                                                                graph_name=f"{self.onnx_path.stem}_split",
+                                                                # graph_name=f"{self.onnx_path.stem}_split_{split_idx}",
                                                                 producer_name="ReluSplitter")
         self.logger.info("=========== Model created ===========")
         self.logger.debug(f"Checking model closeness with atol: {self._conf['atol']} and rtol: {self._conf['rtol']}")

@@ -1,16 +1,27 @@
 from .common import *
 
 class RSplitter_conv():
+    def conv_get_split_masks(self, layer_bounds):
+        # get the split masks for the given layer
+        output_lb, output_ub = layer_bounds
+        masks = []
+        for i in range(output_lb.shape[1]):
+            lb, ub = output_lb[0,i], output_ub[0,i]
+            temp = {}
+            temp["all"] = torch.ones_like(lb)
+            temp["stable"] = torch.logical_or(lb >= 0, ub <= 0)
+            temp["unstable"] = ~temp["stable"]
+            temp["stable+"] = lb >= 0
+            temp["stable-"] = ub <= 0
+            assert torch.all(temp["stable"] == (temp["stable+"] | temp["stable-"])), "stable is not equal to stable+ AND stable-"
+            assert not torch.any(temp["stable+"] & temp["stable-"]), "stable+ and stable- are not mutually exclusive"
+            assert not torch.any(temp["unstable"] & temp["stable"]), "unstable and stable are not mutually exclusive"
+            assert torch.all((temp["unstable"] | temp["stable"]) == temp["all"]), "The union of unstable and stable does not cover all elements"
+            masks.append(temp)
+        return masks
+        
 
-    def check_conv():
-        pass
-        # check if is 2d conv
-
-    def get_conv_patch():
-        # get the idxs of the patch responsible for the output
-        pass
-
-    def compute_split_layer_bias(self, kernel_bounds, mode="max_unstablize"):
+    def conv_compute_split_layer_bias(self, kernel_bounds, mask, strategy):
         # find the appropriate bias for the given kernel in the split layer
         # a. Compute the output bound of the Conv layer (pre-relu)
         # b. find the value that satisfied the most patches
@@ -21,8 +32,9 @@ class RSplitter_conv():
         self.logger.debug(f"Kernel bound shapes: {kernel_lb.shape}, {kernel_ub.shape}")
 
         kernel_lb, kernel_ub = kernel_lb.flatten(), kernel_ub.flatten()
-        stable_idxs = torch.where((kernel_lb * kernel_ub) > 0)
-        lb, ub = kernel_lb[stable_idxs], kernel_ub[stable_idxs]
+
+        split_idxs = torch.where((kernel_lb * kernel_ub) > 0)
+        lb, ub = kernel_lb[split_idxs], kernel_ub[split_idxs]
 
         # find the val to sat most intervals using sliding line sweep
         evnts = []
@@ -100,7 +112,7 @@ class RSplitter_conv():
             #    and any temp_b in the range can make the splitted kernel x patch unstable.
             if i in kernel_idxs:
                 temp_w = ori_w[i]
-                temp_b = self.compute_split_layer_bias( (layer_lb[0,i], layer_ub[0,i]) )
+                temp_b = self.conv_compute_split_layer_bias( (layer_lb[0,i], layer_ub[0,i]) )
                 # split the kernel
                 new_w[curr_idx]     = temp_w * scale_ratio_pos
                 new_w[curr_idx+1]   = temp_w * scale_ratio_neg

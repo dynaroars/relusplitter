@@ -49,7 +49,7 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         model_num_inputs = self.warpped_model.num_inputs
         # hardcoded for vgg16
         # input_lb -= 0.0001
-        input_lb, input_ub = input_lb.view(1,3,224,224), input_ub.view(1,3,224,224)
+        # input_lb, input_ub = input_lb.view(1,3,224,224), input_ub.view(1,3,224,224)
         # hardcoded reshape done
         assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
         assert model_num_inputs == spec_num_inputs, f"Spec number of inputs does not match model inputs {spec_num_inputs} != {model_num_inputs}"
@@ -137,21 +137,30 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         splittable_nodes = relu_splitter.get_splittable_nodes()
         print(f"Found {len(splittable_nodes)} splittable nodes")
         print("=====================================")
-        node_info = []
         for i, (prior_node, relu_node) in enumerate(splittable_nodes):
-            masks = relu_splitter.get_split_masks_fc((prior_node, relu_node))
             print(  f">>> splittable ReLU layer {i} <<<\n"
                     f"{prior_node.op_type} node: {prior_node.name}\n"
                     f"{relu_node.op_type} node: {relu_node.name}\n"
-                    f"======== Neuron composition ========\n"
-                    f"stable+: {torch.sum(masks['stable+'])}\n"
-                    f"stable-: {torch.sum(masks['stable-'])}\n"
-                    f"unstable: {torch.sum(masks['unstable'])}\n"
-                    f"Total: {torch.sum(masks['all'])}\n"
-                    "=====================================")
-            counts = {k: torch.sum(v).item() for k, v in masks.items()}
-            node_info.append(counts)
-        return node_info
+                    f"======== Neuron composition ========\n")
+
+            if prior_node.op_type == "Gemm":
+                # use ibp or it might OOM for some model
+                bounds = relu_splitter.warpped_model.get_bound_of(relu_splitter.bounded_input, prior_node.output[0], method="ibp")
+                masks = relu_splitter.fc_get_split_masks(bounds)
+                # masks = relu_splitter.fc_get_split_masks((prior_node, relu_node), method="backward")
+                print(  f"stable+: {torch.sum(masks['stable+'])}\n"
+                        f"stable-: {torch.sum(masks['stable-'])}\n"
+                        f"unstable: {torch.sum(masks['unstable'])}\n"
+                        f"Total: {torch.sum(masks['all'])}\n")
+            elif prior_node.op_type == "Conv":
+                bounds = relu_splitter.warpped_model.get_bound_of(relu_splitter.bounded_input, prior_node.output[0], method="ibp")
+                masks = relu_splitter.conv_get_split_masks(bounds)
+                for i in range(len(masks)):
+                    counts = {k : torch.sum(v).item() for k, v in masks[i].items()}
+                    print(f"kernel {i}: {counts}")
+            else:
+                self.logger.debug(f"None splittable node: {prior_node.op_type} in info...")
+            print("=====================================")
             
 
     @classmethod
@@ -160,7 +169,8 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         splittable_nodes = relu_splitter.get_splittable_nodes()
         node_info = []
         for i, (prior_node, relu_node) in enumerate(splittable_nodes):
-            masks = relu_splitter.get_split_masks_fc((prior_node, relu_node))
+            bounds = relu_splitter.warpped_model.get_bound_of(relu_splitter.bounded_input, prior_node.output[0], method="ibp")
+            masks = relu_splitter.fc_get_split_masks(bounds)
             counts = {k: torch.sum(v).item() for k, v in masks.items()}
             node_info.append(counts)
         return node_info

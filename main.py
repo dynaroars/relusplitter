@@ -28,7 +28,9 @@ def get_parser():
     split_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
     split_parser.add_argument('--spec', type=str, required=True, help='Path to the VNNLIB file')
     split_parser.add_argument('--output', type=str, default='splitted.onnx', help='Output path for the new model')
-    
+    split_parser.add_argument('--input_shape', type=int, nargs='+', default=None, help='Optional input shape of the model (e.g., 1 3 224 224)')
+
+
     split_parser.add_argument('--split_idx', type=int, default=0, help='Index of the layer to split')
     
     split_parser.add_argument('--mask', type=str, default='stable+', help='Mask for splitting',
@@ -38,9 +40,13 @@ def get_parser():
     split_parser.add_argument('--max_splits', type=int, default=sys.maxsize, help='Maximum number of splits')
     split_parser.add_argument('--scale_factor', type=float, nargs=2, default=[1.0,-1.0], help='Scale factor for the')
     # conv parameters
-    # fc parameters
-    split_parser.add_argument('--split_strategy', type=str, default='random', help='Splitting strategy',
+    split_parser.add_argument('--conv_strategy', type=str, default='random', help='Splitting strategy',
                               choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
+    # fc parameters
+    split_parser.add_argument('--fc_strategy', type=str, default='random', help='Splitting strategy',
+                              choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
+
+    
 
 
 
@@ -83,10 +89,12 @@ if __name__ == '__main__':
         onnx_path = Path(args.net)
         spec_path = Path(args.spec)
         output_path = Path(args.output)
+        input_shape = args.input_shape
 
         conf = {
             'split_mask': args.mask,
-            'split_strategy': args.split_strategy,
+            'fc_strategy': args.fc_strategy,
+            'conv_strategy': args.conv_strategy,
             'min_splits': args.min_splits,
             'max_splits': args.max_splits,
             'split_idx': args.split_idx,
@@ -101,6 +109,7 @@ if __name__ == '__main__':
             conf['max_splits'] = args.n_splits
         relusplitter = ReluSplitter(onnx_path, 
                                     spec_path, 
+                                    input_shape = input_shape,
                                     logger = logger, 
                                     conf = conf)
         logger.info(f'Start splitting...')
@@ -112,14 +121,17 @@ if __name__ == '__main__':
         if args.verify:
             verifier = init_verifier(args.verify)
             verifier.set_logger(logger)
+            # abc_conf_path = "/home/lli/tools/relusplitter/experiment/config/mnistfc.yaml"
+            # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp23/tllVerifyBench.yaml"
+            # abc_conf_path = "/home/lli/tools/relusplitter/experiment/config/reach_probability.yaml"
+            abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/oval22.yaml"
             conf1 = {
                 'onnx_path': onnx_path,
                 'vnnlib_path': spec_path,
                 'log_path': Path('veri_1.log'),
                 'verbosity': 1,
                 'num_workers': 10,
-                # 'config_path': "/home/lli/tools/relusplitter/experiment/config/mnistfc.yaml"
-                # 'config_path': "/home/lli/tools/relusplitter/experiment/config/reach_probability.yaml"
+                'config_path': abc_conf_path,
             }
             conf2 = {
                 'onnx_path': output_path,
@@ -127,8 +139,7 @@ if __name__ == '__main__':
                 'log_path': Path('veri_2.log'),
                 'verbosity': 1,
                 'num_workers': 10,
-                # 'config_path': "/home/lli/tools/relusplitter/experiment/config/mnistfc.yaml"
-                # 'config_path': "/home/lli/tools/relusplitter/experiment/config/reach_probability.yaml"
+                'config_path': abc_conf_path,
             }
             logger.info(f'Start verification using {args.verify}')
             print("Original instance:")

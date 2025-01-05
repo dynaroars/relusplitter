@@ -4,9 +4,10 @@ from .conv_split import RSplitter_conv
 
 class ReluSplitter(RSplitter_fc, RSplitter_conv):
 
-    def __init__(self, network: Path, spec: Path, logger=default_logger, conf=default_config) -> None:
+    def __init__(self, network: Path, spec: Path, input_shape, logger=default_logger, conf=default_config) -> None:
         self.onnx_path = network
         self.spec_path = spec
+        self.input_shape = input_shape
         self._conf = conf
         self.logger = logger
 
@@ -47,10 +48,8 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         input_lb, input_ub = torch.tensor([[[[i[0] for i in input_bound]]]]), torch.tensor([[[[i[1] for i in input_bound]]]])
         spec_num_inputs = reduce(lambda x, y: x*y, input_lb.shape)
         model_num_inputs = self.warpped_model.num_inputs
-        # hardcoded for vgg16
-        # input_lb -= 0.0001
-        # input_lb, input_ub = input_lb.view(1,3,224,224), input_ub.view(1,3,224,224)
-        # hardcoded reshape done
+        if self.input_shape is not None:
+            input_lb, input_ub = input_lb.view(self.input_shape), input_ub.view(self.input_shape)
         assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
         assert model_num_inputs == spec_num_inputs, f"Spec number of inputs does not match model inputs {spec_num_inputs} != {model_num_inputs}"
         self.bounded_input = BoundedTensor(input_lb, PerturbationLpNorm(x_L=input_lb, x_U=input_ub))
@@ -74,7 +73,7 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         if n1.op_type == "Gemm":
             return self.split_fc((n1, n2))
         elif n1.op_type == "Conv":
-            return self.split_conv((n1, n2), [1,3,4])
+            return self.split_conv((n1, n2), [i for i in range(8)])
 
 
 

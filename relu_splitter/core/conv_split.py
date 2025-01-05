@@ -22,20 +22,20 @@ class RSplitter_conv():
         
 
     def conv_compute_split_layer_bias(self, kernel_bounds, mask, strategy):
+        # kernel_bounds: tuple of (lb, ub) of the output of a single kernel
+        # mask: a mask that has the same shape as the kernel_bound, indicating bounds to be used for bias computation
+        # strategy: a string indicating the strategy to be used for bias computation
+
         # find the appropriate bias for the given kernel in the split layer
         # a. Compute the output bound of the Conv layer (pre-relu)
-        # b. find the value that satisfied the most patches
+        # b. find the value that can unstabalize the most patches
         # c. return the value
-        # ONE PROBLEM: what if the split NVM
-        
         kernel_lb, kernel_ub = kernel_bounds
         self.logger.debug(f"Kernel bound shapes: {kernel_lb.shape}, {kernel_ub.shape}")
-
         kernel_lb, kernel_ub = kernel_lb.flatten(), kernel_ub.flatten()
 
         split_idxs = torch.where((kernel_lb * kernel_ub) > 0)
         lb, ub = kernel_lb[split_idxs], kernel_ub[split_idxs]
-
         # find the val to sat most intervals using sliding line sweep
         evnts = []
         for i in range(len(lb)):
@@ -112,7 +112,7 @@ class RSplitter_conv():
             #    and any temp_b in the range can make the splitted kernel x patch unstable.
             if i in kernel_idxs:
                 temp_w = ori_w[i]
-                temp_b = self.conv_compute_split_layer_bias( (layer_lb[0,i], layer_ub[0,i]) )
+                temp_b = self.conv_compute_split_layer_bias( (layer_lb[0,i], layer_ub[0,i]), None, None) # TODO
                 # split the kernel
                 new_w[curr_idx]     = temp_w * scale_ratio_pos
                 new_w[curr_idx+1]   = temp_w * scale_ratio_neg

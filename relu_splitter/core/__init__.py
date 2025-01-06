@@ -65,7 +65,7 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         random.seed(random_seed)
         torch.manual_seed(random_seed)
 
-    def split(self, idx):
+    def split(self, idx, conf):
         splittable_nodes = self.get_splittable_nodes()
         assert idx < len(splittable_nodes), f"Split location <{idx}> is out of bound"
         n1, n2 = splittable_nodes[idx][0], splittable_nodes[idx][1]
@@ -73,7 +73,13 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         if n1.op_type == "Gemm":
             return self.split_fc((n1, n2))
         elif n1.op_type == "Conv":
-            return self.split_conv((n1, n2), [i for i in range(8)])
+            return self.split_conv(
+                (n1, n2), 
+                n_splits=conf["n_splits"], 
+                split_mask=conf["split_mask"], 
+                conv_strategy=conf["conv_strategy"], 
+                scale_factors=conf["scale_factor"]
+                )
 
 
 
@@ -127,12 +133,12 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
     
     
     @classmethod
-    def info(cls, onnx_path, spec_path):
+    def info(cls, onnx_path, spec_path, input_shape):
         print("Analyzing model...\n")
         print(f"Model: {onnx_path}\n")
         print(f"Spec: {spec_path}\n")
         print("=====================================")
-        relu_splitter = cls(onnx_path, spec_path, logger=default_logger, conf=default_config)
+        relu_splitter = cls(onnx_path, spec_path, logger=default_logger, conf=default_config, input_shape=input_shape)
         splittable_nodes = relu_splitter.get_splittable_nodes()
         print(f"Found {len(splittable_nodes)} splittable nodes")
         print("=====================================")

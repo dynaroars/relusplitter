@@ -67,6 +67,8 @@ def get_parser():
     info_parser = subparsers.add_parser('info', help='Info command help')
     info_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
     info_parser.add_argument('--spec', type=str, required=False, help='Path to the VNNLIB file')
+    info_parser.add_argument('--input_shape', type=int, required=False, nargs='+', default=None, help='Optional input shape of the model (e.g., 1 3 224 224)')
+
 
     # Subparser for the baseline command
     baseline_parser = subparsers.add_parser('baseline', help='baseline command help')
@@ -97,6 +99,7 @@ if __name__ == '__main__':
             'conv_strategy': args.conv_strategy,
             'min_splits': args.min_splits,
             'max_splits': args.max_splits,
+            'n_splits': args.n_splits,
             'split_idx': args.split_idx,
             'scale_factor': args.scale_factor,
             'random_seed': args.seed,
@@ -114,7 +117,7 @@ if __name__ == '__main__':
                                     conf = conf)
         logger.info(f'Start splitting...')
         logger.info(f'Conf: {conf}')
-        new_model = relusplitter.split(args.split_idx)
+        new_model = relusplitter.split(args.split_idx, conf)
         new_model.save(output_path)
         logger.info(f'Model saved to {output_path}')
 
@@ -150,7 +153,7 @@ if __name__ == '__main__':
 
     elif args.command == 'info':
         if args.spec is not None:
-            ReluSplitter.info(Path(args.net), Path(args.spec))
+            ReluSplitter.info(Path(args.net), Path(args.spec), args.input_shape)
         else:
             ReluSplitter.info_net_only(Path(args.net))
     elif args.command == 'baseline':

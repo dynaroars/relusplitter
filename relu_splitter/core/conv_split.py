@@ -19,7 +19,6 @@ class RSplitter_conv():
             assert torch.all((temp["unstable"] | temp["stable"]) == temp["all"]), "The union of unstable and stable does not cover all elements"
             masks.append(temp)
         return masks
-        
 
     def conv_compute_split_layer_bias(self, kernel_bounds, mask, strategy):
         # kernel_bounds: tuple of (lb, ub) of the output of a single kernel
@@ -31,6 +30,7 @@ class RSplitter_conv():
         # b. find the value that can unstabalize the most patches
         # c. return the value
         kernel_lb, kernel_ub = kernel_bounds
+        # appli mask
         self.logger.debug(f"Kernel bound shapes: {kernel_lb.shape}, {kernel_ub.shape}")
         kernel_lb, kernel_ub = kernel_lb.flatten(), kernel_ub.flatten()
 
@@ -55,15 +55,25 @@ class RSplitter_conv():
             curr_start = val
 
         bias = random.uniform(start, end)  
-        self.logger.info(f"Max active intervals: {max_active_intervals}/{len(lb)}/{len(kernel_lb)}")
-        self.logger.info(f"Max active interval range: [{start}, {end}]")
-        self.logger.info(f"Selected bias: {bias}")
+        self.logger.debug(f"Max active patches / # patches considered / # patches")
+        self.logger.debug(f"{max_active_intervals} / {len(lb)} / {len(kernel_lb)}")
+        self.logger.debug(f"Max active patches range: [{start}, {end}]")
+        self.logger.debug(f"Selected bias: {bias}")
         # return a random value in the range using random
         return bias
 
-    def split_conv(self, nodes_to_split, kernel_idxs, scale_factors=(1.0, -1.0), manual_check_io=False):
+    def split_conv(self, nodes_to_split, n_splits=None, split_mask="stable", conv_strategy="max_unstable", scale_factors=(1.0, -1.0)):
         conv_node, relu_node = nodes_to_split
         assert conv_node.op_type == "Conv" and relu_node.op_type == "Relu"
+
+        self.logger.debug("=====================================")     
+        self.logger.debug(f"Splitting model: {self.onnx_path} with spec: {self.spec_path}")
+        self.logger.debug(f"Splitting at Conv node: <{conv_node.name}> && ReLU node: <{relu_node.name}>")
+        self.logger.debug(f"Random seed: {self._conf['random_seed']}")
+        self.logger.debug(f"Split strategy: {conv_strategy}")
+        self.logger.debug(f"Split mask: {split_mask}")
+        self.logger.debug(f"Scale factors: {scale_factors}")
+
 
         ori_model = self.warpped_model
         ori_graph_name = ori_model._model.graph.name
@@ -86,10 +96,18 @@ class RSplitter_conv():
 
         # prepare the bounds
         layer_lb,layer_ub = self.warpped_model.get_bound_of(self.bounded_input, conv_node.output[0], method="ibp")
+        masks = self.conv_get_split_masks((layer_lb, layer_ub))
+        split_idxs = []
+        if n_splits >= ori_oC or n_splits == None:
+            split_idxs = list(range(ori_oC))
+            self.logger.info(f"Number of splits is greater than the number of kernels, splitting all kernels")
+        else:
+            split_idxs = random.sample(range(ori_oC), n_splits)
+            self.logger.info(f"Randomly selected kernels: {split_idxs}")
         self.logger.debug(f"Conv layer bound computed, shapes: {layer_lb.shape}, {layer_ub.shape}")
 
         # make weights and bias for split and merge layers
-        num_splits = len(kernel_idxs)
+        num_splits = len(split_idxs)
         new_oC = ori_oC + num_splits
 
         new_w = torch.zeros( (new_oC, ori_iC, ori_kH, ori_kW))
@@ -110,9 +128,10 @@ class RSplitter_conv():
             #    we can choose the one that can unstablize most patches.
             #    If the selected patch x kernel is stable on the split range, we can split at any point in the range.
             #    and any temp_b in the range can make the splitted kernel x patch unstable.
-            if i in kernel_idxs:
+            if i in split_idxs:
                 temp_w = ori_w[i]
-                temp_b = self.conv_compute_split_layer_bias( (layer_lb[0,i], layer_ub[0,i]), None, None) # TODO
+                temp_b = self.conv_compute_split_layer_bias( (layer_lb[0,i], layer_ub[0,i]), masks[i][split_mask], conv_strategy) # TODO
+                self.logger.info(f"Splitting kernel {i} with bias: {temp_b}")
                 # split the kernel
                 new_w[curr_idx]     = temp_w * scale_ratio_pos
                 new_w[curr_idx+1]   = temp_w * scale_ratio_neg

@@ -78,7 +78,8 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
                 n_splits=conf["n_splits"], 
                 split_mask=conf["split_mask"], 
                 conv_strategy=conf["conv_strategy"], 
-                scale_factors=conf["scale_factor"]
+                scale_factors=conf["scale_factor"],
+                create_baseline=conf["create_baseline"]
                 )
 
 

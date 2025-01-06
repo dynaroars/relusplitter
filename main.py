@@ -39,6 +39,7 @@ def get_parser():
     split_parser.add_argument('--min_splits', type=int, default=1, help='Minimum number of splits')
     split_parser.add_argument('--max_splits', type=int, default=sys.maxsize, help='Maximum number of splits')
     split_parser.add_argument('--scale_factor', type=float, nargs=2, default=[1.0,-1.0], help='Scale factor for the')
+    split_parser.add_argument('--create_baseline', action='store_true', help='Create baseline model')
     # conv parameters
     split_parser.add_argument('--conv_strategy', type=str, default='random', help='Splitting strategy',
                               choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
@@ -105,7 +106,8 @@ if __name__ == '__main__':
             'random_seed': args.seed,
             'atol': args.atol,
             'rtol': args.rtol,
-            'device': args.device
+            'device': args.device,
+            'create_baseline': args.create_baseline,
         }
         if args.n_splits is not None:
             conf['min_splits'] = args.n_splits

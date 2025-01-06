@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 import onnx
 import torch
+import numpy as np
 
 from ..utils.read_vnnlib import read_vnnlib
 from ..utils.onnx_utils import check_model_closeness, check_model_closeness_gpu

@@ -100,10 +100,10 @@ class RSplitter_fc():
         grad, offset = self.warpped_model.get_gemm_wb(gemm_node)    # w,b of the layer to be splitted
         # create new layers
         num_out, num_in = grad.shape
-        split_weights = torch.zeros((num_out + n_splits, num_in))
-        split_bias = torch.zeros(num_out + n_splits)
-        merge_weights = torch.zeros((num_out, num_out + n_splits))
-        merge_bias = torch.zeros(num_out)
+        split_weights = np.zeros((num_out + n_splits, num_in))
+        split_bias = np.zeros(num_out + n_splits)
+        merge_weights = np.zeros((num_out, num_out + n_splits))
+        merge_bias = np.zeros(num_out)
         
         idx = 0     # index of neuron in the new split layer
         for i in tqdm(range(len(split_mask)), desc="Constructing new layers"):
@@ -230,10 +230,10 @@ class RSplitter_fc():
 
         # create new layers
         num_out, num_in = grad.shape
-        split_weights = torch.zeros((num_out + n_splits, num_in))
-        split_bias = torch.zeros(num_out + n_splits)
-        merge_weights = torch.zeros((num_out, num_out + n_splits))
-        merge_bias = torch.zeros(num_out)
+        split_weights = np.zeros((num_out + n_splits, num_in))
+        split_bias = np.zeros(num_out + n_splits)
+        merge_weights = np.zeros((num_out, num_out + n_splits))
+        merge_bias = np.zeros(num_out)
         
         idx = 0     # index of neuron in the new split layer
         for i in range(len(split_mask)):

@@ -29,14 +29,14 @@ class RSplitter_conv():
         # a. Compute the output bound of the Conv layer (pre-relu)
         # b. find the value that can unstabalize the most patches
         # c. return the value
-        kernel_lb, kernel_ub = kernel_bounds
-        self.logger.debug(f"Kernel bound shapes: {kernel_lb.shape}, {kernel_ub.shape}")
-        self.logger.debug(f"Mask shape: {mask.shape}")
-
         if not torch.any(mask):
             self.logger.warn("no patch to be considered for bias computation, using 0 as default bias...")
             return 0.0
-
+        
+        kernel_lb, kernel_ub = kernel_bounds
+        self.logger.debug(f"Kernel bound shapes: {kernel_lb.shape}, {kernel_ub.shape}")
+        self.logger.debug(f"Mask shape: {mask.shape}")
+        # only keep the unmasked values
         kernel_lb, kernel_ub, mask = kernel_lb.flatten(), kernel_ub.flatten(), mask.flatten()
         lb, ub = kernel_lb[mask], kernel_ub[mask]
         # find the val to sat most intervals using sliding line sweep
@@ -57,12 +57,12 @@ class RSplitter_conv():
                 end = val
             curr_start = val
 
+        # return a random value from the range
         bias = random.uniform(start, end)  
         self.logger.debug(f"Max active patches / # patches considered / # patches")
         self.logger.debug(f"{max_active_intervals} / {len(lb)} / {len(kernel_lb)}")
         self.logger.debug(f"Max active patches range: [{start}, {end}]")
         self.logger.debug(f"Selected bias: {bias}")
-        # return a random value in the range using random
         return bias
 
     def split_conv(self, nodes_to_split, n_splits=None, split_mask="stable", conv_strategy="max_unstable", scale_factors=(1.0, -1.0), create_baseline=False):
@@ -133,10 +133,10 @@ class RSplitter_conv():
         num_splits = len(split_idxs)
         new_oC = ori_oC + num_splits
 
-        new_w = torch.zeros( (new_oC, ori_iC, ori_kH, ori_kW))
-        new_b = torch.zeros( (new_oC,) )
-        merge_w = torch.zeros( (ori_oC, new_oC, 1, 1) )
-        merge_b = torch.zeros( (ori_oC,) )
+        new_w = np.zeros( (new_oC, ori_iC, ori_kH, ori_kW))
+        new_b = np.zeros( (new_oC,) )
+        merge_w = np.zeros( (ori_oC, new_oC, 1, 1) )
+        merge_b = np.zeros( (ori_oC,) )
 
         curr_idx = 0
         scale_ratio_pos, scale_ratio_neg = scale_factors
@@ -260,10 +260,10 @@ class RSplitter_conv():
             num_splits = len(split_idxs)
             new_oC = ori_oC + num_splits
 
-            new_w = torch.zeros( (new_oC, ori_iC, ori_kH, ori_kW))
-            new_b = torch.zeros( (new_oC,) )
-            merge_w = torch.zeros( (ori_oC, new_oC, 1, 1) )
-            merge_b = torch.zeros( (ori_oC,) )
+            new_w = np.zeros( (new_oC, ori_iC, ori_kH, ori_kW))
+            new_b = np.zeros( (new_oC,) )
+            merge_w = np.zeros( (ori_oC, new_oC, 1, 1) )
+            merge_b = np.zeros( (ori_oC,) )
 
             curr_idx = 0
             for i in tqdm(range(ori_oC), desc="Constructing new Conv layer..."):

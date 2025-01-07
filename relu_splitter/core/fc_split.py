@@ -1,30 +1,28 @@
 from .common import *
 
 class RSplitter_fc():
-
-    def get_split_loc_fn_fc(self, nodes, **kwargs):
-        # come back fix this later, Theres no need to pick from the input interval, just pick from the output interval
-        gemm_node, relu_node = nodes
-        fc_strategy = self._conf["fc_strategy"]
-        lb, ub = self.warpped_model.get_bound_of(self.bounded_input, gemm_node.input[0])          # the input bound of the Gemm node, from which the split location is sampled
-        lb, ub = lb.squeeze(), ub.squeeze()
-        if fc_strategy == "single":
-            split_loc = (torch.rand_like(lb) * (ub - lb) + lb)
-            return lambda **kwargs: split_loc
-        elif fc_strategy == "random":
-            return lambda **kwargs: (torch.rand_like(lb) * (ub - lb) + lb)
-        elif fc_strategy == "reluS+":
-            def split_loc_fn(**kwargs):
-                w, b = kwargs["w"], kwargs["b"]
-                return find_feasible_point(lb, ub, w, b)
-            return split_loc_fn
-        elif fc_strategy == "reluS-":
-            def split_loc_fn(**kwargs):
-                w, b = kwargs["w"], kwargs["b"]
-                return find_feasible_point(lb, ub, -w, -b)
-            return split_loc_fn
-        else:
-            raise INVALID_PARAMETER(f"Unknown split strategy {fc_strategy}")
+    # def get_split_loc_fn_fc(self, nodes, **kwargs):
+    #     gemm_node, relu_node = nodes
+    #     fc_strategy = self._conf["fc_strategy"]
+    #     lb, ub = self.warpped_model.get_bound_of(self.bounded_input, gemm_node.input[0])          # the input bound of the Gemm node, from which the split location is sampled
+    #     lb, ub = lb.squeeze(), ub.squeeze()
+    #     if fc_strategy == "single":
+    #         split_loc = (torch.rand_like(lb) * (ub - lb) + lb)
+    #         return lambda **kwargs: split_loc
+    #     elif fc_strategy == "random":
+    #         return lambda **kwargs: (torch.rand_like(lb) * (ub - lb) + lb)
+    #     elif fc_strategy == "reluS+":
+    #         def split_loc_fn(**kwargs):
+    #             w, b = kwargs["w"], kwargs["b"]
+    #             return find_feasible_point(lb, ub, w, b)
+    #         return split_loc_fn
+    #     elif fc_strategy == "reluS-":
+    #         def split_loc_fn(**kwargs):
+    #             w, b = kwargs["w"], kwargs["b"]
+    #             return find_feasible_point(lb, ub, -w, -b)
+    #         return split_loc_fn
+    #     else:
+    #         raise INVALID_PARAMETER(f"Unknown split strategy {fc_strategy}")
 
 
     def fc_get_split_masks(self, bounds):
@@ -101,7 +99,6 @@ class RSplitter_fc():
         
         idx = 0     # index of neuron in the new split layer
         for i in tqdm(range(num_out), desc="Constructing new layers"):
-        # for i in tqdm(range(len(split_mask)), desc="Constructing new layers"):
             if i in split_idxs:
                 w = grad[i]
                 b = split_offsets[split_idxs.index(i)]

@@ -2,7 +2,6 @@ from .common import *
 
 class RSplitter_conv():
     def conv_get_split_masks(self, layer_bounds):
-        # get the split masks for the given layer
         output_lb, output_ub = layer_bounds
         masks = []
         for i in range(output_lb.shape[1]):
@@ -21,14 +20,6 @@ class RSplitter_conv():
         return masks
 
     def conv_compute_split_layer_bias(self, kernel_bounds, mask, strategy):
-        # kernel_bounds: tuple of (lb, ub) of the output of a single kernel
-        # mask: a mask that has the same shape as the kernel_bound, indicating bounds to be used for bias computation
-        # strategy: a string indicating the strategy to be used for bias computation
-
-        # find the appropriate bias for the given kernel in the split layer
-        # a. Compute the output bound of the Conv layer (pre-relu)
-        # b. find the value that can unstabalize the most patches
-        # c. return the value
         if not torch.any(mask):
             self.logger.warn("no patch to be considered for bias computation, using 0 as default bias...")
             return 0.0

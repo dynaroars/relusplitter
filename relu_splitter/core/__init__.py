@@ -74,7 +74,14 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         n1, n2 = splittable_nodes[idx][0], splittable_nodes[idx][1]
         assert n2.op_type == "Relu", f"Node at split location is not a ReLU node"
         if n1.op_type == "Gemm":
-            return self.split_fc((n1, n2))
+            return self.split_fc(
+                (n1, n2),
+                n_splits=conf["n_splits"],
+                split_mask=conf["split_mask"],
+                fc_strategy=conf["fc_strategy"],
+                scale_factors=conf["scale_factor"],
+                create_baseline=conf["create_baseline"]
+                )
         elif n1.op_type == "Conv":
             return self.split_conv(
                 (n1, n2), 

@@ -43,22 +43,20 @@ class RSplitter_fc():
         return masks
 
 
-    def split_fc(self, nodes_to_split, scale_factors=(1.0, -1.0)):
+    def split_fc(self, nodes_to_split, n_splits=None, split_mask="stable", fc_strategy="random", scale_factors=(1.0, -1.0), create_baseline=False):
         gemm_node, relu_node = nodes_to_split
         assert all(attri.i == 0 for attri in gemm_node.attribute if attri.name == "TransA"), "TransA == 1 is not supported yet"
 
         self.logger.debug("=====================================")
         self.logger.debug(f"Splitting model: {self.onnx_path} with spec: {self.spec_path}")
         self.logger.debug(f"Splitting at Gemm node: <{gemm_node.name}> && ReLU node: <{relu_node.name}>")
-        self.logger.debug(f"Random seed: {self._conf['random_seed']}")
-        self.logger.debug(f"Split strategy: {self._conf['fc_strategy']}")
-        self.logger.debug(f"Split mask: {self._conf['split_mask']}")
+        self.logger.debug(f"Split strategy: {fc_strategy}")
+        self.logger.debug(f"Split mask: {split_mask}")
         self.logger.debug(f"min_splits: {self._conf['min_splits']}, max_splits: {self._conf['max_splits']}")
 
         bounds = self.warpped_model.get_bound_of(self.bounded_input, gemm_node.output[0], method="backward")
         split_masks = self.fc_get_split_masks(bounds)
-        split_mask = split_masks[self._conf["split_mask"]]
-        mask_size  = torch.sum(split_mask).item()
+        mask_size  = torch.sum(split_masks[split_mask]).item()
         min_splits, max_splits = self._conf["min_splits"], self._conf["max_splits"]
         
         self.logger.info(f"============= Split Mask Sumamry =============")
@@ -72,18 +70,33 @@ class RSplitter_fc():
             raise NOT_ENOUGH_NEURON("CANNOT-SPLITE: Not enough ReLUs to split")
         elif mask_size > max_splits:
             self.logger.info(f"Selecting {max_splits}/{mask_size} ReLUs to split")
-            # split_mask = adjust_mask_random_k(split_mask, max_splits)
-            split_mask = adjust_mask_first_k(split_mask, max_splits)
+            mask = adjust_mask_first_k(split_masks[split_mask], max_splits)
             
-        n_splits = torch.sum(split_mask).item()  # actual number of splits
-        split_idxs = torch.nonzero(split_mask).squeeze().tolist()   # idx of non-zero elements in the split mask
+        n_splits = torch.sum(mask).item()  # actual number of splits
+        split_idxs = torch.nonzero(mask).squeeze().tolist()   # idx of non-zero elements in the split mask
 
         # TODO: put the split loc implementation here
         split_offsets = [random.uniform(bounds[0][0,i], bounds[1][0,i]) for i in split_idxs]
 
         assert len(split_offsets) == len(split_idxs) == n_splits
-        return self._split_fc(nodes_to_split, split_idxs=split_idxs, split_offsets=split_offsets, scale_factors=scale_factors)
 
+        if create_baseline:
+            split_model = self._split_fc(
+                nodes_to_split, 
+                split_idxs=split_idxs, 
+                split_offsets=split_offsets, 
+                scale_factors=scale_factors
+                )
+            baseline_model = self._split_fc_baseline(nodes_to_split, split_idxs)
+            return (split_model, baseline_model)
+        else:
+            return self._split_fc(
+                nodes_to_split, 
+                split_idxs=split_idxs, 
+                split_offsets=split_offsets, 
+                scale_factors=scale_factors
+                )
+        return 
 
 
     def _split_fc(self, nodes_to_split, split_idxs=[], split_offsets=[], scale_factors=(1.0, -1.0)):
@@ -177,7 +190,6 @@ class RSplitter_fc():
                                                                 additional_nodes=new_nodes,
                                                                 additional_initializers=new_initializers,
                                                                 graph_name=f"{self.onnx_path.stem}_split",
-                                                                # graph_name=f"{self.onnx_path.stem}_split_{split_idx}",
                                                                 producer_name="ReluSplitter")
         self.logger.info("=========== Model created ===========")
         self.logger.debug(f"Checking model closeness with atol: {self._conf['atol']} and rtol: {self._conf['rtol']}")
@@ -202,21 +214,14 @@ class RSplitter_fc():
         self.logger.info("====== DONE ======")
         return new_model
 
-    @classmethod
-    def get_baseline_split_fc(cls, onnx_path, n_splits, split_idx=0, atol=1e-4, rtol=1e-4):
+
+    def _split_fc_baseline(self, nodes_to_split, split_idxs):
         device="cuda"if torch.cuda.is_available() else "cpu"
 
-        model = WarppedOnnxModel(onnx.load(onnx_path))
-        splittable_nodes = cls.get_splittable_nodes(None, model)
-        assert split_idx < len(splittable_nodes), f"Split location <{split_idx}> is out of bound"
-        gemm_node, relu_node = splittable_nodes[split_idx][0], splittable_nodes[split_idx][1]
-        grad, offset = model.get_gemm_wb(gemm_node)
-        # randomly select n_splits neurons to split
-        split_mask = torch.ones(grad.shape[0], dtype=torch.bool)
-        split_mask = adjust_mask_random_k(split_mask, n_splits)
+        gemm_node, relu_node = nodes_to_split
+        n_splits = len(split_idxs)
 
-        grad, offset = model.get_gemm_wb(gemm_node)    # w,b of the layer to be splitted
-
+        grad, offset = self.warpped_model.get_gemm_wb(gemm_node)    # w,b of the layer to be splitted
         # create new layers
         num_out, num_in = grad.shape
         split_weights = np.zeros((num_out + n_splits, num_in))
@@ -225,8 +230,8 @@ class RSplitter_fc():
         merge_bias = np.zeros(num_out)
         
         idx = 0     # index of neuron in the new split layer
-        for i in range(len(split_mask)):
-            if split_mask[i]:
+        for i in range(num_out):
+            if i in split_idxs:
                 w = grad[i]/2
                 b = offset[i]/2
                 
@@ -248,18 +253,18 @@ class RSplitter_fc():
         
         orginal_input_name = gemm_node.input[0]
         orginal_output_name = relu_node.output[0]
-        split_pre_tensor_name = model.gen_tensor_name(prefix=f"{TOOL_NAME}_sPre")
-        split_post_tensor_name = model.gen_tensor_name(prefix=f"{TOOL_NAME}_sPost")
-        merge_pre_tensor_name = model.gen_tensor_name(prefix=f"{TOOL_NAME}_mPre")
+        split_pre_tensor_name = self.warpped_model.gen_tensor_name(prefix=f"{TOOL_NAME}_sPre")
+        split_post_tensor_name = self.warpped_model.gen_tensor_name(prefix=f"{TOOL_NAME}_sPost")
+        merge_pre_tensor_name = self.warpped_model.gen_tensor_name(prefix=f"{TOOL_NAME}_mPre")
         merge_pose_tensor_name = orginal_output_name
-        split_w_name = model.gen_tensor_name(prefix=f"{TOOL_NAME}_sW")
-        split_b_name = model.gen_tensor_name(prefix=f"{TOOL_NAME}_sB")
-        merge_w_name = model.gen_tensor_name(prefix=f"{TOOL_NAME}_mW")
-        merge_b_name = model.gen_tensor_name(prefix=f"{TOOL_NAME}_mB")
-        split_node_name      = model.gen_node_name(prefix=f"{TOOL_NAME}_s")
-        split_relu_node_name = model.gen_node_name(prefix=f"{TOOL_NAME}_sR")
-        merge_node_name      = model.gen_node_name(prefix=f"{TOOL_NAME}_m")
-        merge_relu_node_name = model.gen_node_name(prefix=f"{TOOL_NAME}_mR")
+        split_w_name = self.warpped_model.gen_tensor_name(prefix=f"{TOOL_NAME}_sW")
+        split_b_name = self.warpped_model.gen_tensor_name(prefix=f"{TOOL_NAME}_sB")
+        merge_w_name = self.warpped_model.gen_tensor_name(prefix=f"{TOOL_NAME}_mW")
+        merge_b_name = self.warpped_model.gen_tensor_name(prefix=f"{TOOL_NAME}_mB")
+        split_node_name      = self.warpped_model.gen_node_name(prefix=f"{TOOL_NAME}_s")
+        split_relu_node_name = self.warpped_model.gen_node_name(prefix=f"{TOOL_NAME}_sR")
+        merge_node_name      = self.warpped_model.gen_node_name(prefix=f"{TOOL_NAME}_m")
+        merge_relu_node_name = self.warpped_model.gen_node_name(prefix=f"{TOOL_NAME}_mR")
 
         # create the new split layer
         split_layer = onnx.helper.make_node("Gemm",
@@ -296,31 +301,33 @@ class RSplitter_fc():
             onnx.helper.make_tensor(merge_b_name, onnx.TensorProto.FLOAT, merge_bias.shape, merge_bias.flatten().tolist())
         ]
 
-        new_model = model.generate_updated_model(  nodes_to_replace=[gemm_node, relu_node],
+        new_model = self.warpped_model.generate_updated_model(  nodes_to_replace=[gemm_node, relu_node],
                                                                 additional_nodes=new_nodes,
                                                                 additional_initializers=new_initializers,
-                                                                graph_name=f"{onnx_path.stem}_split_{split_idx}",
+                                                                graph_name=f"{self.onnx_path.stem}_split",
                                                                 producer_name="ReluSplitter")
-        # self.logger.info("=========== Model created ===========")
-        # self.logger.debug(f"Checking model closeness with atol: {self._conf['atol']} and rtol: {self._conf['rtol']}")
-        input_shape = list(model.input_shapes.values())[0]
+        self.logger.info("=========== Model created ===========")
+        self.logger.debug(f"Checking model closeness with atol: {self._conf['atol']} and rtol: {self._conf['rtol']}")
+        input_shape = list(self.warpped_model.input_shapes.values())[0]
         if device == "cpu":
-            equiv, diff = check_model_closeness(model, 
+            equiv, diff = check_model_closeness(self.warpped_model, 
                                                 new_model, 
                                                 input_shape, 
-                                                atol=atol, 
-                                                rtol=rtol)
+                                                atol=self._conf['atol'], 
+                                                rtol=self._conf['rtol']
+                                                )
         else:
-            equiv, diff = check_model_closeness_gpu(model, 
+            equiv, diff = check_model_closeness_gpu(self.warpped_model, 
                                                 new_model, 
                                                 input_shape, 
-                                                atol=atol, 
-                                                rtol=rtol)
+                                                atol=self._conf['atol'], 
+                                                rtol=self._conf['rtol']
+                                                )
         if not equiv:
-            # self.logger.error(f"Model closeness check failed with diff {diff}")
+            self.logger.error(f"Model closeness check failed with diff {diff}")
             raise MODEL_NOT_EQUIV("SPLITE-ERROR: Model closeness check failed")
         else:
             pass
-            # self.logger.info(f"Model closeness check passed with worst diff {diff}")
-        # self.logger.info("====== DONE ======")
+            self.logger.info(f"Model closeness check passed with worst diff {diff}")
+        self.logger.info("====== DONE ======")
         return new_model

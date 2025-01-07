@@ -100,12 +100,11 @@ class RSplitter_conv():
             split_biases.append(self.conv_compute_split_layer_bias((layer_lb[0,i], layer_ub[0,i]), masks[i][split_mask], conv_strategy))
             self.logger.info(f"Selected split bias for kernel {i}: {split_biases[-1]}")
 
-        if create_baseline:
-            split_model = self._split_conv(nodes_to_split, split_idxs, split_biases, scale_factors)
-            baseline_model = self._split_conv_baseline(nodes_to_split, split_idxs)
-            return (split_model, baseline_model)
-        else:
-            return self._split_conv(nodes_to_split, split_idxs, split_biases, scale_factors)
+        # Create the models
+        split_model = self._split_conv(nodes_to_split, split_idxs, split_biases, scale_factors)
+        baseline_model = self._split_conv_baseline(nodes_to_split, split_idxs) if create_baseline else None
+
+        return (split_model, baseline_model)
 
 
     def _split_conv(self, nodes_to_split, split_idxs=[], split_biases=[], scale_factors=(1.0, -1.0)):

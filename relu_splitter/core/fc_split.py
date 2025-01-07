@@ -77,26 +77,13 @@ class RSplitter_fc():
 
         # TODO: put the split loc implementation here
         split_offsets = [random.uniform(bounds[0][0,i], bounds[1][0,i]) for i in split_idxs]
-
         assert len(split_offsets) == len(split_idxs) == n_splits
 
-        if create_baseline:
-            split_model = self._split_fc(
-                nodes_to_split, 
-                split_idxs=split_idxs, 
-                split_offsets=split_offsets, 
-                scale_factors=scale_factors
-                )
-            baseline_model = self._split_fc_baseline(nodes_to_split, split_idxs)
-            return (split_model, baseline_model)
-        else:
-            return self._split_fc(
-                nodes_to_split, 
-                split_idxs=split_idxs, 
-                split_offsets=split_offsets, 
-                scale_factors=scale_factors
-                )
-        return 
+        # Create the models
+        split_model = self._split_fc(nodes_to_split, split_idxs, split_offsets, scale_factors)
+        baseline_model = self._split_fc_baseline(nodes_to_split, split_idxs) if create_baseline else None
+
+        return (split_model, baseline_model)
 
 
     def _split_fc(self, nodes_to_split, split_idxs=[], split_offsets=[], scale_factors=(1.0, -1.0)):
@@ -191,27 +178,6 @@ class RSplitter_fc():
                                                                 additional_initializers=new_initializers,
                                                                 graph_name=f"{self.onnx_path.stem}_split",
                                                                 producer_name="ReluSplitter")
-        self.logger.info("=========== Model created ===========")
-        self.logger.debug(f"Checking model closeness with atol: {self._conf['atol']} and rtol: {self._conf['rtol']}")
-        input_shape = list(self.warpped_model.input_shapes.values())[0]
-        if self._conf["device"] == "cpu":
-            equiv, diff = check_model_closeness(self.warpped_model, 
-                                                new_model, 
-                                                input_shape, 
-                                                atol=self._conf["atol"], 
-                                                rtol=self._conf["rtol"])
-        else:
-            equiv, diff = check_model_closeness_gpu(self.warpped_model, 
-                                                new_model, 
-                                                input_shape, 
-                                                atol=self._conf["atol"], 
-                                                rtol=self._conf["rtol"])
-        if not equiv:
-            self.logger.error(f"Model closeness check failed with diff {diff}")
-            raise MODEL_NOT_EQUIV("SPLITE-ERROR: Model closeness check failed")
-        else:
-            self.logger.info(f"Model closeness check passed with worst diff {diff}")
-        self.logger.info("====== DONE ======")
         return new_model
 
 
@@ -306,28 +272,4 @@ class RSplitter_fc():
                                                                 additional_initializers=new_initializers,
                                                                 graph_name=f"{self.onnx_path.stem}_split",
                                                                 producer_name="ReluSplitter")
-        self.logger.info("=========== Model created ===========")
-        self.logger.debug(f"Checking model closeness with atol: {self._conf['atol']} and rtol: {self._conf['rtol']}")
-        input_shape = list(self.warpped_model.input_shapes.values())[0]
-        if device == "cpu":
-            equiv, diff = check_model_closeness(self.warpped_model, 
-                                                new_model, 
-                                                input_shape, 
-                                                atol=self._conf['atol'], 
-                                                rtol=self._conf['rtol']
-                                                )
-        else:
-            equiv, diff = check_model_closeness_gpu(self.warpped_model, 
-                                                new_model, 
-                                                input_shape, 
-                                                atol=self._conf['atol'], 
-                                                rtol=self._conf['rtol']
-                                                )
-        if not equiv:
-            self.logger.error(f"Model closeness check failed with diff {diff}")
-            raise MODEL_NOT_EQUIV("SPLITE-ERROR: Model closeness check failed")
-        else:
-            pass
-            self.logger.info(f"Model closeness check passed with worst diff {diff}")
-        self.logger.info("====== DONE ======")
         return new_model

@@ -11,7 +11,7 @@ import torch
 import numpy as np
 
 from ..utils.read_vnnlib import read_vnnlib
-from ..utils.onnx_utils import check_model_closeness, check_model_closeness_gpu
+from ..utils.onnx_utils import check_models_closeness
 from ..utils.errors import NOT_ENOUGH_NEURON, INVALID_PARAMETER, MODEL_NOT_EQUIV
 from ..utils.misc import adjust_mask_random_k, adjust_mask_first_k, find_feasible_point
 from ..model import WarppedOnnxModel

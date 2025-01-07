@@ -209,6 +209,20 @@ class WarppedOnnxModel():
             self._bounded_model = BoundedModule(ConvertModel(self._model, experimental=True, quirks=custom_quirks), x)
         return self._bounded_model(x)
 
+    def to(self, device):
+        device = str(device).lower()
+        if device == 'cuda':
+            if not hasattr(self, "_bounded_model_gpu"):
+                self._bounded_model_gpu = ConvertModel(self._model, experimental=True, quirks=custom_quirks).cuda()
+            return self._bounded_model_gpu
+        elif device == 'cpu':
+            if not hasattr(self, "_bounded_model"):
+                self._bounded_model = ConvertModel(self._model, experimental=True, quirks=custom_quirks)
+            return self._bounded_model
+        else:
+            raise ValueError(f"Invalid device {device}")
+
+
     def forward_onnx(self, x: torch.Tensor) -> torch.Tensor:
         import onnxruntime as ort
         sess = InferenceSession(self._model.SerializeToString())
@@ -331,4 +345,5 @@ class WarppedOnnxModel():
     @property
     def ort_sess(self):
         return InferenceSession(self._model.SerializeToString())
+        
     

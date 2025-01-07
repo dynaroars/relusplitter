@@ -36,10 +36,9 @@ def get_parser():
     split_parser.add_argument('--mask', type=str, default='stable+', help='Mask for splitting',
                               choices=['stable+', 'stable-', 'stable', 'unstable', 'all', 'unstable_n_stable+'])
     split_parser.add_argument('--n_splits', type=int, default=None, help='Number of splits (strict), this will override min_splits and max_splits')
-    split_parser.add_argument('--min_splits', type=int, default=1, help='Minimum number of splits')
-    split_parser.add_argument('--max_splits', type=int, default=sys.maxsize, help='Maximum number of splits')
     split_parser.add_argument('--scale_factor', type=float, nargs=2, default=[1.0,-1.0], help='Scale factor for the')
     split_parser.add_argument('--create_baseline', action='store_true', help='Create baseline model')
+    split_parser.add_argument('--closeness_check', action='store_true', help='Enable closeness check')
     # conv parameters
     split_parser.add_argument('--conv_strategy', type=str, default='random', help='Splitting strategy',
                               choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
@@ -98,8 +97,6 @@ if __name__ == '__main__':
             'split_mask': args.mask,
             'fc_strategy': args.fc_strategy,
             'conv_strategy': args.conv_strategy,
-            'min_splits': args.min_splits,
-            'max_splits': args.max_splits,
             'n_splits': args.n_splits,
             'split_idx': args.split_idx,
             'scale_factor': args.scale_factor,
@@ -108,20 +105,24 @@ if __name__ == '__main__':
             'rtol': args.rtol,
             'device': args.device,
             'create_baseline': args.create_baseline,
+            'closeness_check': args.closeness_check
         }
-        if args.n_splits is not None:
-            conf['min_splits'] = args.n_splits
-            conf['max_splits'] = args.n_splits
+
         relusplitter = ReluSplitter(onnx_path, 
                                     spec_path, 
                                     input_shape = input_shape,
                                     logger = logger, 
                                     conf = conf)
-        logger.info(f'Start splitting...')
+
+        logger.info(f'Start split...')
         logger.info(f'Conf: {conf}')
-        new_model = relusplitter.split(args.split_idx, conf)
+        new_model, baseline = relusplitter.split(args.split_idx, conf)
         new_model.save(output_path)
-        logger.info(f'Model saved to {output_path}')
+        logger.info(f'Split model saved to {output_path}')
+        if args.create_baseline:
+            baseline_path = output_path.with_name(output_path.stem + '_baseline.onnx')
+            baseline.save(baseline_path)
+            logger.info(f'Baseline model saved to {baseline_path}')
 
         if args.verify:
             verifier = init_verifier(args.verify)
@@ -130,7 +131,7 @@ if __name__ == '__main__':
             # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp23/tllVerifyBench.yaml"
             # abc_conf_path = "/home/lli/tools/relusplitter/experiment/config/reach_probability.yaml"
             abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/oval22.yaml"
-            conf1 = {
+            conf = {
                 'onnx_path': onnx_path,
                 'vnnlib_path': spec_path,
                 'log_path': Path('veri_1.log'),
@@ -138,19 +139,19 @@ if __name__ == '__main__':
                 'num_workers': 10,
                 'config_path': abc_conf_path,
             }
-            conf2 = {
-                'onnx_path': output_path,
-                'vnnlib_path': spec_path,
-                'log_path': Path('veri_2.log'),
-                'verbosity': 1,
-                'num_workers': 10,
-                'config_path': abc_conf_path,
-            }
             logger.info(f'Start verification using {args.verify}')
+
             print("Original instance:")
-            print(colored(verifier.execute(conf1), 'green'))
+            print(colored(verifier.execute(conf), 'green'))
+
+            conf['onnx_path'], conf['log_path'] = output_path, Path('veri_2.log')
             print("Splitted instance:")
-            print(colored(verifier.execute(conf2), 'yellow'))
+            print(colored(verifier.execute(conf), 'yellow'))
+            
+            if args.create_baseline:
+                conf['onnx_path'], conf['log_path'] = baseline_path, Path('veri_3.log')
+                print("Baseline instance:")
+                print(colored(verifier.execute(conf), 'blue'))
         logger.info(f'=== Done ===')
 
     elif args.command == 'info':

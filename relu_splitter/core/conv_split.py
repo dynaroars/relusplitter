@@ -87,7 +87,7 @@ class RSplitter_conv():
         masks = self.conv_get_split_masks((layer_lb, layer_ub))
         # decide kernels to split
         split_idxs = []
-        if n_splits >= ori_oC or n_splits == None:
+        if n_splits == None or n_splits >= ori_oC:
             split_idxs = list(range(ori_oC))
             self.logger.info(f"Number of splits is greater than the number of kernels, splitting all kernels")
         else:

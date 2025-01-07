@@ -5,26 +5,26 @@ class RSplitter_fc():
     def get_split_loc_fn_fc(self, nodes, **kwargs):
         # come back fix this later, Theres no need to pick from the input interval, just pick from the output interval
         gemm_node, relu_node = nodes
-        split_strategy = self._conf["split_strategy"]
+        fc_strategy = self._conf["fc_strategy"]
         lb, ub = self.warpped_model.get_bound_of(self.bounded_input, gemm_node.input[0])          # the input bound of the Gemm node, from which the split location is sampled
         lb, ub = lb.squeeze(), ub.squeeze()
-        if split_strategy == "single":
+        if fc_strategy == "single":
             split_loc = (torch.rand_like(lb) * (ub - lb) + lb)
             return lambda **kwargs: split_loc
-        elif split_strategy == "random":
+        elif fc_strategy == "random":
             return lambda **kwargs: (torch.rand_like(lb) * (ub - lb) + lb)
-        elif split_strategy == "reluS+":
+        elif fc_strategy == "reluS+":
             def split_loc_fn(**kwargs):
                 w, b = kwargs["w"], kwargs["b"]
                 return find_feasible_point(lb, ub, w, b)
             return split_loc_fn
-        elif split_strategy == "reluS-":
+        elif fc_strategy == "reluS-":
             def split_loc_fn(**kwargs):
                 w, b = kwargs["w"], kwargs["b"]
                 return find_feasible_point(lb, ub, -w, -b)
             return split_loc_fn
         else:
-            raise INVALID_PARAMETER(f"Unknown split strategy {split_strategy}")
+            raise INVALID_PARAMETER(f"Unknown split strategy {fc_strategy}")
 
     # def fc_get_split_masks(self, nodes, method="backward"):
     #     node1, node2 = nodes
@@ -68,7 +68,7 @@ class RSplitter_fc():
         self.logger.debug(f"Splitting model: {self.onnx_path} with spec: {self.spec_path}")
         self.logger.debug(f"Splitting at Gemm node: <{gemm_node.name}> && ReLU node: <{relu_node.name}>")
         self.logger.debug(f"Random seed: {self._conf['random_seed']}")
-        self.logger.debug(f"Split strategy: {self._conf['split_strategy']}")
+        self.logger.debug(f"Split strategy: {self._conf['fc_strategy']}")
         self.logger.debug(f"Split mask: {self._conf['split_mask']}")
         self.logger.debug(f"min_splits: {self._conf['min_splits']}, max_splits: {self._conf['max_splits']}")
 
@@ -83,20 +83,34 @@ class RSplitter_fc():
                             f"stable-: {torch.sum(split_masks['stable-'])}")
         self.logger.info(f"unstable: {torch.sum(split_masks['unstable'])}\t"
                             f"all: {torch.sum(split_masks['all'])}")
-        
 
         if mask_size < min_splits:
             self.logger.error(f"Not enough ReLUs to split, found {mask_size} ReLUs, but min_splits is {min_splits}")
             raise NOT_ENOUGH_NEURON("CANNOT-SPLITE: Not enough ReLUs to split")
         elif mask_size > max_splits:
-            self.logger.info(f"Randomly selecting {max_splits}/{mask_size} ReLUs to split")
+            self.logger.info(f"Selecting {max_splits}/{mask_size} ReLUs to split")
             # split_mask = adjust_mask_random_k(split_mask, max_splits)
             split_mask = adjust_mask_first_k(split_mask, max_splits)
         n_splits = torch.sum(split_mask).item()  # actual number of splits
-        assert min_splits <= n_splits <= max_splits, f"Number of splits {n_splits} is out of range [{min_splits}, {max_splits}]"
-        self.logger.info(f"Splitting {n_splits} {self._conf['split_mask']} ReLUs")
-        
-        split_loc_fn = self.get_split_loc_fn_fc( (nodes_to_split) )   # kwargs here
+        # get idx of non zero elements in split_mask
+        split_idxs = torch.nonzero(split_mask).squeeze().tolist()
+        print(split_idxs)
+
+        grad, offset = self.warpped_model.get_gemm_wb(gemm_node)    # w,b of the layer to be splitted
+
+        # TODO: put the split loc implementation here
+        print(bounds[0].shape)
+        split_offsets = [random.uniform(bounds[0][0,i], bounds[1][0,i]) for i in split_idxs]
+        scale_factors = (1.0, -1.0)
+
+        return self._split_fc(nodes_to_split, split_idxs=split_idxs, split_offsets=split_offsets, scale_factors=scale_factors)
+
+
+
+    def _split_fc(self, nodes_to_split, split_idxs=[], split_offsets=[], scale_factors=(1.0, -1.0)):
+        gemm_node, relu_node = nodes_to_split
+        n_splits = len(split_idxs)
+
         grad, offset = self.warpped_model.get_gemm_wb(gemm_node)    # w,b of the layer to be splitted
         # create new layers
         num_out, num_in = grad.shape
@@ -106,11 +120,11 @@ class RSplitter_fc():
         merge_bias = np.zeros(num_out)
         
         idx = 0     # index of neuron in the new split layer
-        for i in tqdm(range(len(split_mask)), desc="Constructing new layers"):
-            if split_mask[i]:
-                split_loc = split_loc_fn(w=grad[i], b=offset[i])
+        for i in tqdm(range(num_out), desc="Constructing new layers"):
+        # for i in tqdm(range(len(split_mask)), desc="Constructing new layers"):
+            if i in split_idxs:
                 w = grad[i]
-                b = grad[i] @ split_loc
+                b = split_offsets[split_idxs.index(i)]
                 scale_ratio_pos, scale_ratio_neg = self._conf["scale_factor"]
                 # split_weights[idx]      = w
                 # split_weights[idx+1]    = -w
@@ -131,8 +145,8 @@ class RSplitter_fc():
                 split_bias[idx] = offset[i]
                 merge_weights[i][idx] = 1
                 idx += 1
-        split_weights = split_weights.t()
-        merge_weights = merge_weights.t()
+        split_weights = split_weights.T
+        merge_weights = merge_weights.T
         
         orginal_input_name = gemm_node.input[0]
         orginal_output_name = relu_node.output[0]
@@ -254,8 +268,8 @@ class RSplitter_fc():
                 split_bias[idx] = offset[i]
                 merge_weights[i][idx] = 1
                 idx += 1
-        split_weights = split_weights.t()
-        merge_weights = merge_weights.t()
+        split_weights = split_weights.T
+        merge_weights = merge_weights.T
         
         orginal_input_name = gemm_node.input[0]
         orginal_output_name = relu_node.output[0]

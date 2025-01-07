@@ -143,7 +143,7 @@ class RSplitter_conv():
         for i in tqdm(range(ori_oC), desc="Constructing new Conv layer..."):
             if i in split_idxs:
                 temp_w = ori_w[i]
-                temp_b = split_biases[i]
+                temp_b = split_biases[split_idxs.index(i)]
                 self.logger.info(f"Splitting kernel {i} with bias: {temp_b}")
                 # split the kernel
                 new_w[curr_idx]     = temp_w * scale_ratio_pos

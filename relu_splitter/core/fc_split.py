@@ -52,12 +52,9 @@ class RSplitter_fc():
         self.logger.debug(f"Splitting at Gemm node: <{gemm_node.name}> && ReLU node: <{relu_node.name}>")
         self.logger.debug(f"Split strategy: {fc_strategy}")
         self.logger.debug(f"Split mask: {split_mask}")
-        self.logger.debug(f"min_splits: {self._conf['min_splits']}, max_splits: {self._conf['max_splits']}")
 
         bounds = self.warpped_model.get_bound_of(self.bounded_input, gemm_node.output[0], method="backward")
         split_masks = self.fc_get_split_masks(bounds)
-        mask_size  = torch.sum(split_masks[split_mask]).item()
-        min_splits, max_splits = self._conf["min_splits"], self._conf["max_splits"]
         
         self.logger.info(f"============= Split Mask Sumamry =============")
         self.logger.info(f"stable+: {torch.sum(split_masks['stable+'])}\t"
@@ -65,19 +62,23 @@ class RSplitter_fc():
         self.logger.info(f"unstable: {torch.sum(split_masks['unstable'])}\t"
                             f"all: {torch.sum(split_masks['all'])}")
 
-        if mask_size < min_splits:
-            self.logger.error(f"Not enough ReLUs to split, found {mask_size} ReLUs, but min_splits is {min_splits}")
-            raise NOT_ENOUGH_NEURON("CANNOT-SPLITE: Not enough ReLUs to split")
-        elif mask_size > max_splits:
-            self.logger.info(f"Selecting {max_splits}/{mask_size} ReLUs to split")
-            mask = adjust_mask_first_k(split_masks[split_mask], max_splits)
+        _split_mask = split_masks[split_mask]
+        mask_size  = torch.sum(_split_mask).item()
+
+        if n_splits is not None and n_splits <= mask_size:
+            _split_mask = adjust_mask_first_k(_split_mask, n_splits)
             
-        n_splits = torch.sum(mask).item()  # actual number of splits
-        split_idxs = torch.nonzero(mask).squeeze().tolist()   # idx of non-zero elements in the split mask
+        
+        _n_splits = torch.sum(_split_mask).item()  # actual number of splits
+        split_idxs = torch.nonzero(_split_mask).squeeze().tolist()   # idx of non-zero elements in the split mask
+        if isinstance(split_idxs, int):         # the line above returns a single int if there is only one split
+            split_idxs = [split_idxs]
+
+        self.logger.info(f"Selecting {_n_splits}/{mask_size} {split_mask} ReLUs to split")
 
         # TODO: put the split loc implementation here
         split_offsets = [random.uniform(bounds[0][0,i], bounds[1][0,i]) for i in split_idxs]
-        assert len(split_offsets) == len(split_idxs) == n_splits
+        assert len(split_offsets) == len(split_idxs) == _n_splits
 
         # Create the models
         split_model = self._split_fc(nodes_to_split, split_idxs, split_offsets, scale_factors)

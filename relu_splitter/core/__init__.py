@@ -4,10 +4,9 @@ from .conv_split import RSplitter_conv
 
 class ReluSplitter(RSplitter_fc, RSplitter_conv):
 
-    def __init__(self, network: Path, spec: Path, input_shape, logger=default_logger, conf=default_config) -> None:
+    def __init__(self, network: Path, spec: Path, input_shape=None, logger=default_logger, conf=default_config) -> None:
         self.onnx_path = network
         self.spec_path = spec
-        self.input_shape = input_shape
         self._conf = conf
         self.logger = logger
 
@@ -20,6 +19,9 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         self.init_model()
         self.init_vnnlib()
         self.init_seeds()
+
+        if input_shape is not None:
+            self.input_shape = input_shape
 
         self.logger.debug("ReluSplitter initialized")
 
@@ -56,9 +58,10 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
 
     def init_model(self):
         model = onnx.load(self.onnx_path)
-        # assert len(model.graph.input) == 1, f"Model has more than one input {model.graph.input}"
-        # assert len(model.graph.output) == 1, f"Model has more than one output {model.graph.output}"
         self.warpped_model = WarppedOnnxModel(model)
+        self.input_shape = list(self.warpped_model.input_shapes.values())[0]
+        assert len(model.graph.input) == 1, f"Model has more than one input {model.graph.input}"
+        assert len(model.graph.output) == 1, f"Model has more than one output {model.graph.output}"
 
     def init_seeds(self):
         random_seed = self._conf.get("random_seed")
@@ -83,9 +86,6 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
                 )
 
 
-
-
-
     def get_splittable_nodes(self, model=None):
         # parrtern 1: Gemm -> Relu
         # parrtern 2: Conv2d -> Relu
@@ -108,6 +108,7 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
                     logger.debug(f"Relu found after non-splittable node: {prior_node.op_type}")
                     pass
         return splittable_nodes
+    
     
     @classmethod
     def info_net_only(cls, onnx_path):

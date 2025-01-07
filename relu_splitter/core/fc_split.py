@@ -26,24 +26,6 @@ class RSplitter_fc():
         else:
             raise INVALID_PARAMETER(f"Unknown split strategy {fc_strategy}")
 
-    # def fc_get_split_masks(self, nodes, method="backward"):
-    #     node1, node2 = nodes
-    #     assert node1.op_type == "Gemm" and node2.op_type == "Relu", f"Invalid nodes:{node1.op_type} -> {node2.op_type}"
-    #     input_lb, input_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.input[0], method=method)          # the input bound of the Gemm node, from which the split location is sampled
-    #     output_lb, output_ub = self.warpped_model.get_bound_of(self.bounded_input, node1.output[0], method=method)       # the output bound for determining the stability of the neurons
-    #     assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
-    #     masks = {}
-    #     masks["all"] = torch.ones_like(output_lb, dtype=torch.bool).squeeze()
-    #     masks["stable"] = torch.logical_or(output_lb > 0, output_ub <= 0).squeeze()
-    #     masks["unstable"] = ~masks["stable"]
-    #     masks["stable+"] = (output_lb > 0).squeeze()
-    #     masks["stable-"] = (output_ub <= 0).squeeze()
-    #     masks["unstable_n_stable+"] = torch.logical_or(masks["unstable"], masks["stable+"])
-    #     assert torch.all(masks["stable"] == (masks["stable+"] | masks["stable-"])), "stable is not equal to stable+ AND stable-"
-    #     assert not torch.any(masks["stable+"] & masks["stable-"]), "stable+ and stable- are not mutually exclusive"
-    #     assert not torch.any(masks["unstable"] & masks["stable"]), "unstable and stable are not mutually exclusive"
-    #     assert torch.all((masks["unstable"] | masks["stable"]) == masks["all"]), "The union of unstable and stable does not cover all elements"
-    #     return masks
 
     def fc_get_split_masks(self, bounds):
         output_lb, output_ub = bounds
@@ -60,7 +42,8 @@ class RSplitter_fc():
         assert torch.all((masks["unstable"] | masks["stable"]) == masks["all"]), "The union of unstable and stable does not cover all elements"
         return masks
 
-    def split_fc(self, nodes_to_split):
+
+    def split_fc(self, nodes_to_split, scale_factors=(1.0, -1.0)):
         gemm_node, relu_node = nodes_to_split
         assert all(attri.i == 0 for attri in gemm_node.attribute if attri.name == "TransA"), "TransA == 1 is not supported yet"
 
@@ -91,18 +74,14 @@ class RSplitter_fc():
             self.logger.info(f"Selecting {max_splits}/{mask_size} ReLUs to split")
             # split_mask = adjust_mask_random_k(split_mask, max_splits)
             split_mask = adjust_mask_first_k(split_mask, max_splits)
+            
         n_splits = torch.sum(split_mask).item()  # actual number of splits
-        # get idx of non zero elements in split_mask
-        split_idxs = torch.nonzero(split_mask).squeeze().tolist()
-        print(split_idxs)
-
-        grad, offset = self.warpped_model.get_gemm_wb(gemm_node)    # w,b of the layer to be splitted
+        split_idxs = torch.nonzero(split_mask).squeeze().tolist()   # idx of non-zero elements in the split mask
 
         # TODO: put the split loc implementation here
-        print(bounds[0].shape)
         split_offsets = [random.uniform(bounds[0][0,i], bounds[1][0,i]) for i in split_idxs]
-        scale_factors = (1.0, -1.0)
 
+        assert len(split_offsets) == len(split_idxs) == n_splits
         return self._split_fc(nodes_to_split, split_idxs=split_idxs, split_offsets=split_offsets, scale_factors=scale_factors)
 
 
@@ -125,11 +104,7 @@ class RSplitter_fc():
             if i in split_idxs:
                 w = grad[i]
                 b = split_offsets[split_idxs.index(i)]
-                scale_ratio_pos, scale_ratio_neg = self._conf["scale_factor"]
-                # split_weights[idx]      = w
-                # split_weights[idx+1]    = -w
-                # split_bias[idx]         = -b
-                # split_bias[idx+1]       = b
+                scale_ratio_pos, scale_ratio_neg = scale_factors
 
                 split_weights[idx]      = scale_ratio_pos * w
                 split_weights[idx+1]    = scale_ratio_neg * w

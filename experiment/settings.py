@@ -45,7 +45,13 @@ benchmarks = {
     'reach_prob': reach_prob
 }
 
-
+# benchmarks to use
+benchmarks_to_use = {
+    'acasxu': acasxu,
+    'mnist_fc': mnist_fc,
+    'collins_cnn': collins_cnn,
+    'reach_prob': reach_prob
+}
 
 
 

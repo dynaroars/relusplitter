@@ -38,7 +38,11 @@ def get_parser():
     split_parser.add_argument('--n_splits', type=int, default=None, help='Number of splits (strict), this will override min_splits and max_splits')
     split_parser.add_argument('--scale_factor', type=float, nargs=2, default=[1.0,-1.0], help='Scale factor for the')
     split_parser.add_argument('--create_baseline', action='store_true', help='Create baseline model')
+    
     split_parser.add_argument('--closeness_check', action='store_true', help='Enable closeness check')
+    split_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')
+    split_parser.add_argument('--rtol', type=float, default=1e-5, help='Relative tolerance for closeness check')
+    split_parser.add_argument('--device', type=str, default=default_device, help='Device for the model closeness check',)
     # conv parameters
     split_parser.add_argument('--conv_strategy', type=str, default='random', help='Splitting strategy',
                               choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
@@ -47,18 +51,7 @@ def get_parser():
                               choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
 
     
-
-
-
-    
-    
-
-    
-    
     split_parser.add_argument('--seed', type=int, default=0, help='Seed for random number generation')
-    split_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')
-    split_parser.add_argument('--rtol', type=float, default=1e-5, help='Relative tolerance for closeness check')
-    split_parser.add_argument('--device', type=str, default=default_device, help='Device for the model closeness check',)
 
     split_parser.add_argument('--verify', type=str, default=False, help='run verification with verifier',
                               choices=['neuralsat', 'abcrown', 'marabou', 'nnenum'])
@@ -129,14 +122,17 @@ if __name__ == '__main__':
             verifier.set_logger(logger)
             # abc_conf_path = "/home/lli/tools/relusplitter/experiment/config/mnistfc.yaml"
             # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp23/tllVerifyBench.yaml"
+            # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/cifar2020_2_255.yaml"
             # abc_conf_path = "/home/lli/tools/relusplitter/experiment/config/reach_probability.yaml"
-            abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/oval22.yaml"
+            # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/oval22.yaml"
+            # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/collins-rul-cnn.yaml"
+            abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/cifar_biasfield.yaml"
             conf = {
                 'onnx_path': onnx_path,
                 'vnnlib_path': spec_path,
                 'log_path': Path('veri_1.log'),
                 'verbosity': 1,
-                'num_workers': 10,
+                'num_workers': 64,
                 'config_path': abc_conf_path,
             }
             logger.info(f'Start verification using {args.verify}')

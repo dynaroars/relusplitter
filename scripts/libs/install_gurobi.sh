@@ -7,7 +7,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 # Compute the paths relative to the script's directory
 LIBS_DIR=$(realpath "$SCRIPT_DIR/../../libs")
 mkdir -p $LIBS_DIR
-cd libs
+cd  $LIBS_DIR
 
 
 

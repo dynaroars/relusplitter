@@ -70,8 +70,15 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         random.seed(random_seed)
         torch.manual_seed(random_seed)
 
-    def split(self, idx, conf):
+    def split(self, idx, mode, conf):
         splittable_nodes = self.get_splittable_nodes()
+        if mode == "fc":
+            splittable_nodes = [node for node in splittable_nodes if node[0].op_type == "Gemm"]
+        elif mode == "conv":
+            splittable_nodes = [node for node in splittable_nodes if node[0].op_type == "Conv"]
+        else:
+            assert mode == "all", f"Unknown mode {mode}"
+
         assert idx < len(splittable_nodes), f"Split location <{idx}> is out of bound"
         n1, n2 = splittable_nodes[idx][0], splittable_nodes[idx][1]
         assert n2.op_type == "Relu", f"Node at split location is not a ReLU node"

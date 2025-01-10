@@ -32,6 +32,10 @@ def get_parser():
     split_parser.add_argument('--bounding_method', type=str, default='backward', help='Bounding method to be used with auto-LiRPA, see https://auto-lirpa.readthedocs.io/en/latest/api.html')
     split_parser.add_argument('--create_baseline', action='store_true', help='Create baseline model')
     split_parser.add_argument('--closeness_check', action='store_true', help='Enable closeness check')
+    split_parser.add_argument('--atol', type=float, default=1e-4, help='Absolute tolerance for closeness check')
+    split_parser.add_argument('--rtol', type=float, default=1e-4, help='Relative tolerance for closeness check')
+    split_parser.add_argument('--mode', type=str, default='fc', help='Mode for splitting',
+                              choices=['fc', 'conv', 'all'])
 
 
     
@@ -41,8 +45,6 @@ def get_parser():
     split_parser.add_argument('--n_splits', type=int, default=None, help='Number of splits (strict)')
     split_parser.add_argument('--scale_factor', type=float, nargs=2, default=[1.0,-1.0], help='Scale factor for the split')
     
-    split_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')
-    split_parser.add_argument('--rtol', type=float, default=1e-5, help='Relative tolerance for closeness check')
     # split_parser.add_argument('--device', type=str, default=default_device, help='Device for the model closeness check',)
     # conv parameters
     # split_parser.add_argument('--conv_strategy', type=str, default='random', help='Splitting strategy',
@@ -108,9 +110,7 @@ if __name__ == '__main__':
                                     logger = logger, 
                                     conf = conf)
 
-        logger.info(f'Start split...')
-        logger.info(f'Conf: {conf}')
-        new_model, baseline = relusplitter.split(args.split_idx, conf)
+        new_model, baseline = relusplitter.split(args.split_idx, args.mode , conf)
         new_model.save(output_path)
         logger.info(f'Split model saved to {output_path}')
         if args.create_baseline:

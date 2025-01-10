@@ -12,6 +12,7 @@ class RSplitter_conv():
             temp["unstable"] = ~temp["stable"]
             temp["stable+"] = lb >= 0
             temp["stable-"] = ub <= 0
+            temp["unstable_n_stable+"] = torch.logical_or(temp["unstable"], temp["stable+"])
             assert torch.all(temp["stable"] == (temp["stable+"] | temp["stable-"])), "stable is not equal to stable+ AND stable-"
             assert not torch.any(temp["stable+"] & temp["stable-"]), "stable+ and stable- are not mutually exclusive"
             assert not torch.any(temp["unstable"] & temp["stable"]), "unstable and stable are not mutually exclusive"

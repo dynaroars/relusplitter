@@ -1,8 +1,7 @@
 #!/bin/bash
 export TOOL_NAME=ReluSplitter
-export CONDA_HOME=$HOME/anaconda3
 
-conda activate $TOOL_NAME
+conda activate .envs/$TOOL_NAME
 
 
 export TOOL_ROOT=$(pwd)

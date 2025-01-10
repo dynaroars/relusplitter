@@ -2,6 +2,9 @@ experiment/logs
 experiment/onnx
 data/*
 
+libs/*
+.envs/*
+
 benchmark/
 benchmark
 ref/

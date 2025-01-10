@@ -29,26 +29,27 @@ def get_parser():
     split_parser.add_argument('--spec', type=str, required=True, help='Path to the VNNLIB file')
     split_parser.add_argument('--output', type=str, default='splitted.onnx', help='Output path for the new model')
     split_parser.add_argument('--input_shape', type=int, nargs='+', default=None, help='Optional input shape of the model (e.g., 1 3 224 224)')
+    split_parser.add_argument('--bounding_method', type=str, default='backward', help='Bounding method to be used with auto-LiRPA, see https://auto-lirpa.readthedocs.io/en/latest/api.html')
+    split_parser.add_argument('--create_baseline', action='store_true', help='Create baseline model')
+    split_parser.add_argument('--closeness_check', action='store_true', help='Enable closeness check')
 
 
-    split_parser.add_argument('--split_idx', type=int, default=0, help='Index of the layer to split')
     
+    split_parser.add_argument('--split_idx', type=int, default=0, help='Index of the layer to split')
     split_parser.add_argument('--mask', type=str, default='stable+', help='Mask for splitting',
                               choices=['stable+', 'stable-', 'stable', 'unstable', 'all', 'unstable_n_stable+'])
-    split_parser.add_argument('--n_splits', type=int, default=None, help='Number of splits (strict), this will override min_splits and max_splits')
-    split_parser.add_argument('--scale_factor', type=float, nargs=2, default=[1.0,-1.0], help='Scale factor for the')
-    split_parser.add_argument('--create_baseline', action='store_true', help='Create baseline model')
+    split_parser.add_argument('--n_splits', type=int, default=None, help='Number of splits (strict)')
+    split_parser.add_argument('--scale_factor', type=float, nargs=2, default=[1.0,-1.0], help='Scale factor for the split')
     
-    split_parser.add_argument('--closeness_check', action='store_true', help='Enable closeness check')
     split_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')
     split_parser.add_argument('--rtol', type=float, default=1e-5, help='Relative tolerance for closeness check')
-    split_parser.add_argument('--device', type=str, default=default_device, help='Device for the model closeness check',)
+    # split_parser.add_argument('--device', type=str, default=default_device, help='Device for the model closeness check',)
     # conv parameters
-    split_parser.add_argument('--conv_strategy', type=str, default='random', help='Splitting strategy',
-                              choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
+    # split_parser.add_argument('--conv_strategy', type=str, default='random', help='Splitting strategy',
+    #                           choices=['random', 'reluS+', 'reluS-'])
     # fc parameters
-    split_parser.add_argument('--fc_strategy', type=str, default='random', help='Splitting strategy',
-                              choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
+    # split_parser.add_argument('--fc_strategy', type=str, default='random', help='Splitting strategy',
+    #                           choices=['single', 'random', 'reluS+', 'reluS-', 'adaptive'])
 
     
     split_parser.add_argument('--seed', type=int, default=0, help='Seed for random number generation')
@@ -88,15 +89,15 @@ if __name__ == '__main__':
 
         conf = {
             'split_mask': args.mask,
-            'fc_strategy': args.fc_strategy,
-            'conv_strategy': args.conv_strategy,
+            'fc_strategy': "random",
+            'conv_strategy': "max_unstable",
             'n_splits': args.n_splits,
             'split_idx': args.split_idx,
             'scale_factor': args.scale_factor,
             'random_seed': args.seed,
             'atol': args.atol,
             'rtol': args.rtol,
-            'device': args.device,
+            # 'device': args.device,
             'create_baseline': args.create_baseline,
             'closeness_check': args.closeness_check
         }
@@ -124,9 +125,10 @@ if __name__ == '__main__':
             # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp23/tllVerifyBench.yaml"
             # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/cifar2020_2_255.yaml"
             # abc_conf_path = "/home/lli/tools/relusplitter/experiment/config/reach_probability.yaml"
-            # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/oval22.yaml"
+            abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/oval22.yaml"
             # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/collins-rul-cnn.yaml"
-            abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/cifar_biasfield.yaml"
+            # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/cifar_biasfield.yaml"
+            # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/vggnet16.yaml"
             conf = {
                 'onnx_path': onnx_path,
                 'vnnlib_path': spec_path,

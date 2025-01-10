@@ -56,7 +56,7 @@ class RSplitter_conv():
         self.logger.debug(f"Selected bias: {bias}")
         return bias
 
-    def split_conv(self, nodes_to_split, n_splits=None, split_mask="stable", conv_strategy="max_unstable", scale_factors=(1.0, -1.0), create_baseline=False):
+    def split_conv(self, nodes_to_split, n_splits=None, split_mask="stable", conv_strategy="max_unstable", scale_factors=(1.0, -1.0), create_baseline=False, bounding_method="ibp"):
         conv_node, relu_node = nodes_to_split
         assert conv_node.op_type == "Conv" and relu_node.op_type == "Relu"
 
@@ -64,7 +64,7 @@ class RSplitter_conv():
         self.logger.debug(f"Splitting model: {self.onnx_path} with spec: {self.spec_path}")
         self.logger.debug(f"Splitting at Conv node: <{conv_node.name}> && ReLU node: <{relu_node.name}>")
         self.logger.debug(f"Random seed: {self._conf['random_seed']}")
-        self.logger.debug(f"Split strategy: {conv_strategy}")
+        # self.logger.debug(f"Split strategy: {conv_strategy}")
         self.logger.debug(f"Split mask: {split_mask}")
         self.logger.debug(f"Scale factors: {scale_factors}")
 
@@ -74,7 +74,7 @@ class RSplitter_conv():
         ori_oC, ori_iC, ori_kH, ori_kW = ori_w.shape
 
         # prepare the bounds
-        layer_lb,layer_ub = self.warpped_model.get_bound_of(self.bounded_input, conv_node.output[0], method="ibp")
+        layer_lb,layer_ub = self.warpped_model.get_bound_of(self.bounded_input, conv_node.output[0], method=bounding_method)
         masks = self.conv_get_split_masks((layer_lb, layer_ub))
         # decide kernels to split
         split_idxs = []

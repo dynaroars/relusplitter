@@ -41,17 +41,17 @@ class RSplitter_fc():
         return masks
 
 
-    def split_fc(self, nodes_to_split, n_splits=None, split_mask="stable", fc_strategy="random", scale_factors=(1.0, -1.0), create_baseline=False):
+    def split_fc(self, nodes_to_split, n_splits=None, split_mask="stable", fc_strategy="random", scale_factors=(1.0, -1.0), create_baseline=False, bounding_method="backward"):
         gemm_node, relu_node = nodes_to_split
         assert all(attri.i == 0 for attri in gemm_node.attribute if attri.name == "TransA"), "TransA == 1 is not supported yet"
 
         self.logger.debug("=====================================")
         self.logger.debug(f"Splitting model: {self.onnx_path} with spec: {self.spec_path}")
         self.logger.debug(f"Splitting at Gemm node: <{gemm_node.name}> && ReLU node: <{relu_node.name}>")
-        self.logger.debug(f"Split strategy: {fc_strategy}")
+        # self.logger.debug(f"Split strategy: {fc_strategy}")
         self.logger.debug(f"Split mask: {split_mask}")
 
-        bounds = self.warpped_model.get_bound_of(self.bounded_input, gemm_node.output[0], method="backward")
+        bounds = self.warpped_model.get_bound_of(self.bounded_input, gemm_node.output[0], method=bounding_method)
         split_masks = self.fc_get_split_masks(bounds)
         
         self.logger.info(f"============= Split Mask Sumamry =============")
@@ -63,7 +63,11 @@ class RSplitter_fc():
         _split_mask = split_masks[split_mask]
         mask_size  = torch.sum(_split_mask).item()
 
-        if n_splits is not None and n_splits <= mask_size:
+        if n_splits is None:
+            n_splits = mask_size
+        if mask_size == 0 or mask_size < n_splits:
+            raise INVALID_PARAMETER(f"Not enough {split_mask} neuron to split... (Requested: {n_splits}, Available: {mask_size})")
+        if n_splits <= mask_size:
             _split_mask = adjust_mask_first_k(_split_mask, n_splits)
             
         
@@ -71,11 +75,17 @@ class RSplitter_fc():
         split_idxs = torch.nonzero(_split_mask).squeeze().tolist()   # idx of non-zero elements in the split mask
         if isinstance(split_idxs, int):         # the line above returns a single int if there is only one split
             split_idxs = [split_idxs]
-
         self.logger.info(f"Selecting {_n_splits}/{mask_size} {split_mask} ReLUs to split")
 
         # TODO: put the split loc implementation here
-        split_offsets = [random.uniform(bounds[0][0,i], bounds[1][0,i]) for i in split_idxs]
+        if fc_strategy == "random":
+            split_offsets = [random.uniform(bounds[0][0,i], bounds[1][0,i]) for i in split_idxs]
+        # elif fc_strategy == "reluS+":
+        #     split_offsets = [random.uniform(max(0,bounds[0][0,i]), bounds[1][0,i]) for i in split_idxs]
+        # elif fc_strategy == "reluS-":
+            # split_offsets = [random.uniform(bounds[0][0,i], min(0,bounds[1][0,i])) for i in split_idxs]
+        else:
+            raise INVALID_PARAMETER(f"Unknown split strategy {fc_strategy}")
         assert len(split_offsets) == len(split_idxs) == _n_splits
 
         # Create the models

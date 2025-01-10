@@ -134,7 +134,7 @@ if __name__ == '__main__':
                 'vnnlib_path': spec_path,
                 'log_path': Path('veri_1.log'),
                 'verbosity': 1,
-                'num_workers': 64,
+                'num_workers': 12,
                 'config_path': abc_conf_path,
             }
             logger.info(f'Start verification using {args.verify}')

@@ -6,6 +6,12 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 # Compute the paths relative to the script's directory
 LIBS_DIR=$(realpath "$SCRIPT_DIR/../../libs")
+ENVS_DIR=$(realpath "$SCRIPT_DIR/../../.envs")
+TOOL_NAME="abcrown"
+CONDA_PREFIX=$ENVS_DIR/$TOOL_NAME
+ENV_FILE_PATH=$ENVS_DIR/abcrown.yaml
+
+
 mkdir -p $LIBS_DIR
 cd  $LIBS_DIR
 
@@ -31,9 +37,13 @@ git clone https://github.com/Verified-Intelligence/alpha-beta-CROWN
 cd alpha-beta-CROWN
 git checkout dc32df038440a9726e97547b88f9913743773e7f
 git submodule init
+git submodule update --init --recursive
+
 
 # Remove the old environment, if necessary.
-conda deactivate; conda env remove --name alpha-beta-crown
+# conda deactivate; conda env remove --name alpha-beta-crown
 # install all dependents into the alpha-beta-crown environment
-conda env create -f complete_verifier/environment.yaml --name alpha-beta-crown
+# conda env create -f complete_verifier/environment.yaml --name alpha-beta-crown
+conda env remove --prefix $CONDA_PREFIX -y
+conda env create --prefix $CONDA_PREFIX -f $ENV_FILE_PATH -y
 make -C complete_verifier/cuts/CPLEX_cuts/

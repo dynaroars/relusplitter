@@ -35,14 +35,14 @@ GUROBI_HOME="/opt/gurobi1103/linux64"
   echo "export GUROBI_HOME=\"$GUROBI_HOME\""
   echo "export PATH=\"\${PATH}:\${GUROBI_HOME}/bin\""
   echo "export LD_LIBRARY_PATH=\"\${LD_LIBRARY_PATH}:\${GUROBI_HOME}/lib\""
-  echo "export GRB_LICENSE_FILE=\"$GUROBI_LICENSE_PATH\""
+  echo "export GRB_LICENSE_FILE=\"$GRB_LICENSE_PATH\""
 } >> ~/.bashrc
 
 # Apply the changes immediately for the current session
 export GUROBI_HOME="$GUROBI_HOME"
 export PATH="${PATH}:${GUROBI_HOME}/bin"
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${GUROBI_HOME}/lib"
-export GRB_LICENSE_FILE="$GUROBI_LICENSE_PATH"
+export GRB_LICENSE_FILE="$GRB_LICENSE_PATH"
 
 
 # Clean up

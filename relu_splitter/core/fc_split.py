@@ -24,6 +24,13 @@ class RSplitter_fc():
     #     else:
     #         raise INVALID_PARAMETER(f"Unknown split strategy {fc_strategy}")
 
+    def fc_info(self, idx, mode, bounding_method):
+        gemm_node, relu_node = self.resolve_idx(idx, mode)
+        bounds = self.warpped_model.get_bound_of(self.bounded_input, gemm_node.output[0], method=bounding_method)
+        masks = self.fc_get_split_masks(bounds)
+        info = {k: torch.sum(v).item() for k,v in masks.items()}
+        return info
+
 
     def fc_get_split_masks(self, bounds):
         output_lb, output_ub = bounds
@@ -202,17 +209,23 @@ class RSplitter_fc():
         split_bias = np.zeros(num_out + n_splits)
         merge_weights = np.zeros((num_out, num_out + n_splits))
         merge_bias = np.zeros(num_out)
+
+        # update: pick split_idxs randomly
+        split_idxs = random.sample(range(num_out), n_splits)
         
         idx = 0     # index of neuron in the new split layer
         for i in range(num_out):
             if i in split_idxs:
-                w = grad[i]/2
-                b = offset[i]/2
+                r1 = random.uniform(0, 1)
+                r2 = 1 - r1
+
+                w = grad[i]
+                b = offset[i]
                 
-                split_weights[idx]      = w
-                split_weights[idx+1]    = w
-                split_bias[idx]         = b
-                split_bias[idx+1]       = b
+                split_weights[idx]      = w * r1
+                split_weights[idx+1]    = w * r2
+                split_bias[idx]         = b * r1
+                split_bias[idx+1]       = b * r2
                 merge_weights[i][idx]   = 1
                 merge_weights[i][idx+1] = 1
                 merge_bias[i] = 0

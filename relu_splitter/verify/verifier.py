@@ -42,7 +42,7 @@ class Verifier:
         if ram is not None:
             cmd += f" -M {ram}"
         if time is not None:
-            cmd += f" -T {time}"
+            cmd += f" -T {int(time)}"
         if verbosity == 0:
             cmd += " -q"
         elif verbosity == 1:
@@ -60,6 +60,7 @@ class Verifier:
         cls.logger.info(f"Executing verification ... log path: {log_path}")
         cls.logger.info(cmd)
 
+        log_path.parent.mkdir(parents=True, exist_ok=True)
         with open(log_path, "w") as veri_log_fp:
             sp = subprocess.Popen(cmd, shell=True, stdout=veri_log_fp, stderr=veri_log_fp)
 

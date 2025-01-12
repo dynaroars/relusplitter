@@ -57,7 +57,7 @@ class RSplitter_conv():
         self.logger.debug(f"Selected bias: {bias}")
         return bias
 
-    def split_conv(self, nodes_to_split, n_splits=None, split_mask="stable", conv_strategy="max_unstable", scale_factors=(1.0, -1.0), create_baseline=False, bounding_method="ibp"):
+    def split_conv(self, nodes_to_split, n_splits=None, split_mask="stable", conv_strategy="max_unstable", scale_factors=(1.0, -1.0), create_baseline=False, bounding_method="backward"):
         conv_node, relu_node = nodes_to_split
         assert conv_node.op_type == "Conv" and relu_node.op_type == "Relu"
 
@@ -81,7 +81,7 @@ class RSplitter_conv():
         split_idxs = []
         if n_splits == None or n_splits >= ori_oC:
             split_idxs = list(range(ori_oC))
-            self.logger.info(f"Number of splits is greater than the number of kernels, splitting all kernels")
+            self.logger.info(f"Splitting all kernels")
         else:
             split_idxs = random.sample(range(ori_oC), n_splits)
             self.logger.info(f"Randomly selected kernels: {split_idxs}")
@@ -248,25 +248,32 @@ class RSplitter_conv():
             ori_oC, ori_iC, ori_kH, ori_kW = ori_w.shape
 
             # make weights and bias for split and merge layers
-            num_splits = len(split_idxs)
-            new_oC = ori_oC + num_splits
+            n_splits = len(split_idxs)
+            new_oC = ori_oC + n_splits
 
             new_w = np.zeros( (new_oC, ori_iC, ori_kH, ori_kW))
             new_b = np.zeros( (new_oC,) )
             merge_w = np.zeros( (ori_oC, new_oC, 1, 1) )
             merge_b = np.zeros( (ori_oC,) )
 
+            # update: pick split_idxs randomly
+            split_idxs = random.sample(range(ori_oC), n_splits)
+
             curr_idx = 0
             for i in tqdm(range(ori_oC), desc="Constructing new Conv layer..."):
                 if i in split_idxs:
-                    temp_w = ori_w[i]/2
-                    temp_b = ori_b[i]/2
+                    r1 = random.uniform(0, 1)
+                    r2 = 1 - r1
+
+                    temp_w = ori_w[i]
+                    temp_b = ori_b[i]
+
                     self.logger.info(f"Splitting kernel {i}...")
                     # split the kernel
-                    new_w[curr_idx]     = temp_w
-                    new_w[curr_idx+1]   = temp_w
-                    new_b[curr_idx]     = temp_b
-                    new_b[curr_idx+1]   = temp_b
+                    new_w[curr_idx]     = temp_w * r1
+                    new_w[curr_idx+1]   = temp_w * r2
+                    new_b[curr_idx]     = temp_b * r1
+                    new_b[curr_idx+1]   = temp_b * r2
                     # set merge w & b
                     merge_w[i, curr_idx  , 0, 0] = 1
                     merge_w[i, curr_idx+1, 0, 0] = 1

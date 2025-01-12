@@ -70,7 +70,8 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         random.seed(random_seed)
         torch.manual_seed(random_seed)
 
-    def split(self, idx, mode, conf):
+
+    def resolve_idx(self, idx, mode):
         splittable_nodes = self.get_splittable_nodes()
         if mode == "fc":
             splittable_nodes = [node for node in splittable_nodes if node[0].op_type == "Gemm"]
@@ -80,7 +81,10 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
             assert mode == "all", f"Unknown mode {mode}"
 
         assert idx < len(splittable_nodes), f"Split location <{idx}> is out of bound"
-        n1, n2 = splittable_nodes[idx][0], splittable_nodes[idx][1]
+        return splittable_nodes[idx]
+
+    def split(self, idx, mode, conf):
+        n1, n2 = self.resolve_idx(idx, mode)
         assert n2.op_type == "Relu", f"Node at split location is not a ReLU node"
 
         if n1.op_type == "Gemm":
@@ -88,18 +92,18 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
                 (n1, n2),
                 n_splits=conf["n_splits"],
                 split_mask=conf["split_mask"],
-                fc_strategy=conf["fc_strategy"],
                 scale_factors=conf["scale_factor"],
-                create_baseline=conf["create_baseline"]
+                create_baseline=conf["create_baseline"],
+                bounding_method=conf["bounding_method"]
                 )
         elif n1.op_type == "Conv":
              split_model, baseline_model = self.split_conv(
                 (n1, n2), 
                 n_splits=conf["n_splits"], 
                 split_mask=conf["split_mask"], 
-                conv_strategy=conf["conv_strategy"], 
                 scale_factors=conf["scale_factor"],
-                create_baseline=conf["create_baseline"]
+                create_baseline=conf["create_baseline"],
+                bounding_method=conf["bounding_method"]
                 )
 
 

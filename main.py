@@ -70,7 +70,7 @@ def get_parser():
     baseline_parser = subparsers.add_parser('baseline', help='baseline command help')
     baseline_parser.add_argument('--net', type=str, required=True, help='Path to the ONNX file')
     baseline_parser.add_argument('--output', type=str, default='baseline.onnx', help='Output path for the new model')
-    baseline_parser.add_argument('--n_splits', type=int, default=1, help='Number of splits')
+    baseline_parser.add_argument('--n_splits', type=int, default=None, help='Number of splits')
     baseline_parser.add_argument('--split_idx', type=int, default=0, help='Index for splitting')
     baseline_parser.add_argument('--atol', type=float, default=1e-5, help='Absolute tolerance for closeness check')
     baseline_parser.add_argument('--rtol', type=float, default=1e-5, help='Relative tolerance for closeness check')
@@ -101,7 +101,8 @@ if __name__ == '__main__':
             'rtol': args.rtol,
             # 'device': args.device,
             'create_baseline': args.create_baseline,
-            'closeness_check': args.closeness_check
+            'closeness_check': args.closeness_check,
+            'bounding_method': args.bounding_method
         }
 
         relusplitter = ReluSplitter(onnx_path, 

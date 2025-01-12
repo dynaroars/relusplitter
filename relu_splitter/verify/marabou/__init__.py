@@ -13,11 +13,14 @@ class Marabou(Verifier):
 
         num_workers = prog_conf.get('num_workers', None)
         timeout = prog_conf.get('timeout', None)
+        milp = prog_conf.get('milp', False)
 
         if num_workers is not None:
             cmd += f" --num-workers {num_workers} "
         if timeout is not None:
             cmd += f" --timeout {timeout} "
+        if milp == True:
+            cmd += " --milp "
         
         return cmd
 

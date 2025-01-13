@@ -4,6 +4,7 @@ import signal
 
 import argparse
 
+from statistics import median
 from tqdm import tqdm
 from pathlib import Path
 from itertools import product
@@ -61,7 +62,7 @@ if __name__=="__main__":
         'vnnlib_path': None,
         'log_path': None,
         'verbosity': 1,
-        'num_workers': 12,
+        'num_workers': 64,
         'config_path': None,
         'timeout': None,
         'milp': False
@@ -101,17 +102,22 @@ if __name__=="__main__":
             veri_times_B = []
 
             # verify the original model
-            tqdm.write(f"Verifying Original model: {onnx_name}, {vnnlib_name}")
+            SKIP = False
+            tqdm.write(f"Verifying Original model: {onnx_name}, {vnnlib_name}, {timeout}")
             for rep in range(args.seed):
                 conf['log_path'] = LOGS_ROOT / benchmark_name / args.verifier / f"ORIGINAL_{onnx_name}_{vnnlib_name}_REPEAT-{rep}.log"
                 res, time = verifier.execute(conf)
                 veri_results_O.append(res)
                 veri_times_O.append(time)
-                tqdm.write(f"Original model: {res}, {time}")
+                tqdm.write(f"Original: {res}, {time}")
                 if res not in ["unsat", "sat"]:
                     f.write( f"{onnx_name}, {vnnlib_name}, ERROR_SKIPPED, LAST RES {res} {time}\n")
                     f.flush()
-                    continue
+                    SKIP = True
+                    break
+            if SKIP:
+                tqdm.write(f"Skipping {onnx_name}, {vnnlib_name}")
+                continue
 
             # verify the splitted model
             conf['timeout'] = int(timeout * 1.5)
@@ -122,7 +128,11 @@ if __name__=="__main__":
                 res, time = verifier.execute(conf)
                 veri_results_S.append(res)
                 veri_times_S.append(time)
-                tqdm.write(f"Split model: {res}, {time}")
+                tqdm.write(f"Split: {res}, {time}")
+                if veri_results_S == ["timeout", "timeout"]:
+                    veri_results_S = ["timeout"] * args.seed
+                    veri_times_S = [conf['timeout']] * args.seed
+                    break
 
 
             # verify the baseline model
@@ -133,7 +143,11 @@ if __name__=="__main__":
                 res, time = verifier.execute(conf)
                 veri_results_B.append(res)
                 veri_times_B.append(time)
-                tqdm.write(f"Baseline model: {res}, {time}")
+                tqdm.write(f"Baseline: {res}, {time}")
+                if veri_results_B == ["timeout", "timeout"]:
+                    veri_results_B = ["timeout"] * args.seed
+                    veri_times_B = [conf['timeout']] * args.seed
+                    break
 
             f.write(
                 f"{onnx_name}, {vnnlib_name}, " + 
@@ -145,3 +159,5 @@ if __name__=="__main__":
                 ",".join([str(i) for i in veri_results_B]) + "\n"
             )
             f.flush()
+            tqdm.write(f"Res written: O_median: {median(veri_times_O)}, S_median: {median(veri_times_S)}, B_median: {median(veri_times_B)}")
+            tqdm.write(f"Res written: O_avg: {sum(veri_times_O)/len(veri_times_O)}, S_avg: {sum(veri_times_S)/len(veri_times_S)}, B_avg: {sum(veri_times_B)/len(veri_times_B)}")

@@ -16,7 +16,7 @@ class AlphaBetaCrown(Verifier):
         # device = prog_conf.get('device', None)
         # batch = prog_conf.get('batch', None)
         # disable_restart = prog_conf.get('disable_restart', None)
-        # timeout = prog_conf.get('timeout', None)
+        timeout = prog_conf.get('timeout', None)
 
         # if device is not None:
         #     cmd += f" -d {device}"
@@ -24,8 +24,8 @@ class AlphaBetaCrown(Verifier):
         #     cmd += f" -b {batch}"
         # if disable_restart is not None:
         #     cmd += f" -r {disable_restart}"
-        # if timeout is not None:
-        #     cmd += f" -t {timeout}"
+        if timeout is not None:
+            cmd += f" --timeout {timeout}"
         
         cmd += f" --onnx_path {model_path} --vnnlib_path {property_path} --config {config_path}"
         return cmd

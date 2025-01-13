@@ -22,8 +22,8 @@ class Neuralsat(Verifier):
             cmd += f" -b {batch}"
         if disable_restart is not None:
             cmd += f" -r {disable_restart}"
-        # if timeout is not None:
-        #     cmd += f" -t {timeout}"
+        if timeout is not None:
+            cmd += f" --timeout {timeout}"
         
         cmd += f" --net {model_path} --spec {property_path}"
         return cmd

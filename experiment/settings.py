@@ -18,10 +18,11 @@ def get_abcrown_config(benchmark_name, onnx_name):
     if benchmark_name == "acasxu":
         return abc_conf_root / "acasxu.yaml"
     elif benchmark_name == "mnist_fc":
-        if "x2" in onnx_name:
-            return abc_conf_root / "mnistfc_small.yaml"
-        else:
-            return abc_conf_root / "mnistfc_large.yaml"
+        # if "x2" in onnx_name:
+        #     return abc_conf_root / "mnistfc_small.yaml"
+        # else:
+        #     return abc_conf_root / "mnistfc_large.yaml"
+        return abc_conf_root / "mnistfc_both_split.yaml"
     elif benchmark_name == "reach_prob":
         if "gcas" in onnx_name:
             return abc_conf_root / "reach_probability_gcas.yaml"

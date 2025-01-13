@@ -159,5 +159,8 @@ if __name__=="__main__":
                 ",".join([str(i) for i in veri_results_B]) + "\n"
             )
             f.flush()
+            veri_times_O = [i if isinstance(i, (float,int)) else -1 for i in veri_times_O]
+            veri_times_S = [i if isinstance(i, (float,int)) else -1 for i in veri_times_S]
+            veri_times_B = [i if isinstance(i, (float,int)) else -1 for i in veri_times_B]
             tqdm.write(f"Res written: O_median: {median(veri_times_O)}, S_median: {median(veri_times_S)}, B_median: {median(veri_times_B)}")
             tqdm.write(f"Res written: O_avg: {sum(veri_times_O)/len(veri_times_O)}, S_avg: {sum(veri_times_S)/len(veri_times_S)}, B_avg: {sum(veri_times_B)/len(veri_times_B)}")

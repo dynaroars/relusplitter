@@ -44,6 +44,6 @@ git submodule update --init --recursive
 # conda deactivate; conda env remove --name alpha-beta-crown
 # install all dependents into the alpha-beta-crown environment
 # conda env create -f complete_verifier/environment.yaml --name alpha-beta-crown
-conda env remove --prefix $CONDA_PREFIX -y
-conda env create --prefix $CONDA_PREFIX -f $ENV_FILE_PATH -y
+conda env remove --prefix $CONDA_PREFIX 
+conda env create --prefix $CONDA_PREFIX -f $ENV_FILE_PATH 
 make -C complete_verifier/cuts/CPLEX_cuts/

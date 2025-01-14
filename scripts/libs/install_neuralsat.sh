@@ -21,8 +21,8 @@ cd neuralsat
 git checkout 629cc6b02472c46ed4792f0ad6722b947081ebdc
 
 
-conda env remove --prefix $CONDA_PREFIX -y
-conda env create --prefix $CONDA_PREFIX -f $ENV_FILE_PATH -y
+conda env remove --prefix $CONDA_PREFIX 
+conda env create --prefix $CONDA_PREFIX -f $ENV_FILE_PATH 
 # conda deactivate; conda env remove --name neuralsat
 # conda env create -f env.yaml
 # pip install "third_party/haioc"

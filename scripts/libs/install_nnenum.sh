@@ -21,8 +21,8 @@ cd nnenum
 git checkout cf7c0e72c13543011a7ac3fbe0f5c59c3aafa77e
 
 # eval "$(conda shell.bash hook)"
-conda env remove --prefix $CONDA_PREFIX -y
-conda create --prefix $CONDA_PREFIX python=3.10 -y
+conda env remove --prefix $CONDA_PREFIX
+conda create --prefix $CONDA_PREFIX python=3.10
 # conda activate $CONDA_PREFIX
 $CONDA_PREFIX/bin/pip install -r $ENV_FILE_PATH
 # pip install -r $ENVS_DIR/nnenum.txt

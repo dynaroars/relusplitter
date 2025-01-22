@@ -1,0 +1,16 @@
+onnx, vnnlib, O_0 ,O_1 ,O_2 ,O_3 ,O_4 ,O_res_0 ,O_res_1 ,O_res_2 ,O_res_3 ,O_res_4 ,S_0 ,S_1 ,S_2 ,S_3 ,S_4 ,S_res_0 ,S_res_1 ,S_res_2 ,S_res_3 ,S_res_4 ,B_0 ,B_1 ,B_2 ,B_3 ,B_4 ,B_res_0 ,B_res_1 ,B_res_2 ,B_res_3 ,B_res_4 
+NN_rul_small_window_20, robustness_2perturbations_delta5_epsilon10_w20, ERROR_SKIPPED, LAST RES None None
+NN_rul_small_window_20, robustness_2perturbations_delta10_epsilon10_w20, ERROR_SKIPPED, LAST RES None None
+NN_rul_small_window_20, robustness_2perturbations_delta20_epsilon10_w20, ERROR_SKIPPED, LAST RES None None
+NN_rul_small_window_20, robustness_2perturbations_delta40_epsilon10_w20, ERROR_SKIPPED, LAST RES None None
+NN_rul_small_window_20, robustness_4perturbations_delta5_epsilon10_w20, ERROR_SKIPPED, LAST RES None None
+NN_rul_small_window_20, robustness_4perturbations_delta10_epsilon10_w20, ERROR_SKIPPED, LAST RES None None
+NN_rul_small_window_20, robustness_4perturbations_delta20_epsilon10_w20, ERROR_SKIPPED, LAST RES None None
+NN_rul_small_window_20, robustness_4perturbations_delta40_epsilon10_w20, ERROR_SKIPPED, LAST RES None None
+NN_rul_small_window_20, robustness_8perturbations_delta5_epsilon10_w20, ERROR_SKIPPED, LAST RES None None
+NN_rul_small_window_20, robustness_8perturbations_delta10_epsilon10_w20, ERROR_SKIPPED, LAST RES None None
+NN_rul_small_window_20, robustness_8perturbations_delta20_epsilon10_w20, ERROR_SKIPPED, LAST RES None None
+NN_rul_small_window_20, robustness_8perturbations_delta40_epsilon10_w20, ERROR_SKIPPED, LAST RES None None
+NN_rul_small_window_20, robustness_16perturbations_delta5_epsilon10_w20, ERROR_SKIPPED, LAST RES None None
+NN_rul_small_window_20, robustness_16perturbations_delta10_epsilon10_w20, ERROR_SKIPPED, LAST RES None None
+NN_rul_small_window_20, robustness_16perturbations_delta20_epsilon10_w20, 2.082373857498169,1.737807273864746,1.7527532577514648,1.740088939666748,1.7561910152435303,unsat,unsat,unsat,unsat,unsat,1.7528648376464844,1.7572822570800781,1.739727258682251,1.8059005737304688,1.7969632148742676,unsat,unsat,unsat,unsat,unsat,1.7960903644561768,1.7947595119476318,1.76922607421875,1.7962841987609863,1.8009164333343506,unsat,unsat,unsat,unsat,unsat

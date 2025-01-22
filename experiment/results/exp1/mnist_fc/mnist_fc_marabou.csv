@@ -1,0 +1,91 @@
+onnx, vnnlib, O_0 ,O_1 ,O_2 ,O_3 ,O_4 ,O_res_0 ,O_res_1 ,O_res_2 ,O_res_3 ,O_res_4 ,S_0 ,S_1 ,S_2 ,S_3 ,S_4 ,S_res_0 ,S_res_1 ,S_res_2 ,S_res_3 ,S_res_4 ,B_0 ,B_1 ,B_2 ,B_3 ,B_4 ,B_res_0 ,B_res_1 ,B_res_2 ,B_res_3 ,B_res_4 
+mnist-net_256x2, prop_0_0.03, 14.917,15.243,15.076,15.056,14.971,unsat,unsat,unsat,unsat,unsat,31.767,32.506,32.408,32.599,31.078,unsat,unsat,unsat,unsat,unsat,31.545,31.468,32.429,31.49,31.382,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_1_0.03, 15.423,15.51,15.421,15.484,15.812,sat,sat,sat,sat,sat,48.959,40.736,39.454,41.21,39.803,sat,sat,sat,sat,sat,31.342,31.918,31.161,30.956,31.951,sat,sat,sat,sat,sat
+mnist-net_256x2, prop_2_0.03, 15.082,15.406,15.419,15.214,15.254,sat,sat,sat,sat,sat,34.299,33.197,45.434,32.407,32.506,sat,sat,sat,sat,sat,31.264,31.795,31.098,31.851,31.149,sat,sat,sat,sat,sat
+mnist-net_256x2, prop_3_0.03, 15.018,15.315,14.894,15.03,15.073,unsat,unsat,unsat,unsat,unsat,32.838,32.798,32.057,32.186,31.817,unsat,unsat,unsat,unsat,unsat,31.711,32.791,32.024,31.375,31.715,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_4_0.03, 15.158,15.118,15.412,15.384,15.016,unsat,unsat,unsat,unsat,unsat,34.39,39.408,33.658,32.451,38.188,unsat,unsat,unsat,unsat,unsat,32.192,31.097,30.944,30.903,31.423,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_5_0.03, 15.013,14.988,14.983,14.958,15.229,unsat,unsat,unsat,unsat,unsat,31.559,33.118,32.471,33.693,32.097,unsat,unsat,unsat,unsat,unsat,31.362,31.091,30.812,31.67,31.553,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_6_0.03, 16.952,17.463,17.021,17.004,17.037,unsat,unsat,unsat,unsat,unsat,66.756,62.265,71.916,70.15,70.29,unsat,unsat,unsat,unsat,unsat,36.371,34.507,34.587,34.781,33.472,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_7_0.03, 15.061,15.055,15.282,15.295,14.982,unsat,unsat,unsat,unsat,unsat,32.653,31.969,31.937,31.999,32.429,unsat,unsat,unsat,unsat,unsat,31.652,32.747,32.39,32.06,31.736,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_8_0.03, 15.203,15.232,15.318,15.382,15.17,unsat,unsat,unsat,unsat,unsat,69.134,67.166,49.501,61.131,51.222,unsat,unsat,unsat,unsat,unsat,31.988,32.007,31.859,31.566,31.812,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_9_0.03, 15.013,15.022,15.059,15.062,15.081,unsat,unsat,unsat,unsat,unsat,31.925,31.956,31.805,32.6,31.867,unsat,unsat,unsat,unsat,unsat,31.926,32.411,31.499,31.574,32.011,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_10_0.03, 15.238,15.089,15.037,15.03,15.228,unsat,unsat,unsat,unsat,unsat,31.507,31.38,31.338,31.14,31.305,unsat,unsat,unsat,unsat,unsat,31.667,31.33,31.203,31.661,31.208,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_11_0.03, 14.927,14.96,14.994,14.946,15.261,unsat,unsat,unsat,unsat,unsat,31.678,31.403,31.351,31.45,31.145,unsat,unsat,unsat,unsat,unsat,31.028,31.124,31.364,31.103,31.067,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_12_0.03, 14.873,14.904,15.133,15.073,15.016,sat,sat,sat,sat,sat,33.088,32.828,32.183,31.868,38.618,sat,sat,sat,sat,sat,32.394,31.328,31.401,31.322,31.289,sat,sat,sat,sat,sat
+mnist-net_256x2, prop_13_0.03, 14.962,14.82,14.941,14.929,14.942,unsat,unsat,unsat,unsat,unsat,31.981,32.766,32.368,32.255,31.798,unsat,unsat,unsat,unsat,unsat,31.532,31.446,31.738,31.644,32.187,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_14_0.03, 14.955,15.165,14.959,14.905,14.998,unsat,unsat,unsat,unsat,unsat,31.1,31.554,31.835,31.261,31.176,unsat,unsat,unsat,unsat,unsat,30.698,30.925,31.756,31.009,32.016,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_0_0.05, 14.929,14.962,15.008,14.901,14.952,sat,sat,sat,sat,sat,30.844,31.396,32.648,30.786,30.901,sat,sat,sat,sat,sat,30.343,31.905,30.526,30.686,30.471,sat,sat,sat,sat,sat
+mnist-net_256x2, prop_1_0.05, 15.108,15.04,15.082,15.074,14.955,sat,sat,sat,sat,sat,36.313,35.996,35.828,31.913,32.454,sat,sat,sat,sat,sat,29.975,30.091,30.097,30.006,30.037,sat,sat,sat,sat,sat
+mnist-net_256x2, prop_2_0.05, 15.031,14.997,15.566,15.07,14.927,sat,sat,sat,sat,sat,37.285,32.771,32.807,32.162,36.475,sat,sat,sat,sat,sat,30.248,31.271,30.338,30.519,30.395,sat,sat,sat,sat,sat
+mnist-net_256x2, prop_3_0.05, 14.964,14.946,15.016,15.016,15.069,unsat,unsat,unsat,unsat,unsat,32.967,33.629,34.132,34.096,33.737,unsat,unsat,unsat,unsat,unsat,31.403,31.716,31.251,31.587,32.47,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_4_0.05, 15.506,15.224,15.119,15.453,15.059,sat,sat,sat,sat,sat,48.849,135.655,105.444,54.745,48.346,sat,sat,sat,sat,sat,35.16,32.244,31.969,31.23,31.168,sat,sat,sat,sat,sat
+mnist-net_256x2, prop_5_0.05, 14.949,15.043,15.149,15.01,15.28,sat,sat,sat,sat,sat,40.617,39.06,46.984,31.311,42.253,sat,sat,sat,sat,sat,31.307,30.71,30.383,30.57,30.548,sat,sat,sat,sat,sat
+mnist-net_256x2, prop_6_0.05, 15.004,15.028,15.49,15.017,15.06,sat,sat,sat,sat,sat,30.598,30.081,43.678,40.917,42.148,sat,sat,sat,sat,sat,29.205,29.25,29.023,29.027,28.868,sat,sat,sat,sat,sat
+mnist-net_256x2, prop_7_0.05, 14.914,14.883,15.071,15.009,14.933,unsat,unsat,unsat,unsat,unsat,32.361,32.507,33.262,31.707,33.194,unsat,unsat,unsat,unsat,unsat,31.413,31.454,31.308,31.457,31.551,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_8_0.05, 14.988,15.315,15.336,15.041,14.958,sat,sat,sat,sat,sat,33.052,37.978,33.378,36.786,32.208,sat,sat,sat,sat,sat,31.213,30.82,30.72,30.665,30.719,sat,sat,sat,sat,sat
+mnist-net_256x2, prop_9_0.05, 15.48,15.873,15.519,15.528,15.549,unsat,unsat,unsat,unsat,unsat,34.519,35.502,43.761,35.773,33.618,unsat,unsat,unsat,unsat,unsat,32.816,32.126,32.022,31.932,31.93,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_10_0.05, 16.248,16.207,16.517,16.223,16.141,unsat,unsat,unsat,unsat,unsat,59.008,75.679,61.18,64.185,57.844,unsat,unsat,unsat,unsat,unsat,33.234,33.356,33.421,32.707,33.794,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_11_0.05, 15.503,15.412,15.469,15.719,15.421,unsat,unsat,unsat,unsat,unsat,39.631,42.075,44.015,42.992,41.549,unsat,unsat,unsat,unsat,unsat,32.017,31.937,31.747,31.98,31.925,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_12_0.05, 15.366,15.226,15.117,15.052,14.934,sat,sat,sat,sat,sat,31.991,33.548,32.053,32.814,32.833,sat,sat,sat,sat,sat,31.202,31.168,32.177,31.592,31.304,sat,sat,sat,sat,sat
+mnist-net_256x2, prop_13_0.05, 14.931,15.042,15.111,14.946,15.407,unsat,unsat,unsat,unsat,unsat,32.541,32.716,31.95,33.077,31.953,unsat,unsat,unsat,unsat,unsat,32.417,31.429,31.679,31.541,31.586,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x2, prop_14_0.05, 15.222,15.258,15.189,15.221,15.177,unsat,unsat,unsat,unsat,unsat,40.303,41.378,43.614,35.844,41.173,unsat,unsat,unsat,unsat,unsat,31.329,31.323,30.942,30.818,31.433,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x4, prop_0_0.03, 18.417,18.109,18.155,18.296,18.092,unsat,unsat,unsat,unsat,unsat,34.678,34.008,41.787,33.018,42.223,unsat,unsat,unsat,unsat,unsat,32.264,32.339,32.526,33.163,32.412,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x4, prop_1_0.03, 37.733,37.329,37.597,37.772,38.02,sat,sat,sat,sat,sat,450,450,450,450,113.008,timeout,timeout,timeout,timeout,sat,57.143,450,75.095,55.337,59.499,sat,timeout,sat,sat,sat
+mnist-net_256x4, prop_2_0.03, 18.988,18.89,19.198,18.964,19.25,unsat,unsat,unsat,unsat,unsat,450,450,450,450,450,timeout,timeout,timeout,timeout,timeout,76.802,33.61,33.083,33.464,32.986,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x4, prop_3_0.03, 18.121,18.215,18.076,18.181,18.153,unsat,unsat,unsat,unsat,unsat,33.68,34.212,33.863,33.505,33.396,unsat,unsat,unsat,unsat,unsat,33.747,34.592,33.393,34.161,33.786,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x4, prop_4_0.03, 18.046,18.134,18.008,18.475,18.499,unsat,unsat,unsat,unsat,unsat,450,125.052,119.026,101.819,74.331,timeout,unsat,unsat,unsat,unsat,32.035,31.867,32.146,31.867,32.915,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x4, prop_5_0.03, 18.185,18.083,18.145,18.124,18.187,unsat,unsat,unsat,unsat,unsat,32.153,32.911,32.099,31.717,32.262,unsat,unsat,unsat,unsat,unsat,33.038,32.171,31.892,32.113,32.376,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x4, prop_6_0.03, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x4, prop_7_0.03, 21.008,18.286,18.428,18.204,18.178,unsat,unsat,unsat,unsat,unsat,83.742,87.639,42.905,42.887,57.412,unsat,unsat,unsat,unsat,unsat,33.217,33.255,32.909,34.054,32.92,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x4, prop_8_0.03, 26.651,26.649,26.796,27.137,26.757,unsat,unsat,unsat,unsat,unsat,450,450,450,450,450,timeout,timeout,timeout,timeout,timeout,395.006,158.238,65.245,450,101.214,unsat,unsat,unsat,timeout,unsat
+mnist-net_256x4, prop_9_0.03, 18.318,18.187,18.203,18.181,18.47,unsat,unsat,unsat,unsat,unsat,450,145.759,450,450,136.527,timeout,unsat,timeout,timeout,unsat,33.194,32.931,32.918,32.647,32.586,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x4, prop_10_0.03, 18.115,17.964,17.926,18.227,17.931,unsat,unsat,unsat,unsat,unsat,42.553,36.943,51.786,73.342,42.355,unsat,unsat,unsat,unsat,unsat,33.152,33.424,32.917,33.916,33.203,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x4, prop_11_0.03, 18.371,18.057,18.3,18.012,18.272,unsat,unsat,unsat,unsat,unsat,34.155,32.744,33.772,33.619,32.869,unsat,unsat,unsat,unsat,unsat,32.837,32.835,33.601,32.342,32.728,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x4, prop_12_0.03, 17.911,17.942,17.976,18.398,17.993,unsat,unsat,unsat,unsat,unsat,450,375.025,450,217.684,103.106,timeout,unsat,timeout,unsat,unsat,35.011,33.713,33.452,33.692,33.386,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x4, prop_13_0.03, 18.039,18.012,18.295,18.062,17.974,unsat,unsat,unsat,unsat,unsat,32.551,33.138,32.444,32.877,118.692,unsat,unsat,unsat,unsat,unsat,32.697,32.365,32.637,32.368,32.419,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x4, prop_14_0.03, 18.079,18.215,17.991,18.036,17.968,unsat,unsat,unsat,unsat,unsat,32.784,32.808,32.979,32.98,32.497,unsat,unsat,unsat,unsat,unsat,32.708,32.887,32.934,32.412,32.685,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x4, prop_0_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x4, prop_1_0.05, 74.622,67.285,67.251,67.782,67.93,sat,sat,sat,sat,sat,181.732,35.145,42.122,249.03,88.322,sat,sat,sat,sat,sat,31.039,42.668,31.931,42.042,51.621,sat,sat,sat,sat,sat
+mnist-net_256x4, prop_2_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x4, prop_3_0.05, 32.677,22.148,22.223,22.024,22.091,unsat,unsat,unsat,unsat,unsat,450,450,450,450,450,timeout,timeout,timeout,timeout,timeout,86.712,44.084,50.794,40.288,40.938,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x4, prop_4_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x4, prop_5_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x4, prop_6_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x4, prop_7_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x4, prop_8_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x4, prop_9_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x4, prop_10_0.05, 140.782,133.685,134.411,136.365,133.341,unsat,unsat,unsat,unsat,unsat,450,450,450,450,450,timeout,timeout,timeout,timeout,timeout,450,450,450,450,450,timeout,timeout,timeout,timeout,timeout
+mnist-net_256x4, prop_11_0.05, 47.01,33.008,32.261,32.777,32.431,unsat,unsat,unsat,unsat,unsat,450,450,450,450,450,timeout,timeout,timeout,timeout,timeout,97.711,58.878,370.358,450,55.942,unsat,unsat,unsat,timeout,unsat
+mnist-net_256x4, prop_12_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x4, prop_13_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x4, prop_14_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_0_0.03, 26.117,21.648,21.478,21.526,21.283,unsat,unsat,unsat,unsat,unsat,34.893,34.604,35.295,34.549,450,unsat,unsat,unsat,unsat,timeout,60.203,34.722,34.371,34.571,35.137,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x6, prop_1_0.03, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_2_0.03, 24.549,23.264,23.313,23.422,23.547,unsat,unsat,unsat,unsat,unsat,450,450,450,450,450,timeout,timeout,timeout,timeout,timeout,60.628,37.168,36.945,35.602,35.596,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x6, prop_3_0.03, 21.341,21.53,21.317,21.36,21.623,unsat,unsat,unsat,unsat,unsat,36.244,35.939,36.468,36.239,35.506,unsat,unsat,unsat,unsat,unsat,36.02,36.201,35.788,35.802,35.427,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x6, prop_4_0.03, 21.209,21.535,21.386,21.375,21.681,unsat,unsat,unsat,unsat,unsat,35.246,36.292,62.466,38.998,46.781,unsat,unsat,unsat,unsat,unsat,35.575,35.588,35.973,35.661,35.477,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x6, prop_5_0.03, 21.198,21.631,21.566,21.183,21.459,unsat,unsat,unsat,unsat,unsat,80.42,275.403,450,450,450,unsat,unsat,timeout,timeout,timeout,80.971,35.014,34.571,34.869,33.966,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x6, prop_6_0.03, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_7_0.03, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_8_0.03, 26.976,21.863,21.407,21.573,21.363,unsat,unsat,unsat,unsat,unsat,94.002,36.472,228.93,108.583,450,unsat,unsat,unsat,unsat,timeout,59.508,37.075,36.426,37.471,36.689,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x6, prop_9_0.03, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_10_0.03, 22.058,21.567,21.711,21.645,21.296,unsat,unsat,unsat,unsat,unsat,450,450,70.372,450,37.478,timeout,timeout,unsat,timeout,unsat,36.021,35.978,36.132,36.093,35.711,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x6, prop_11_0.03, 21.268,21.315,21.583,21.266,21.343,unsat,unsat,unsat,unsat,unsat,450,450,450,450,72.435,timeout,timeout,timeout,timeout,unsat,35.791,35.468,35.331,35.629,35.01,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x6, prop_12_0.03, 27.699,27.751,27.826,27.729,27.562,unsat,unsat,unsat,unsat,unsat,450,450,450,450,450,timeout,timeout,timeout,timeout,timeout,84.368,49.427,45.443,48.128,48.106,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x6, prop_13_0.03, 21.447,21.337,21.392,21.339,21.385,unsat,unsat,unsat,unsat,unsat,450,450,450,450,450,timeout,timeout,timeout,timeout,timeout,59.453,35.8,35.986,35.833,36.703,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x6, prop_14_0.03, 21.301,21.449,21.525,21.456,21.269,unsat,unsat,unsat,unsat,unsat,450,450,450,450,450,timeout,timeout,timeout,timeout,timeout,66.54,35.858,35.743,35.885,35.849,unsat,unsat,unsat,unsat,unsat
+mnist-net_256x6, prop_0_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_1_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_2_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_3_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_4_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_5_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_6_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_7_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_8_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_9_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_10_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_11_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_12_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_13_0.05, ERROR_SKIPPED, LAST RES timeout 300
+mnist-net_256x6, prop_14_0.05, ERROR_SKIPPED, LAST RES timeout 300

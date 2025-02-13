@@ -42,8 +42,8 @@ if __name__=="__main__":
 
     args = parser.parse_args()
 
-    benchmark_name = args.benchmark
-    benchmark = benchmarks[benchmark_name]
+    benchmark = benchmarks[args.benchmark]
+    benchmark_name = args.benchmark+"_16"
     instances = get_instances(benchmark)
 
     csv_file = RESULTS_ROOT / benchmark_name / f"{benchmark_name}_{args.verifier}.csv"
@@ -65,7 +65,7 @@ if __name__=="__main__":
         'vnnlib_path': None,
         'log_path': None,
         'verbosity': 1,
-        'num_workers': 64,
+        'num_workers': 128,
         'config_path': None,
         'timeout': None,
         'milp': False
@@ -82,8 +82,8 @@ if __name__=="__main__":
         for onnx_path, vnnlib_path, timeout in tqdm(get_remaining(csv_file, instances)):
             onnx_name, vnnlib_name = onnx_path.stem, vnnlib_path.stem
             
-            conf['config_path'] = get_abcrown_config(benchmark_name, onnx_name)
-            conf['milp'] = get_marabou_milp(benchmark_name, onnx_name)
+            conf['config_path'] = get_abcrown_config(args.benchmark, onnx_name)
+            conf['milp'] = get_marabou_milp(args.benchmark, onnx_name)
             conf['timeout'] = timeout
             conf['onnx_path'] = onnx_path
             conf['vnnlib_path'] = vnnlib_path
@@ -147,7 +147,6 @@ if __name__=="__main__":
                 veri_times_B.append(time)
                 tqdm.write(f"Baseline: {res}, {time}")
 
-                
             f.write(
                 f"{onnx_name}, {vnnlib_name}, " + 
                 ",".join([str(i) for i in veri_times_O]) + "," +

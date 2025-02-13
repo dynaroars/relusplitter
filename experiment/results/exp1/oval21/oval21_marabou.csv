@@ -1,0 +1,31 @@
+onnx, vnnlib, O_0 ,O_1 ,O_2 ,O_3 ,O_4 ,O_res_0 ,O_res_1 ,O_res_2 ,O_res_3 ,O_res_4 ,S_0 ,S_1 ,S_2 ,S_3 ,S_4 ,S_res_0 ,S_res_1 ,S_res_2 ,S_res_3 ,S_res_4 ,B_0 ,B_1 ,B_2 ,B_3 ,B_4 ,B_res_0 ,B_res_1 ,B_res_2 ,B_res_3 ,B_res_4 
+cifar_base_kw, cifar_base_kw-img8194-eps0.018300653594771243, ERROR_SKIPPED, LAST RES timeout 720
+cifar_base_kw, cifar_base_kw-img2578-eps0.021176470588235297, ERROR_SKIPPED, LAST RES timeout 720
+cifar_base_kw, cifar_base_kw-img4763-eps0.024705882352941175, ERROR_SKIPPED, LAST RES timeout 720
+cifar_base_kw, cifar_base_kw-img9410-eps0.043137254901960784, ERROR_SKIPPED, LAST RES timeout 720
+cifar_base_kw, cifar_base_kw-img8095-eps0.010457516339869282, 354.621,360.249,355.475,355.78,356.666,unsat,unsat,unsat,unsat,unsat,1080,1080,1080,1080,1080,timeout,timeout,timeout,timeout,timeout,239.937,446.092,214.835,61.777,425.651,unsat,unsat,unsat,unsat,unsat
+cifar_base_kw, cifar_base_kw-img8717-eps0.011633986928104577, ERROR_SKIPPED, LAST RES timeout 720
+cifar_base_kw, cifar_base_kw-img6767-eps0.020000000000000004, ERROR_SKIPPED, LAST RES timeout 720
+cifar_base_kw, cifar_base_kw-img3161-eps0.018562091503267972, 276.372,272.391,271.82,273.91,272.481,unsat,unsat,unsat,unsat,unsat,1080,305.901,1080,1080,1080,timeout,unsat,timeout,timeout,timeout,72.598,1080,1080,1080,205.2,unsat,timeout,timeout,timeout,unsat
+cifar_base_kw, cifar_base_kw-img876-eps0.024836601307189544, ERROR_SKIPPED, LAST RES timeout 720
+cifar_base_kw, cifar_base_kw-img3568-eps0.030457516339869282, ERROR_SKIPPED, LAST RES timeout 720
+cifar_wide_kw, cifar_wide_kw-img6432-eps0.034771241830065365, ERROR_SKIPPED, LAST RES timeout 720
+cifar_wide_kw, cifar_wide_kw-img7564-eps0.04183006535947713, ERROR_SKIPPED, LAST RES timeout 720
+cifar_wide_kw, cifar_wide_kw-img8517-eps0.006928104575163399, ERROR_SKIPPED, LAST RES timeout 720
+cifar_wide_kw, cifar_wide_kw-img2732-eps0.04967320261437909, ERROR_SKIPPED, LAST RES timeout 720
+cifar_wide_kw, cifar_wide_kw-img1909-eps0.0033986928104575162, 52.578,30.112,29.904,29.993,30.038,sat,sat,sat,sat,sat,46.676,47.077,46.61,45.991,46.842,sat,sat,sat,sat,sat,37.477,37.084,46.937,37.228,36.995,sat,sat,sat,sat,sat
+cifar_wide_kw, cifar_wide_kw-img5989-eps0.028235294117647063, ERROR_SKIPPED, LAST RES timeout 720
+cifar_wide_kw, cifar_wide_kw-img9916-eps0.053202614379084974, ERROR_SKIPPED, LAST RES timeout 720
+cifar_wide_kw, cifar_wide_kw-img3478-eps0.004313725490196079, 29.294,26.974,26.377,26.375,26.41,unsat,unsat,unsat,unsat,unsat,99.37,79.775,51.578,65.061,51.604,unsat,unsat,unsat,unsat,unsat,41.785,41.524,42.191,42.696,41.848,unsat,unsat,unsat,unsat,unsat
+cifar_wide_kw, cifar_wide_kw-img9062-eps0.0014379084967320263, 19.289,19.247,19.501,19.246,19.234,unsat,unsat,unsat,unsat,unsat,35.845,35.888,36.276,35.8,35.922,unsat,unsat,unsat,unsat,unsat,35.776,35.702,35.948,35.991,35.935,unsat,unsat,unsat,unsat,unsat
+cifar_wide_kw, cifar_wide_kw-img3458-eps0.022875816993464054, ERROR_SKIPPED, LAST RES timeout 720
+cifar_deep_kw, cifar_deep_kw-img4405-eps0.036732026143790855, ERROR_SKIPPED, LAST RES timeout 720
+cifar_deep_kw, cifar_deep_kw-img7878-eps0.009934640522875817, ERROR_SKIPPED, LAST RES timeout 720
+cifar_deep_kw, cifar_deep_kw-img1052-eps0.010718954248366015, ERROR_SKIPPED, LAST RES timeout 720
+cifar_deep_kw, cifar_deep_kw-img4325-eps0.01673202614379085, ERROR_SKIPPED, LAST RES timeout 720
+cifar_deep_kw, cifar_deep_kw-img4168-eps0.03150326797385621, ERROR_SKIPPED, LAST RES timeout 720
+cifar_deep_kw, cifar_deep_kw-img3062-eps0.007450980392156864, 43.659,38.425,38.906,38.731,38.203,unsat,unsat,unsat,unsat,unsat,35.497,153.038,99.733,97.672,234.898,unsat,unsat,unsat,unsat,unsat,30.786,40.187,31.48,53.308,41.992,unsat,unsat,unsat,unsat,unsat
+cifar_deep_kw, cifar_deep_kw-img9931-eps0.02496732026143791, ERROR_SKIPPED, LAST RES timeout 720
+cifar_deep_kw, cifar_deep_kw-img8366-eps0.0550326797385621, ERROR_SKIPPED, LAST RES timeout 720
+cifar_deep_kw, cifar_deep_kw-img9845-eps0.009673202614379085, 8.246,7.863,7.756,7.767,7.734,unsat,unsat,unsat,unsat,unsat,15.963,15.583,15.8,16.123,15.666,unsat,unsat,unsat,unsat,unsat,15.302,15.192,15.732,15.451,15.548,unsat,unsat,unsat,unsat,unsat
+cifar_deep_kw, cifar_deep_kw-img4510-eps0.028235294117647063, ERROR_SKIPPED, LAST RES timeout 720

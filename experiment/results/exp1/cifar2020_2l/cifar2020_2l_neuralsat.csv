@@ -1,0 +1,14 @@
+onnx, vnnlib, O_0 ,O_res_0 ,S_0 ,S_res_0 ,B_0 ,B_res_0 
+cifar10_2_255_simplified, cifar10_spec_idx_0_eps_0.00784_n1, ERROR_SKIPPED, LAST RES sat 0.9875
+cifar10_2_255_simplified, cifar10_spec_idx_1_eps_0.00784_n1, 4.3362,unsat,4.5017,unsat,4.5483,unsat
+cifar10_2_255_simplified, cifar10_spec_idx_2_eps_0.00784_n1, 11.9008,unsat,19.3279,unsat,14.818,unsat
+cifar10_2_255_simplified, cifar10_spec_idx_3_eps_0.00784_n1, 4.4673,unsat,4.452,unsat,4.5403,unsat
+cifar10_2_255_simplified, cifar10_spec_idx_4_eps_0.00784_n1, 15.0584,unsat,23.9467,unsat,19.0769,unsat
+cifar10_2_255_simplified, cifar10_spec_idx_5_eps_0.00784_n1, 8.2796,unsat,11.0666,unsat,9.2246,unsat
+cifar10_2_255_simplified, cifar10_spec_idx_6_eps_0.00784_n1, 4.3591,unsat,4.5323,unsat,4.594,unsat
+cifar10_2_255_simplified, cifar10_spec_idx_8_eps_0.00784_n1, ERROR_SKIPPED, LAST RES timeout 300
+cifar10_2_255_simplified, cifar10_spec_idx_9_eps_0.00784_n1, 11.81,unsat,18.8513,unsat,14.7834,unsat
+cifar10_2_255_simplified, cifar10_spec_idx_10_eps_0.00784_n1, 4.3869,unsat,4.6079,unsat,4.6208,unsat
+cifar10_2_255_simplified, cifar10_spec_idx_11_eps_0.00784_n1, 4.4308,unsat,4.4717,unsat,4.5654,unsat
+cifar10_2_255_simplified, cifar10_spec_idx_12_eps_0.00784_n1, ERROR_SKIPPED, LAST RES sat 0.9157
+cifar10_2_255_simplified, cifar10_spec_idx_13_eps_0.00784_n1, 4.3313,unsat,4.4459,unsat,4.5972,unsat

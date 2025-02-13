@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # List of fc benchmarks
-benchmarks=("acasxu" "mnist_fc" "reach_prob" "rl_benchmarks")
+benchmarks=("resnet_a")
+# benchmarks=("acasxu" "mnist_fc" "reach_prob" "rl_benchmarks")
 
 # Loop through benchmarks and seeds
 for benchmark in "${benchmarks[@]}"; do

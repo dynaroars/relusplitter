@@ -4,8 +4,10 @@ class RSplitter_conv():
     def conv_get_split_masks(self, layer_bounds):
         output_lb, output_ub = layer_bounds
         masks = []
-        for i in range(output_lb.shape[1]):
-            lb, ub = output_lb[0,i], output_ub[0,i]
+        for i in range(output_lb.shape[0]):
+        # for i in range(output_lb.shape[1]):
+            # lb, ub = output_lb[0,i], output_ub[0,i]
+            lb, ub = output_lb[i], output_ub[i]
             temp = {}
             temp["all"] = torch.ones_like(lb)
             temp["stable"] = torch.logical_or(lb >= 0, ub <= 0)
@@ -76,6 +78,9 @@ class RSplitter_conv():
 
         # prepare the bounds
         layer_lb,layer_ub = self.warpped_model.get_bound_of(self.bounded_input, conv_node.output[0], method=bounding_method)
+        # remove single dimension - lli: adhoc fix!!!!
+        layer_lb, layer_ub = layer_lb.squeeze(0), layer_ub.squeeze(0)
+
         masks = self.conv_get_split_masks((layer_lb, layer_ub))
         # decide kernels to split
         split_idxs = []
@@ -88,8 +93,10 @@ class RSplitter_conv():
         self.logger.debug(f"Conv layer bound computed, shapes: {layer_lb.shape}, {layer_ub.shape}")
         # compute the split bias for each kernel
         split_biases = []
+
         for i in split_idxs:
-            split_biases.append(self.conv_compute_split_layer_bias((layer_lb[0,i], layer_ub[0,i]), masks[i][split_mask], conv_strategy))
+            split_biases.append(self.conv_compute_split_layer_bias((layer_lb[i], layer_ub[i]), masks[i][split_mask], conv_strategy))
+            # split_biases.append(self.conv_compute_split_layer_bias((layer_lb[0,i], layer_ub[0,i]), masks[i][split_mask], conv_strategy))
             self.logger.info(f"Selected split bias for kernel {i}: {split_biases[-1]}")
 
         # Create the models

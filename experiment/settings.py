@@ -10,8 +10,10 @@ abc_conf_root = tool_root / "experiment" / "configs"
 def get_marabou_milp(benchmark_name, onnx_name):
     if benchmark_name == "acasxu":
         return False
+    # if benchmark_name == "mnist_fc":
+    #     return True
     
-    return False
+    return True
 
 
 def get_abcrown_config(benchmark_name, onnx_name):
@@ -31,13 +33,17 @@ def get_abcrown_config(benchmark_name, onnx_name):
     elif benchmark_name == "rl_benchmarks":
         return abc_conf_root / "rl_benchmarks.yaml"
     elif benchmark_name == "collins_rul":
-        return abc_conf_root / "collins_rul.yaml"
+        return abc_conf_root / "collins-rul-cnn.yaml"
     elif benchmark_name == "metaroom":
         return abc_conf_root / "metaroom.yaml"
     elif benchmark_name == "cifar2020":
         return abc_conf_root / "cifar2020_2_255.yaml"
     elif benchmark_name == "oval21":
         return abc_conf_root / "oval22.yaml"
+    elif benchmark_name == "resnet_a":
+        return abc_conf_root / "resnet_A.yaml"
+    elif benchmark_name == "resnet_b":
+        return abc_conf_root / "resnet_B.yaml"
     else:
         raise ValueError(f"Unknown benchmark: {benchmark_name}")
 
@@ -82,6 +88,17 @@ collins_rul = {
     "path"      : Path(tool_root/'data'/'collins_rul_cnn'),
     "timeout"   : 300,
 }
+resnet_a = {
+    "name"      : "sri_resnet_a",
+    "path"      : Path(tool_root/'data'/'sri_resnet_a'),
+    "timeout"   : 300,
+}
+resnet_b = {
+    "name"      : "sri_resnet_b",
+    "path"      : Path(tool_root/'data'/'sri_resnet_b'),
+    "timeout"   : 300,
+}
+
 
 
 benchmarks = {
@@ -93,6 +110,8 @@ benchmarks = {
     'metaroom': metaroom,
     'cifar2020': cifar2020,
     'oval21': oval21,
+    'resnet_a': resnet_a,
+    'resnet_b': resnet_b,
 }
 
 # FC

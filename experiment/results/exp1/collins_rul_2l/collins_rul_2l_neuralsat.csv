@@ -1,0 +1,6 @@
+onnx, vnnlib, O_0 ,O_1 ,O_2 ,O_3 ,O_4 ,O_res_0 ,O_res_1 ,O_res_2 ,O_res_3 ,O_res_4 ,S_0 ,S_1 ,S_2 ,S_3 ,S_4 ,S_res_0 ,S_res_1 ,S_res_2 ,S_res_3 ,S_res_4 ,B_0 ,B_1 ,B_2 ,B_3 ,B_4 ,B_res_0 ,B_res_1 ,B_res_2 ,B_res_3 ,B_res_4 
+NN_rul_small_window_20, robustness_2perturbations_delta5_epsilon10_w20, ERROR_SKIPPED, LAST RES sat 0.5957
+NN_rul_small_window_20, robustness_2perturbations_delta10_epsilon10_w20, ERROR_SKIPPED, LAST RES sat 0.6421
+NN_rul_small_window_20, robustness_2perturbations_delta20_epsilon10_w20, ERROR_SKIPPED, LAST RES sat 0.6208
+NN_rul_small_window_20, robustness_2perturbations_delta40_epsilon10_w20, ERROR_SKIPPED, LAST RES sat 0.6206
+NN_rul_small_window_20, robustness_4perturbations_delta5_epsilon10_w20, 3.079,2.9446,2.527,3.0956,2.4052,unsat,unsat,unsat,unsat,unsat,2.6461,2.7295,2.5589,2.8746,2.9248,unsat,unsat,unsat,unsat,unsat,2.7573,2.6472,2.557,2.9343,2.9388,unsat,unsat,unsat,unsat,unsat

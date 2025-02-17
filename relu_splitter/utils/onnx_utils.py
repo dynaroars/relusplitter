@@ -13,17 +13,25 @@ def check_model_closeness_ort(m1, m2, input_names, input_shapes, n=50):
     sess1 = ort.InferenceSession(m1.SerializeToString())
     sess2 = ort.InferenceSession(m2.SerializeToString())
     worst_diff = 0
+    temp_a = []
+    temp_b = []
     for i in range(n):
         x = {name: np.random.randn(*shape).astype(np.float32) for name, shape in zip(input_names, input_shapes)}
         y1 = sess1.run(None, x)
         y2 = sess2.run(None, x)
-        for y1_, y2_ in zip(y1, y2):
-            worst_diff = max(worst_diff, np.abs(y1_-y2_).max())
-            if not np.allclose(y1_, y2_):
-                logger.error(f"Outputs are not the same for input {x}\n{y1_}\n{y2_}")
-                logger.error(f"Diff: {np.abs(y1_-y2_).max()}")
-                logger.error(f"{i}/{n} tests passed")
-                return False, worst_diff
+        temp_a.append(y1)
+        temp_b.append(y2)
+
+    # for y1_, y2_ in zip(y1, y2):
+    print(temp_a)
+    print(temp_b)
+    for y1_, y2_ in zip(temp_a, temp_b):
+        worst_diff = max(worst_diff, np.abs(y1_-y2_).max())
+        if not np.allclose(y1_, y2_):
+            logger.error(f"Outputs are not the same for input {x}\n{y1_}\n{y2_}")
+            logger.error(f"Diff: {np.abs(y1_-y2_).max()}")
+            logger.error(f"{i}/{n} tests passed")
+            return False, worst_diff
     return True, worst_diff
 
 
@@ -50,7 +58,6 @@ def check_models_closeness(original, models, input_shape, device=None, n=10, use
             status = all(torch.allclose(original_output, model_output, **kwargs) for original_output, model_output in zip(original_outputs, model_outputs))
             worst_diff = max(torch.abs(original_output - model_output).max() for original_output, model_output in zip(original_outputs, model_outputs))
             ress.append((status, worst_diff))
-            # print(model_outputs)
         return ress
         
 

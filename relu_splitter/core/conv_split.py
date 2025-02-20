@@ -59,15 +59,53 @@ class RSplitter_conv():
         self.logger.debug(f"Selected bias: {bias}")
         return bias
 
-    def split_conv(self, nodes_to_split, n_splits=None, split_mask="stable", conv_strategy="max_unstable", scale_factors=(1.0, -1.0), create_baseline=False, bounding_method="backward"):
+    def conv_compute_split_layer_bias_optimized(self, kernel_bounds, mask, strategy):
+        if not torch.any(mask):
+            self.logger.warn("no patch to be considered for bias computation, using 0 as default bias...")
+            return 0.0
+        
+        kernel_lb, kernel_ub = kernel_bounds
+        self.logger.debug(f"Kernel bound shapes: {kernel_lb.shape}, {kernel_ub.shape}")
+        self.logger.debug(f"Mask shape: {mask.shape}")
+        # only keep the unmasked values
+        # kernel_lb, kernel_ub, mask = kernel_lb.flatten(), kernel_ub.flatten(), mask.flatten()
+        # lb, ub = kernel_lb[mask], kernel_ub[mask]
+        lb, ub = kernel_lb.flatten(), kernel_ub.flatten()
+        # find the val to sat most intervals using sliding line sweep
+        evnts = []
+        for i in range(len(lb)):
+            evnts.append((lb[i].item(), 1))
+            evnts.append((ub[i].item(), -1))
+        evnts.sort(key=lambda x: x[0])
+        active_intervals = 0
+        max_active_intervals = -1
+        start, end = None, None
+        curr_start = evnts[0][0]
+        for val, evnt in evnts:
+            active_intervals += evnt
+            if active_intervals > max_active_intervals:
+                max_active_intervals = active_intervals
+                start = curr_start
+                end = val
+            curr_start = val
+
+        # return a random value from the range
+        bias = random.uniform(start, end)  
+        self.logger.debug(f"Max active patches / # patches considered / # patches")
+        self.logger.debug(f"{max_active_intervals} / {len(lb)} / {len(kernel_lb)}")
+        self.logger.debug(f"Max active patches range: [{start}, {end}]")
+        self.logger.debug(f"Selected bias: {bias}")
+        return bias
+
+
+
+    def split_conv(self, nodes_to_split, n_splits=None, split_mask="stable", conv_strategy="max_unstable", scale_factors=(1.0, -1.0), create_baseline=False, bounding_method="backward", bias_method="normal"):
         conv_node, relu_node = nodes_to_split
         assert conv_node.op_type == "Conv" and relu_node.op_type == "Relu"
 
         self.logger.debug("=====================================")     
         self.logger.debug(f"Splitting model: {self.onnx_path} with spec: {self.spec_path}")
         self.logger.debug(f"Splitting at Conv node: <{conv_node.name}> && ReLU node: <{relu_node.name}>")
-        self.logger.debug(f"Random seed: {self._conf['random_seed']}")
-        # self.logger.debug(f"Split strategy: {conv_strategy}")
         self.logger.debug(f"Split mask: {split_mask}")
         self.logger.debug(f"Scale factors: {scale_factors}")
 
@@ -95,7 +133,12 @@ class RSplitter_conv():
         split_biases = []
 
         for i in split_idxs:
-            split_biases.append(self.conv_compute_split_layer_bias((layer_lb[i], layer_ub[i]), masks[i][split_mask], conv_strategy))
+            # adhoc testing TODO
+            if bias_method == "normal":
+                split_biases.append(self.conv_compute_split_layer_bias((layer_lb[i], layer_ub[i]), masks[i][split_mask], conv_strategy))
+            elif bias_method == "optimized":
+                split_biases.append(self.conv_compute_split_layer_bias_optimized((layer_lb[i], layer_ub[i]), masks[i][split_mask], conv_strategy))
+            # split_biases.append(self.conv_compute_split_layer_bias((layer_lb[i], layer_ub[i]), masks[i][split_mask], conv_strategy))
             # split_biases.append(self.conv_compute_split_layer_bias((layer_lb[0,i], layer_ub[0,i]), masks[i][split_mask], conv_strategy))
             self.logger.info(f"Selected split bias for kernel {i}: {split_biases[-1]}")
 

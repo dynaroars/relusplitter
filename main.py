@@ -36,6 +36,7 @@ def get_parser():
     split_parser.add_argument('--rtol', type=float, default=1e-4, help='Relative tolerance for closeness check')
     split_parser.add_argument('--mode', type=str, default='fc', help='Mode for splitting',
                               choices=['fc', 'conv', 'all'])
+    split_parser.add_argument('--bias_method', type=str, default='normal', help='Method for bias computation', choices=['normal', 'optimized'])
 
 
     
@@ -102,14 +103,14 @@ if __name__ == '__main__':
             # 'device': args.device,
             'create_baseline': args.create_baseline,
             'closeness_check': args.closeness_check,
-            'bounding_method': args.bounding_method
+            'bounding_method': args.bounding_method,
+            'bias_method': args.bias_method,
         }
 
         relusplitter = ReluSplitter(onnx_path, 
                                     spec_path, 
                                     input_shape = input_shape,
-                                    logger = logger, 
-                                    conf = conf)
+                                    logger = logger)
 
         new_model, baseline = relusplitter.split(args.split_idx, args.mode , conf)
         new_model.save(output_path)

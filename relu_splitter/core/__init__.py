@@ -4,22 +4,17 @@ from .conv_split import RSplitter_conv
 
 class ReluSplitter(RSplitter_fc, RSplitter_conv):
 
-    def __init__(self, network: Path, spec: Path, input_shape=None, logger=default_logger, conf=default_config) -> None:
+    def __init__(self, network: Path, spec: Path, input_shape=None, logger=default_logger) -> None:
         self.onnx_path = network
         self.spec_path = spec
-        self._conf = conf
         self.logger = logger
 
         self.logger.debug("ReluSplitter initializing")
         self.logger.debug(f"Model: {self.onnx_path}")
         self.logger.debug(f"Spec: {self.spec_path}")
-        self.logger.debug(f"Config: {self._conf}")
 
-        # self.check_config()
         self.init_model()
         self.init_vnnlib()
-        self.init_seeds()
-
 
         # input_shape is initialized by init_model by default, but can be overriden here
         if input_shape is not None:     
@@ -27,25 +22,6 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
 
         self.logger.debug("ReluSplitter initialized")
 
-    def check_config(self):
-        assert self.onnx_path.exists(), f"Model file <{self.onnx_path}> does not exist"
-        assert self.spec_path.exists(), f"Spec file <{self.spec_path}> does not exist"
-        params = ["min_splits", "max_splits", "random_seed", "split_strategy", "split_mask", "atol", "rtol"]
-        missing_params = [param for param in params if param not in self._conf]
-        assert len(missing_params) == 0, f"Missing parameters in config: {missing_params}"
-        assert 0 < self._conf["min_splits"] <= self._conf["max_splits"]
-        assert self._conf["scale_factor"][0] > 0 and self._conf["scale_factor"][1] < 0
-        assert self._conf["atol"] >= 0
-        assert self._conf["rtol"] >= 0
-        assert self._conf["random_seed"] >= 0
-        assert self._conf["split_strategy"] in ["single", "random", "reluS+", "reluS-", "adaptive"], f"Unknown split strategy {self._conf['split_strategy']}"
-        assert self._conf["split_mask"] in ["stable+", "stable-", "stable", "unstable", "all", "unstable_n_stable+"], f"Unknown split mask {self._conf['split_mask']}"
-        invalid_combinations = [("reluS+", "stable-"), ("reluS-", "stable+"), ("reluS+", "stable"), ("reluS-", "stable"), ("reluS+", "all"), ("reluS-", "all"),
-                                ("reluS-", "unstable_n_stable+")]
-        assert (self._conf["split_strategy"], self._conf["split_mask"]) not in invalid_combinations, f"Invalid combination of split strategy and mask"
-        assert self._conf["device"] in ["cpu", "cuda"], f"Invalid device {self._conf['device']}"
-        if self._conf["device"] == "cuda":
-            assert torch.cuda.is_available(), "CUDA is not available"
 
     def init_vnnlib(self):
         input_bound, output_bound = read_vnnlib(str(self.spec_path))[0]
@@ -65,8 +41,7 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         assert len(model.graph.input) == 1, f"Model has more than one input {model.graph.input}"
         assert len(model.graph.output) == 1, f"Model has more than one output {model.graph.output}"
 
-    def init_seeds(self):
-        random_seed = self._conf.get("random_seed")
+    def init_seeds(self, random_seed):
         random.seed(random_seed)
         torch.manual_seed(random_seed)
 
@@ -84,6 +59,9 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         return splittable_nodes[idx]
 
     def split(self, idx, mode, conf):
+        if "seed" in conf:
+            self.init_seeds(conf["seed"])
+
         n1, n2 = self.resolve_idx(idx, mode)
         assert n2.op_type == "Relu", f"Node at split location is not a ReLU node"
 
@@ -103,7 +81,8 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
                 split_mask=conf["split_mask"], 
                 scale_factors=conf["scale_factor"],
                 create_baseline=conf["create_baseline"],
-                bounding_method=conf["bounding_method"]
+                bounding_method=conf["bounding_method"],
+                bias_method=conf["bias_method"]
                 )
 
 
@@ -114,8 +93,8 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
                 self.input_shape,             # Shape of input for testing
                 device=None,                  # Device for computation, default is CPU
                 n=10,                         # Number of samples to test
-                atol=self._conf["atol"],      # Absolute tolerance for closeness
-                rtol=self._conf["rtol"]       # Relative tolerance for closeness
+                atol=conf["atol"],      # Absolute tolerance for closeness
+                rtol=conf["rtol"]       # Relative tolerance for closeness
             )
             (split_close, split_diff), (baseline_close, baseline_diff) = closeness_results
 

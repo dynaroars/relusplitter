@@ -1,6 +1,7 @@
 from .common import *
 from .fc_split import RSplitter_fc
 from .conv_split import RSplitter_conv
+from .input_split import RSplitter_input
 
 class ReluSplitter(RSplitter_fc, RSplitter_conv):
 

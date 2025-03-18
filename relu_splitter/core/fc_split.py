@@ -106,9 +106,9 @@ class RSplitter_fc():
         gemm_node, relu_node = nodes_to_split
         n_splits = len(split_idxs)
 
-        grad, offset = self.warpped_model.get_gemm_wb(gemm_node)    # w,b of the layer to be splitted
+        w_o, b_o = self.warpped_model.get_gemm_wb(gemm_node)    # w,b of the layer to be splitted
         # create new layers
-        num_out, num_in = grad.shape
+        num_out, num_in = w_o.shape
         split_weights = np.zeros((num_out + n_splits, num_in))
         split_bias = np.zeros(num_out + n_splits)
         merge_weights = np.zeros((num_out, num_out + n_splits))
@@ -117,22 +117,22 @@ class RSplitter_fc():
         idx = 0     # index of neuron in the new split layer
         for i in tqdm(range(num_out), desc="Constructing new layers"):
             if i in split_idxs:
-                w = grad[i]
-                b = split_offsets[split_idxs.index(i)]
+                split_offset = split_offsets[split_idxs.index(i)]
                 scale_ratio_pos, scale_ratio_neg = scale_factors
 
-                split_weights[idx]      = scale_ratio_pos * w
-                split_weights[idx+1]    = scale_ratio_neg * w
-                split_bias[idx]         = -scale_ratio_pos * b
-                split_bias[idx+1]       = -scale_ratio_neg * b
+                split_weights[idx]      = scale_ratio_pos * w_o[i]
+                split_weights[idx+1]    = scale_ratio_neg * w_o[i]
+                split_bias[idx]         = -scale_ratio_pos * (split_offset - b_o[i])
+                split_bias[idx+1]       = -scale_ratio_neg * (split_offset - b_o[i])
 
                 merge_weights[i][idx]   = 1/scale_ratio_pos
                 merge_weights[i][idx+1] = 1/scale_ratio_neg
-                merge_bias[i] = offset[i] + b
+                merge_bias[i] = split_offset
+
                 idx += 2
             else:
-                split_weights[idx] = grad[i]
-                split_bias[idx] = offset[i]
+                split_weights[idx] = w_o[i]
+                split_bias[idx] = b_o[i]
                 merge_weights[i][idx] = 1
                 idx += 1
         split_weights = split_weights.T

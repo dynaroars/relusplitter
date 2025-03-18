@@ -1,5 +1,15 @@
 from .common import *
 
+# import os
+# os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"  # or ":16:8" if needed
+# torch.backends.cudnn.deterministic = True
+# torch.backends.cudnn.benchmark = False
+# torch.use_deterministic_algorithms(True)
+# torch.backends.cudnn.enabled = False
+# uncomment above to fix the closeness fail issue
+# RuntimeError: Deterministic behavior was enabled with either `torch.use_deterministic_algorithms(True)` or `at::Context::setDeterministicAlgorithms(true)`, but this operation is not deterministic because it uses CuBLAS and you have CUDA >= 10.2. To enable deterministic behavior in this case, you must set an environment variable before running your PyTorch application: CUBLAS_WORKSPACE_CONFIG=:4096:8 or CUBLAS_WORKSPACE_CONFIG=:16:8. For more information, go to https://docs.nvidia.com/cuda/cublas/index.html#cublasApi_reproducibility
+# Closeness check fail more often than FC, cublas & cudnn non-determinism
+
 class RSplitter_conv():
     def conv_get_split_masks(self, layer_bounds):
         output_lb, output_ub = layer_bounds
@@ -166,9 +176,9 @@ class RSplitter_conv():
         ori_strides = conv_node.attribute[4].ints
 
         # get the original weights and bias
-        ori_w, ori_b = ori_model.get_conv_wb(conv_node)
-        assert ori_w.dim() == 4
-        ori_oC, ori_iC, ori_kH, ori_kW = ori_w.shape
+        K_o, b_o = ori_model.get_conv_wb(conv_node)
+        assert K_o.dim() == 4
+        ori_oC, ori_iC, ori_kH, ori_kW = K_o.shape
 
         # make weights and bias for split and merge layers
         num_splits = len(split_idxs)
@@ -183,24 +193,23 @@ class RSplitter_conv():
         scale_ratio_pos, scale_ratio_neg = scale_factors
         for i in tqdm(range(ori_oC), desc="Constructing new Conv layer..."):
             if i in split_idxs:
-                temp_w = ori_w[i]
-                temp_b = split_biases[split_idxs.index(i)]
-                self.logger.info(f"Splitting kernel {i} with bias: {temp_b}")
+                split_offset = split_biases[split_idxs.index(i)]
+                self.logger.info(f"Splitting kernel {i} with bias: {split_offset}")
                 # split the kernel
-                new_w[curr_idx]     = temp_w * scale_ratio_pos
-                new_w[curr_idx+1]   = temp_w * scale_ratio_neg
-                new_b[curr_idx]     = temp_b * -scale_ratio_pos
-                new_b[curr_idx+1]   = temp_b * -scale_ratio_neg
+                new_w[curr_idx]     =  scale_ratio_pos * K_o[i]
+                new_w[curr_idx+1]   =  scale_ratio_neg * K_o[i]
+                new_b[curr_idx]     =  -scale_ratio_pos * (split_offset - b_o[i])
+                new_b[curr_idx+1]   =  -scale_ratio_neg * (split_offset - b_o[i])
                 # set merge w & b
                 merge_w[i, curr_idx  , 0, 0] = 1/scale_ratio_pos
                 merge_w[i, curr_idx+1, 0, 0] = 1/scale_ratio_neg
-                merge_b[i] = ori_b[i] + temp_b
+                merge_b[i] = split_offset
 
                 curr_idx += 2
             else:
                 # copy the kernel
-                new_w[curr_idx] = ori_w[i]
-                new_b[curr_idx] = ori_b[i]
+                new_w[curr_idx] = K_o[i]
+                new_b[curr_idx] = b_o[i]
                 # forward through merge layer
                 merge_w[i, curr_idx, 0, 0] = 1
                 merge_b[i] = 0

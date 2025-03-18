@@ -1,14 +1,13 @@
 from .common import *
 
+# uncomment above to fix the closeness fail issue
 # import os
 # os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"  # or ":16:8" if needed
 # torch.backends.cudnn.deterministic = True
 # torch.backends.cudnn.benchmark = False
 # torch.use_deterministic_algorithms(True)
 # torch.backends.cudnn.enabled = False
-# uncomment above to fix the closeness fail issue
-# RuntimeError: Deterministic behavior was enabled with either `torch.use_deterministic_algorithms(True)` or `at::Context::setDeterministicAlgorithms(true)`, but this operation is not deterministic because it uses CuBLAS and you have CUDA >= 10.2. To enable deterministic behavior in this case, you must set an environment variable before running your PyTorch application: CUBLAS_WORKSPACE_CONFIG=:4096:8 or CUBLAS_WORKSPACE_CONFIG=:16:8. For more information, go to https://docs.nvidia.com/cuda/cublas/index.html#cublasApi_reproducibility
-# Closeness check fail more often than FC, cublas & cudnn non-determinism
+
 
 class RSplitter_conv():
     def conv_get_split_masks(self, layer_bounds):

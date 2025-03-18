@@ -3,6 +3,7 @@ from .fc_split import RSplitter_fc
 from .conv_split import RSplitter_conv
 from .input_split import RSplitter_input
 
+
 class ReluSplitter(RSplitter_fc, RSplitter_conv):
 
     def __init__(self, network: Path, spec: Path, input_shape=None, logger=default_logger) -> None:
@@ -45,6 +46,7 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
     def init_seeds(self, random_seed):
         random.seed(random_seed)
         torch.manual_seed(random_seed)
+        np.random.seed(random_seed)
 
 
     def resolve_idx(self, idx, mode):

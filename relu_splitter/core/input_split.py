@@ -10,6 +10,7 @@ class RSplitter_input():
     
     def _intput_split_inplace_fc(self, node_to_split, split_idxs, split_ratios):
         # needs to return a vnnlib onnx pair
+        pass
         
 
 

@@ -163,7 +163,7 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         print(f"Model: {onnx_path}\n")
         print(f"Spec: {spec_path}\n")
         print("=====================================")
-        relu_splitter = cls(onnx_path, spec_path, logger=default_logger, conf=default_config, input_shape=input_shape)
+        relu_splitter = cls(onnx_path, spec_path, logger=default_logger, input_shape=input_shape)
         splittable_nodes = relu_splitter.get_splittable_nodes()
         print(f"Found {len(splittable_nodes)} splittable nodes")
         print("=====================================")

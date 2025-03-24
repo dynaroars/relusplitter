@@ -8,28 +8,40 @@ supports two common layer types.
     - Fully-connected layer with ReLU activation
     - Convolutional layer with ReLU activation
 
-Technically, any network with above layers can be splitted. However, it is possible that you will ran into compatibility issues for variouse reasons (e.g. onnx versioning, complex network structures...). If this tool does not work for your and you believe it should, free free to open an issue or contact us.
+Technically, any network with above layers can be splitted. However, you might encounter compatibility issues due to factors like ONNX version differences or complex network structures. If you believe your network should work but doesn't, feel free to [open an issue](#) or contact us directly.
 
-One advantage of ReluSplitter is that it is *semantic-preserving*, meaning it will always generate a new DNNV instance that has the exact grountruth as the original DNNV instance (e.g., if the orginal DNNV instance is `UNSAT`, then the generated one should also be `UNSAT`). It can *generate a new DNNV instance in seconds*, which is significantly faster than the other benchmark generation techniques, as it does not require training/distillation. 
 
+### Why ReluSplitter?
+
+- ✅ **Semantic-preserving**: The generated network always retains the same semantics as the original. For example, if the original instance is `UNSAT`, the modified instance will also be `UNSAT`.  
+- ⚡ **Fast generation**: A new DNNV instance can be created within seconds—significantly faster than alternative benchmark generation approaches that require training or distillation.
 
 
 ## Installation
-TODO
+Coming soon
 
 ## Usage
-basic usage:
-> 123
+basic usage
+- info
+    ```
+    python main.py info --net data/mnist_fc/onnx/mnist-net_256x6.onnx  --spec  data/mnist_fc/vnnlib/prop_5_0.03.vnnlib
+    ```
+- split
+    ```
+    python main.py split --net data/mnist_fc/onnx/mnist-net_256x6.onnx  --spec  data/mnist_fc/vnnlib/prop_5_0.03.vnnlib
+    ```
 
 ReluSplitter also provide a number of parameters for users to explore. For example: the number of split, the scaling factors, or the type of neuron to split (stably active, stably inactive, unstable). 
 
 ## Algorithm and Proff
-#### Algorithm
+Summary
+### Algorithm
 Coming soon
 
-#### Proof
+- [Visualized demo of the splitting technique on 1-dimensional input space](https://www.desmos.com/calculator/kthart02fb)
+
+### Proof
 Coming soon
 
-# Misc
-### [Visualized demo of the splitting technique on 1-dimensional input space](https://www.desmos.com/calculator/kthart02fb)
+
 

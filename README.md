@@ -2,13 +2,16 @@
 
 ReluSplitter is a DNN verification(DNNV) benchmark generation tool for ReLU-based network. It takes input as a DNNV instance (network + property) and generates a modified network s.t. the modified network carries the same semantic of the orginal network, but it is harder to verify the property on the modified network. ReluSplitter achieves this by systematically de-stablizing stable neurons in the network. 
 
+![Overview](stuff/figs/tool_overview.PNG)
+
+
 ## Features
 Currently, our tool accepts input in the standard `onnx` and `vnnlib` format, and
 supports two common layer types.
-    - Fully-connected layer with ReLU activation
-    - Convolutional layer with ReLU activation
+- Fully-connected layer with ReLU activation
+- Convolutional layer with ReLU activation
 
-Technically, any network with above layers can be splitted. However, you might encounter compatibility issues due to factors like ONNX version differences or complex network structures. If you believe your network should work but doesn't, feel free to [open an issue](#) or contact us directly.
+Technically, any network with above layers can be splitted. However, you might encounter compatibility issues due to factors like ONNX version differences or complex network structures. If you believe your input should work but doesn't, feel free to [open an issue](#) or contact us.
 
 
 ### Why ReluSplitter?

@@ -1,4 +1,5 @@
 import logging
+
 import onnx
 import torch
 import numpy as np
@@ -49,7 +50,6 @@ def check_models_closeness(original, models, input_shape, device=None, n=10, use
         inputs = [torch.randn(input_shape).to(device) for _ in range(n)]
         original_outputs = [original.forward(x) for x in inputs]
         # print(original_outputs)
-
         for model in models:
             if model is None:
                 ress.append((True, None))
@@ -58,7 +58,7 @@ def check_models_closeness(original, models, input_shape, device=None, n=10, use
             status = all(torch.allclose(original_output, model_output, **kwargs) for original_output, model_output in zip(original_outputs, model_outputs))
             worst_diff = max(torch.abs(original_output - model_output).max() for original_output, model_output in zip(original_outputs, model_outputs))
             ress.append((status, worst_diff))
-        return ress
+    return ress
         
 
 

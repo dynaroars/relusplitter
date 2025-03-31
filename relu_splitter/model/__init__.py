@@ -45,7 +45,7 @@ class WarppedOnnxModel():
 
         self._sanity_check(model)
 
-        self._model = model
+        self._model_ = model    # protected, immutable
         self.op_set = model.opset_import
         self._initializers = [initializer for initializer in model.graph.initializer]
         self._initializers_mapping = {initializer.name: initializer for initializer in model.graph.initializer}
@@ -122,6 +122,10 @@ class WarppedOnnxModel():
         return [i for i in node.input if not self.has_initializer(i)]
 
     @property
+    def _model(self):
+        return deepcopy(self._model_)
+
+    @property
     def nodes(self):
         return copy(self._nodes)
     
@@ -195,29 +199,34 @@ class WarppedOnnxModel():
             w = w.t()
 
         return w,b
+
+    @property
+    def _bounded_model_gpu(self):
+        if not hasattr(self, "_bounded_model_gpu_"):
+            # self._bounded_model_gpu_ = BoundedModule(ConvertModel(self._model, experimental=True, quirks=custom_quirks), x, device='cuda')
+            self._bounded_model_gpu_ = ConvertModel(self._model, experimental=True, quirks=custom_quirks).to('cuda')
+        return self._bounded_model_gpu_
+    @property
+    def _bounded_model(self):
+        if not hasattr(self, "_bounded_model_"):
+            # self._bounded_model_ = BoundedModule(ConvertModel(self._model, experimental=True, quirks=custom_quirks), x)
+            self._bounded_model_ = ConvertModel(self._model, experimental=True, quirks=custom_quirks).to('cpu')
+        return self._bounded_model_
     
     def forward_gpu(self, x: torch.Tensor) -> torch.Tensor:
         # put tensor on gpu if not already
         if x.device != 'cuda':
             x = x.cuda()
-        if not hasattr(self, "_bounded_model_gpu"):
-            self._bounded_model_gpu = BoundedModule(ConvertModel(self._model, experimental=True, quirks=custom_quirks), x, device='cuda')
         return self._bounded_model_gpu(x)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if not hasattr(self, "_bounded_model"):
-            self._bounded_model = BoundedModule(ConvertModel(self._model, experimental=True, quirks=custom_quirks), x)
         return self._bounded_model(x)
 
     def to(self, device):
         device = str(device).lower()
         if device == 'cuda':
-            if not hasattr(self, "_bounded_model_gpu"):
-                self._bounded_model_gpu = ConvertModel(self._model, experimental=True, quirks=custom_quirks).cuda()
             return self._bounded_model_gpu
         elif device == 'cpu':
-            if not hasattr(self, "_bounded_model"):
-                self._bounded_model = ConvertModel(self._model, experimental=True, quirks=custom_quirks)
             return self._bounded_model
         else:
             raise ValueError(f"Invalid device {device}")

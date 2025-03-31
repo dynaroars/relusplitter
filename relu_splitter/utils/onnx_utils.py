@@ -43,7 +43,6 @@ def check_models_closeness(original, models, input_shape, device=None, n=10, use
     else:   # Use PyTorch
         if device is None:
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            
         ress = []
         original = original.to(device)
         models = map(lambda model: model.to(device) if model is not None else None, models)
@@ -58,38 +57,9 @@ def check_models_closeness(original, models, input_shape, device=None, n=10, use
             status = all(torch.allclose(original_output, model_output, **kwargs) for original_output, model_output in zip(original_outputs, model_outputs))
             worst_diff = max(torch.abs(original_output - model_output).max() for original_output, model_output in zip(original_outputs, model_outputs))
             ress.append((status, worst_diff))
+
     return ress
-        
 
-
-
-    
-
-def check_model_closeness(m1, m2, input_shape, n=5, **kwargs):
-    worst_diff = 0
-    for i in range(n):
-        x = torch.randn(input_shape)
-        y1,y2 = m1.forward(x), m2.forward(x)
-        worst_diff = max(worst_diff, torch.abs(y1-y2).max())
-        if not torch.allclose(y1, y2, **kwargs):
-            logger.error(f"Outputs are not the same for input {x}\n{y1}\n{y2}")
-            logger.error(f"Diff: {torch.abs(y1-y2).max()}")
-            logger.error(f"{i}/{50} tests passed")
-            return False, worst_diff
-    return True, worst_diff
-
-def check_model_closeness_gpu(m1, m2, input_shape, n=5, **kwargs):
-    worst_diff = 0
-    for i in range(n):
-        x = torch.randn(input_shape).cuda()
-        y1,y2 = m1.forward_gpu(x), m2.forward_gpu(x)
-        worst_diff = max(worst_diff, torch.abs(y1-y2).max())
-        if not torch.allclose(y1, y2, **kwargs):
-            logger.error(f"Outputs are not the same for input {x}\n{y1}\n{y2}")
-            logger.error(f"Diff: {torch.abs(y1-y2).max()}")
-            logger.error(f"{i}/{50} tests passed")
-            return False, worst_diff
-    return True, worst_diff
 
 def compute_model_bound(model: onnx.ModelProto, bounded_input: BoundedTensor, input_names=["input"], method="backward"):
     model = ConvertModel(model)

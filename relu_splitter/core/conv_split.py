@@ -1,12 +1,10 @@
 from .common import *
 
-# uncomment above to fix the closeness fail issue
-# import os
-# os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"  # or ":16:8" if needed
-# torch.backends.cudnn.deterministic = True
-# torch.backends.cudnn.benchmark = False
-# torch.use_deterministic_algorithms(True)
-# torch.backends.cudnn.enabled = False
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"  # or ":16:8" if needed
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+torch.use_deterministic_algorithms(True)
+torch.backends.cudnn.enabled = False
 
 
 class RSplitter_conv():

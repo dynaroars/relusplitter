@@ -2,9 +2,10 @@ import subprocess
 import sys
 import logging
 import os
+from pathlib import Path
 
 
-RESMONITOR_PATH = "libs/resmonitor.py"
+RESMONITOR_PATH = f"{os.environ.get('LIB_PATH')}/resmonitor.py"
 
 
 TimeoutError = "timeout"
@@ -55,7 +56,7 @@ class Verifier:
     @classmethod
     def execute(cls, prog_conf):
         cmd = cls.gen_prog(prog_conf)
-        log_path = prog_conf.get('log_path')
+        log_path = Path(prog_conf.get('log_path'))
         cls.logger.debug(f"config: {prog_conf}")
         cls.logger.info(f"Executing verification ... log path: {log_path}")
         cls.logger.info(cmd)

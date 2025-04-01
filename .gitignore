@@ -1,6 +1,8 @@
 experiment/logs
 experiment/onnx
 experiment/generated
+exp_priv
+
 data/*
 
 libs/*

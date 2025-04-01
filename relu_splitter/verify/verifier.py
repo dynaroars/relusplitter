@@ -55,25 +55,56 @@ class Verifier:
 
     @classmethod
     def execute(cls, prog_conf):
-        cmd = cls.gen_prog(prog_conf)
-        log_path = Path(prog_conf.get('log_path'))
-        cls.logger.debug(f"config: {prog_conf}")
-        cls.logger.info(f"Executing verification ... log path: {log_path}")
-        cls.logger.info(cmd)
+        force_rerun = prog_conf.get('force_rerun', False)
+        if force_rerun == True:
+            cls.logger.info(f"Force rerun is set to True, rerunning verification")
+        if force_rerun == True or cls.finished(prog_conf) == False:
+            cmd = cls.gen_prog(prog_conf)
+            log_path = Path(prog_conf.get('log_path'))
+            cls.logger.debug(f"config: {prog_conf}")
+            cls.logger.info(f"Executing verification ... log path: {log_path}")
+            cls.logger.info(cmd)
 
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(log_path, "w") as veri_log_fp:
-            sp = subprocess.Popen(cmd, shell=True, stdout=veri_log_fp, stderr=veri_log_fp)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(log_path, "w") as veri_log_fp:
+                veri_log_fp.write(f"[LLI-verify] ONNX:{prog_conf['onnx_path']}, VNNLIB:{prog_conf['vnnlib_path']}\n")
+                sp = subprocess.Popen(cmd, shell=True, stdout=veri_log_fp, stderr=veri_log_fp)
 
-        cls.logger.debug(f"Verification process pid: {sp.pid}, waiting...")
-        sp.wait()
-        if sp.returncode != 0:
-            cls.logger.error(f"Verification failed with return code {sp.returncode}")
-            cls.logger.error(f"Verification log path: {log_path}")
-            return None
+                cls.logger.debug(f"Verification process pid: {sp.pid}, waiting...")
+                sp.wait()
+                veri_log_fp.write(f"[LLI-verify] Verification finished ({sp.returncode})\n")
+            if sp.returncode != 0:
+                cls.logger.error(f"Verification failed with return code {sp.returncode}")
+                cls.logger.error(f"Verification log path: {log_path}")
+                return None
+            else:
+                cls.logger.info("Verification finished successfully")
+                return cls.analyze(prog_conf)
         else:
-            cls.logger.info("Verification finished successfully")
+            cls.logger.info(f"Verification already finished, skipping execution [{prog_conf['log_path']}]")
             return cls.analyze(prog_conf)
+
+            
+
+    @classmethod
+    def finished(cls, prog_conf):
+        log_path = prog_conf.get('log_path')
+        if not os.path.exists(log_path):
+            cls.logger.info(f"Log file {log_path} does not exist")
+            return False
+        with open(log_path, "r") as fp:
+            lines = fp.readlines()
+        if len(lines) == 0:
+            cls.logger.info(f"Log file {log_path} is empty")
+            return False
+        for l in lines:
+            if "[LLI-verify] Verification finished" in l:
+                cls.logger.info(f"Log file {log_path} is finished")
+                return True
+        cls.logger.info(f"Log file {log_path} is not finished")
+        return False
+
+
     @classmethod
     def _analyze(cls, lines):
         raise NotImplementedError("_analyze not implemented in sub class {cls.__name__}")

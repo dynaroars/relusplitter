@@ -1,16 +1,32 @@
 #!/bin/bash
 
-# Get the absolute path to the script's directory
+
 SCRIPT_PATH="$(readlink -f "$0")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+TOOL_ROOT=$SCRIPT_DIR/..
 
-# Compute the paths relative to the script's directory
-LIBS_DIR=$(realpath "$SCRIPT_DIR/../libs")
-ENVS_DIR=$(realpath "$SCRIPT_DIR/../.envs")
+CONDA_HOME=.envs/conda
+CONDA=$CONDA_HOME/bin/conda
+
+# resolve the paths relative to the script's directory
+LIBS_DIR=$(realpath "$TOOL_ROOT/libs")
+ENVS_DIR=$(realpath "$TOOL_ROOT/.envs")
 TOOL_NAME="ReluSplitter"
 CONDA_PREFIX=$ENVS_DIR/$TOOL_NAME
 ENV_FILE_PATH=$ENVS_DIR/ReluSplitter.yaml
 
-conda env remove --prefix $CONDA_PREFIX
-conda env create --prefix $CONDA_PREFIX -f $ENV_FILE_PATH
+
+if [ ! -d $CONDA_HOME ]; then
+    wget -O conda.sh https://repo.anaconda.com/archive/Anaconda3-2024.10-1-Linux-x86_64.sh
+    # wget -O conda.sh https://repo.anaconda.com/miniconda/Miniconda3-py310_23.3.1-0-Linux-x86_64.sh
+    chmod 755 conda.sh
+    ./conda.sh -bf -p $CONDA_HOME
+    rm ./conda.sh
+fi
+
+$CONDA env remove --prefix $CONDA_PREFIX
+$CONDA env create --prefix $CONDA_PREFIX -f $ENV_FILE_PATH
+
+cd $TOOL_ROOT
+git submodule update --init  --recursive
 $CONDA_PREFIX/bin/pip install -e $LIBS_DIR/auto_LiRPA

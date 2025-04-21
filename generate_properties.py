@@ -10,7 +10,7 @@ from pathlib import Path
 TOOL_NAME = "ReluSplitter"
 TOOL_ROOT = os.path.dirname(os.path.abspath(__file__))
 LIB_PATH = os.path.join(TOOL_ROOT, "lib")
-ENVS_PATH = os.path.join(os.environ.get("TOOL_ROOT"), ".envs")
+ENVS_PATH = os.path.join(TOOL_ROOT, ".envs")
 PYTHON_EXE = os.path.join(ENVS_PATH, TOOL_NAME, "bin", "python")
 
 INPUT_DIR = os.path.join(TOOL_ROOT, "Seed_Inputs")
@@ -53,7 +53,7 @@ random.seed(int(RANDOM_SEED))
 
 
 with open(SELECTED_INSTANCES, "r") as f, open(GENERATED_INSTANCES, "w") as g:
-    for line in tqdm(f.readlines(), desc="Generating properties", unit="file"):
+    for line in f.readlines():
         onnx, vnnlib, timeout, mode, split_idx, n_splits = [col.strip() for col in line.split(",")]
 
         onnx_stem, vnnlib_stem = Path(onnx).stem, Path(vnnlib).stem

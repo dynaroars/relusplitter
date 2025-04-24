@@ -14,6 +14,11 @@ class NNEnum(Verifier):
         return cmd
 
     @classmethod
+    @property
+    def relavent_configs(cls):
+        return []
+
+    @classmethod
     def _analyze(cls, lines):
         veri_ans = None
         veri_time = None

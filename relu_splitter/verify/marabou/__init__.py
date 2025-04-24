@@ -25,6 +25,11 @@ class Marabou(Verifier):
         return cmd
 
     @classmethod
+    @property
+    def relavent_configs(cls):
+        return ['num_workers', 'timeout', 'milp']
+
+    @classmethod
     def _analyze(cls, lines):
         veri_ans = None
         veri_time = None

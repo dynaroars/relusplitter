@@ -31,6 +31,11 @@ class AlphaBetaCrown(Verifier):
         return cmd
 
     @classmethod
+    @property
+    def relavent_configs(cls):
+        return ['config_path', "timeout"]
+
+    @classmethod
     def _analyze(cls, lines):
         veri_ans = None
         veri_time = None

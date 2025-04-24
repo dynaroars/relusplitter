@@ -2,6 +2,8 @@ import subprocess
 import sys
 import logging
 import os
+import hashlib
+
 from pathlib import Path
 
 
@@ -29,6 +31,40 @@ class Verifier:
     @classmethod
     def _gen_prog(cls, prog_conf):
         raise NotImplementedError("_gen_prog not implemented in sub class {cls.__name__}")
+
+
+    @classmethod
+    def get_onnx_hash(cls, prog_conf):
+        # hash the onnx file
+        with open(prog_conf['onnx_path'], "rb") as f:
+            onnx_hash = hashlib.sha256(f.read()).hexdigest()
+        return onnx_hash
+
+    @classmethod
+    def get_vnnlib_hash(cls, prog_conf):
+        # hash the vnnlib file
+        with open(prog_conf['vnnlib_path'], "rb") as f:
+            vnnlib_hash = hashlib.sha256(f.read()).hexdigest()
+        return vnnlib_hash
+
+    @classmethod
+    @property
+    def relavent_configs(cls):
+        return []
+
+    @classmethod
+    def get_hash(cls, prog_conf):
+        # hash the actual onnx and vnnlib files
+        onnx_hash = cls.get_onnx_hash(prog_conf)
+        vnnlib_hash = cls.get_vnnlib_hash(prog_conf)
+        verifier_hash = hashlib.sha256(cls.name.encode()).hexdigest()
+        config = [(k,v) for k, v in prog_conf.items() if k in cls.relavent_configs] 
+        config.sort()
+        config_hash = hashlib.sha256(str(config).encode()).hexdigest()
+        # combine the hashes
+        hash_value = hashlib.sha256((onnx_hash + vnnlib_hash + config_hash).encode()).hexdigest()
+        return hash_value
+        
 
     @classmethod
     def gen_prog(cls, prog_conf):
@@ -67,12 +103,18 @@ class Verifier:
 
             log_path.parent.mkdir(parents=True, exist_ok=True)
             with open(log_path, "w") as veri_log_fp:
+                # write the hash value to the log file
+                veri_log_fp.write(f"[LLI-verify-HASH] {cls.get_hash(prog_conf)}\n")
+
                 veri_log_fp.write(f"[LLI-verify] ONNX:{prog_conf['onnx_path']}, VNNLIB:{prog_conf['vnnlib_path']}\n")
+                veri_log_fp.write(f"[LLI-verify] onnx_hash:{cls.get_onnx_hash(prog_conf)}, vnnlib_hash:{cls.get_vnnlib_hash(prog_conf)}\n")
+
+                veri_log_fp.flush()
                 sp = subprocess.Popen(cmd, shell=True, stdout=veri_log_fp, stderr=veri_log_fp)
 
                 cls.logger.debug(f"Verification process pid: {sp.pid}, waiting...")
                 sp.wait()
-                veri_log_fp.write(f"[LLI-verify] Verification finished ({sp.returncode})\n")
+                veri_log_fp.write(f"[LLI-verify-STATUS] Verification finished ({sp.returncode})\n")
             if sp.returncode != 0:
                 cls.logger.error(f"Verification failed with return code {sp.returncode}")
                 cls.logger.error(f"Verification log path: {log_path}")
@@ -92,14 +134,25 @@ class Verifier:
         if not os.path.exists(log_path):
             cls.logger.info(f"Log file {log_path} does not exist")
             return False
+
         with open(log_path, "r") as fp:
             lines = fp.readlines()
         if len(lines) == 0:
             cls.logger.info(f"Log file {log_path} is empty")
             return False
+
+        if "[LLI-verify-HASH]" in lines[0]:
+            hash_value = lines[0].strip().split("]")[-1].strip()
+            if hash_value != cls.get_hash(prog_conf):
+                cls.logger.info(f"Log file {log_path} hash value mis-match")
+                return False
+        else:
+            cls.logger.info(f"Log file {log_path} does not contain hash value")
+            return False
+
         for l in lines:
-            if "[LLI-verify] Verification finished" in l:
-                cls.logger.info(f"Log file {log_path} is finished")
+            if "[LLI-verify-STATUS] Verification finished" in l:
+                cls.logger.info(f"Verification already finished in log file {log_path}, Skipping execution")
                 return True
         cls.logger.info(f"Log file {log_path} is not finished")
         return False

@@ -29,6 +29,11 @@ class Neuralsat(Verifier):
         return cmd
 
     @classmethod
+    @property
+    def relavent_configs(cls):
+        return ['timeout']
+
+    @classmethod
     def _analyze(cls, lines):
         veri_ans = None
         veri_time = None

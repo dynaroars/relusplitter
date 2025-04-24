@@ -78,6 +78,39 @@ def get_parser():
 
     return parser
 
+def get_verifier_confs(onnx_path, vnnlib_path, verifier):
+    conf = {
+        'onnx_path': onnx_path,
+        'vnnlib_path': vnnlib_path,
+        'log_path': Path('veri.log'),
+    }
+    if verifier == 'neuralsat':
+        return conf
+    elif verifier == "marabou":
+        conf['num_workers'] = 12
+        return conf
+    elif verifier == "nnenum":
+        return conf
+    elif verifier == "abcrown":
+        if "ACASXU" in onnx_path.stem:
+            conf['config_path'] = "libs/abc_configs/vnncomp23/acasxu.yaml"
+        elif "mnist-net_256x" in onnx_path.stem:
+            conf['config_path'] = "libs/abc_configs/vnncomp22/mnistfc.yaml"
+        elif "tllBench" in onnx_path.stem:
+            conf['config_path'] = "libs/abc_configs/vnncomp23/tllVerifyBench.yaml"
+        elif onnx_path.stem in ["cifar10_2_255_simplified", "cifar10_8_255_simplified", "convBigRELU__PGD"]:
+            conf['config_path'] = "libs/abc_configs/vnncomp22/cifar2020_2_255.yaml"
+        elif onnx_path.stem in ["cifar_base_kw", "cifar_wide_kw", "cifar_deep_kw"]:
+            conf['config_path'] = "libs/abc_configs/vnncomp22/oval22.yaml"
+        elif onnx_path.stem in ["NN_rul_small_window_20", "NN_rul_full_window_20", "NN_rul_full_window_40"]:
+            conf['config_path'] = "libs/abc_configs/vnncomp22/collins-rul-cnn.yaml"
+        elif "cifar_bias_field" in onnx_path.stem:
+            conf['config_path'] = "libs/abc_configs/vnncomp22/cifar_biasfield.yaml"
+        elif "vgg16" in onnx_path.stem:
+            conf['config_path'] = "libs/abc_configs/vnncomp22/vggnet16.yaml"
+        else:
+            conf['config_path'] = "libs/abc_configs/tutorial_examples/onnx_with_one_vnnlib.yaml"
+        return conf
 
 if __name__ == '__main__':
     parser = get_parser()
@@ -123,22 +156,7 @@ if __name__ == '__main__':
         if args.verify:
             verifier = init_verifier(args.verify)
             verifier.set_logger(logger)
-            # abc_conf_path = "/home/lli/tools/relusplitter/experiment/config/mnistfc.yaml"
-            # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp23/tllVerifyBench.yaml"
-            # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/cifar2020_2_255.yaml"
-            # abc_conf_path = "/home/lli/tools/relusplitter/experiment/config/reach_probability.yaml"
-            abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/oval22.yaml"
-            # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/collins-rul-cnn.yaml"
-            # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/cifar_biasfield.yaml"
-            # abc_conf_path = "/home/lli/tools/relusplitter/libs/alpha-beta-CROWN/complete_verifier/exp_configs/vnncomp22/vggnet16.yaml"
-            conf = {
-                'onnx_path': onnx_path,
-                'vnnlib_path': spec_path,
-                'log_path': Path('veri_1.log'),
-                'verbosity': 1,
-                'num_workers': 12,
-                'config_path': abc_conf_path,
-            }
+            conf = get_verifier_confs(onnx_path, spec_path, args.verify)
             logger.info(f'Start verification using {args.verify}')
 
             print("Original instance:")

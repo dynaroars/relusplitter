@@ -11,6 +11,11 @@ TOOL_NAME="ReluSplitter"
 CONDA_PREFIX=$ENVS_DIR/$TOOL_NAME
 ENV_FILE_PATH=$ENVS_DIR/ReluSplitter.yaml
 
+
+git submodule init
+git submodule update
+
+
 conda env remove --prefix $CONDA_PREFIX
 conda env create --prefix $CONDA_PREFIX -f $ENV_FILE_PATH
 $CONDA_PREFIX/bin/pip install -e $LIBS_DIR/auto_LiRPA

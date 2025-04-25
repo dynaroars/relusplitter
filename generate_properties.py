@@ -211,7 +211,7 @@ if __name__ == "__main__":
 
     # run prep_benchmark
     # ./scripts/prep_benchmarks.sh random_seed
-    # subprocess.run(["./scripts/prep_benchmarks.sh", str(RANDOM_SEED)])
+    subprocess.run(["./scripts/prep_benchmarks.sh", str(RANDOM_SEED)])
 
 
     # Load instances from the specified directories

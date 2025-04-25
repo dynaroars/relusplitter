@@ -30,3 +30,4 @@ $CONDA env create --prefix $CONDA_PREFIX -f $ENV_FILE_PATH
 cd $TOOL_ROOT
 git submodule update --init  --recursive
 $CONDA_PREFIX/bin/pip install -e $LIBS_DIR/auto_LiRPA
+sed -i '865s/self.ori_state_dict)/self.ori_state_dict, strict=False)/' $LIBS_DIR/auto_LiRPA/auto_LiRPA/bound_general.py

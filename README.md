@@ -18,7 +18,7 @@ To generate benchmark instances:
 This benchmark uses selected instances from previous VNNCOMP iterations as seed inputs to generate more challenging instances. The networks include both fully connected (FC) and convolutional (Conv) architectures. All networks uses standard feed-forward structure, except for SRI ResNet A/B, which includes residual connections.
 
 <small>
-We are considering splitting this benchmark into two smaller benchmarks: one will only have FC networks, and the other will include only Conv networks, which may have residual connections. We think this could encourage more participation, as some tools may not work well with or may struggle to handle convolutional networks. If necessary, we can also exclude certain benchmarks from the seed instances.
+We are considering splitting this benchmark into two smaller benchmarks: one will only have FC networks, and the other will include only Conv networks, which may have residual connections. We think this could encourage more participation, as some tools may not work well with or may struggle to handle convolutional networks. If needed, we can also add or exclude certain benchmarks from the seed instances.
 </small>
 
 

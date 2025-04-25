@@ -1,3 +1,5 @@
+#!/bin/bash
+
 SCRIPT_PATH="$(readlink -f "$0")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 TOOL_ROOT="$(realpath "$SCRIPT_DIR/..")"
@@ -25,6 +27,7 @@ cd acasxu_converted
 
 # MNIST FC
 cd $INPUT_DIR
+rm -rf mnist_fc_vnncomp2022
 git clone https://github.com/pat676/mnist_fc_vnncomp2022.git
 cd mnist_fc_vnncomp2022
 $PYTHON generate_properties.py $SEED
@@ -32,6 +35,7 @@ $PYTHON generate_properties.py $SEED
 
 # OVAL21
 cd $INPUT_DIR
+rm -rf oval21-benchmark
 git clone https://github.com/alessandrodepalma/oval21-benchmark.git
 cd oval21-benchmark
 $PYTHON generate_properties.py $SEED
@@ -42,6 +46,7 @@ sed -i -E 's|^([^,]+\.onnx),([^,]+\.vnnlib),|nets/\1,vnnlib/\2,|' instances.csv
 
 # SRI ResNet A/B
 cd $INPUT_DIR
+rm -rf sri_resnet_a
 git clone https://github.com/mnmueller/vnn_comp_22_bench_sri.git sri_resnet_a
 cd sri_resnet_a
 git checkout ResNet_A
@@ -51,6 +56,7 @@ cd ..
 mv specs/instances.csv .
 
 cd $INPUT_DIR
+rm -rf sri_resnet_b
 git clone https://github.com/mnmueller/vnn_comp_22_bench_sri.git sri_resnet_b
 cd sri_resnet_b
 git checkout ResNet_B
@@ -62,6 +68,7 @@ mv specs/instances.csv .
 
 # Cifar biasfield 
 cd $INPUT_DIR
+rm -rf cifar_biasfield_vnncomp2022
 git clone https://github.com/pat676/cifar_biasfield_vnncomp2022.git
 cd cifar_biasfield_vnncomp2022
 $PYTHON generate_properties.py $SEED

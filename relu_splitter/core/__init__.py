@@ -189,7 +189,7 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
                     counts = {k : torch.sum(v).item() for k, v in masks[i].items()}
                     print(f"kernel {i}: {counts}")
             else:
-                self.logger.debug(f"None splittable node: {prior_node.op_type} in info...")
+                print(f"None splittable node: {prior_node.op_type} in info...")
             print("=====================================")
             
 

@@ -160,16 +160,16 @@ if __name__ == '__main__':
             logger.info(f'Start verification using {args.verify}')
 
             print("Original instance:")
-            print(colored(verifier.execute(conf), 'green'))
+            print(colored(verifier.verify(conf), 'green'))
 
             conf['onnx_path'], conf['log_path'] = output_path, Path('veri_2.log')
             print("Splitted instance:")
-            print(colored(verifier.execute(conf), 'yellow'))
+            print(colored(verifier.verify(conf), 'yellow'))
             
             if args.create_baseline:
                 conf['onnx_path'], conf['log_path'] = baseline_path, Path('veri_3.log')
                 print("Baseline instance:")
-                print(colored(verifier.execute(conf), 'blue'))
+                print(colored(verifier.verify(conf), 'blue'))
         logger.info(f'=== Done ===')
 
     elif args.command == 'info':

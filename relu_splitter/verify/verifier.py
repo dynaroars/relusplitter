@@ -62,7 +62,7 @@ class Verifier:
         config.sort()
         config_hash = hashlib.sha256(str(config).encode()).hexdigest()
         # combine the hashes
-        hash_value = hashlib.sha256((onnx_hash + vnnlib_hash + config_hash).encode()).hexdigest()
+        hash_value = hashlib.sha256((onnx_hash + vnnlib_hash + verifier_hash + config_hash).encode()).hexdigest()
         return hash_value
         
 

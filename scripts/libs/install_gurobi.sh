@@ -12,7 +12,7 @@ cd  $LIBS_DIR
 
 
 
-GRB_LICENSE_PATH="$LIBS_DIR/gurobi.lic"
+export GRB_LICENSE_PATH="$LIBS_DIR/gurobi.lic"
 export INSTALL_DIR=/opt
 # intall gurobi
 wget https://packages.gurobi.com/11.0/gurobi11.0.3_linux64.tar.gz

@@ -50,7 +50,7 @@ class Verifier:
     @classmethod
     @property
     def relavent_configs(cls):
-        return []
+        return ["run_id"]       # in case we need multiple runs
 
     @classmethod
     def get_hash(cls, prog_conf):

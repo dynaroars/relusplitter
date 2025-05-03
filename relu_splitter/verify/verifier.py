@@ -90,41 +90,51 @@ class Verifier:
         return cmd
 
     @classmethod
-    def execute(cls, prog_conf):
+    def _verify(cls, prog_conf):
+        cmd = cls.gen_prog(prog_conf)
+        log_path = Path(prog_conf.get('log_path'))
+        cls.logger.debug(f"config: {prog_conf}")
+        cls.logger.info(f"Executing verification ... log path: {log_path}")
+        cls.logger.info(cmd)
+
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(log_path, "w") as veri_log_fp:
+            # write the hash value to the log file
+            veri_log_fp.write(f"[LLI-verify-HASH] {cls.get_hash(prog_conf)}\n")
+
+            veri_log_fp.write(f"[LLI-verify] ONNX:{prog_conf['onnx_path']}, VNNLIB:{prog_conf['vnnlib_path']}\n")
+            veri_log_fp.write(f"[LLI-verify] onnx_hash:{cls.get_onnx_hash(prog_conf)}, vnnlib_hash:{cls.get_vnnlib_hash(prog_conf)}\n")
+
+            veri_log_fp.flush()
+            sp = subprocess.Popen(cmd, shell=True, stdout=veri_log_fp, stderr=veri_log_fp)
+
+            cls.logger.debug(f"Verification process pid: {sp.pid}, waiting...")
+            sp.wait()
+            veri_log_fp.write(f"[LLI-verify-STATUS] Verification finished ({sp.returncode})\n")
+        if sp.returncode != 0:
+            cls.logger.error(f"Verification failed with return code {sp.returncode}")
+            cls.logger.error(f"Verification log path: {log_path}")
+            return False
+        else:
+            cls.logger.info("Verification finished successfully")
+            return True
+
+    @classmethod
+    def verify(cls, prog_conf):
         force_rerun = prog_conf.get('force_rerun', False)
         if force_rerun == True:
             cls.logger.info(f"Force rerun is set to True, rerunning verification")
         if force_rerun == True or cls.finished(prog_conf) == False:
-            cmd = cls.gen_prog(prog_conf)
-            log_path = Path(prog_conf.get('log_path'))
-            cls.logger.debug(f"config: {prog_conf}")
-            cls.logger.info(f"Executing verification ... log path: {log_path}")
-            cls.logger.info(cmd)
-
-            log_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(log_path, "w") as veri_log_fp:
-                # write the hash value to the log file
-                veri_log_fp.write(f"[LLI-verify-HASH] {cls.get_hash(prog_conf)}\n")
-
-                veri_log_fp.write(f"[LLI-verify] ONNX:{prog_conf['onnx_path']}, VNNLIB:{prog_conf['vnnlib_path']}\n")
-                veri_log_fp.write(f"[LLI-verify] onnx_hash:{cls.get_onnx_hash(prog_conf)}, vnnlib_hash:{cls.get_vnnlib_hash(prog_conf)}\n")
-
-                veri_log_fp.flush()
-                sp = subprocess.Popen(cmd, shell=True, stdout=veri_log_fp, stderr=veri_log_fp)
-
-                cls.logger.debug(f"Verification process pid: {sp.pid}, waiting...")
-                sp.wait()
-                veri_log_fp.write(f"[LLI-verify-STATUS] Verification finished ({sp.returncode})\n")
-            if sp.returncode != 0:
-                cls.logger.error(f"Verification failed with return code {sp.returncode}")
-                cls.logger.error(f"Verification log path: {log_path}")
-                return None
-            else:
-                cls.logger.info("Verification finished successfully")
-                return cls.analyze(prog_conf)
-        else:
-            cls.logger.info(f"Verification already finished, skipping execution [{prog_conf['log_path']}]")
+            cls._verify(prog_conf)
             return cls.analyze(prog_conf)
+        else:
+            cls.logger.info(f"Verification already finished [{prog_conf['log_path']}]")
+            res = cls.analyze(prog_conf)
+            if res[0] not in ["timeout", "unsat", "sat"]:
+                cls.logger.info(f"Verification result is not valid [{res[0]}], rerunning verification")
+                cls._verify(prog_conf)
+                res = cls.analyze(prog_conf)
+            return res
 
             
 

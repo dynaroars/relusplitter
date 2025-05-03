@@ -19,5 +19,3 @@ export CUBLAS_WORKSPACE_CONFIG=:4096:8
 
 # disable e-cores for consistent performance    12700k
 # for i in {16..23}; do echo 0 | sudo tee /sys/devices/system/cpu/cpu${i}/online; done
-
-

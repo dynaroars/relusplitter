@@ -46,12 +46,12 @@ resnet_a_dir = Path(INPUT_DIR) / "sri_resnet_a"
 resnet_b_dir = Path(INPUT_DIR) / "sri_resnet_b"
 
 
-acasxu_num_samples = 5
-cifar_biasfield_num_samples = 5
-mnist_num_samples = 5
-oval21_num_samples = 5
-resnet_a_num_samples = 5
-resnet_b_num_samples = 5
+acasxu_num_samples = 50
+cifar_biasfield_num_samples = 50
+mnist_num_samples = 50
+oval21_num_samples = 30
+resnet_a_num_samples = 50
+resnet_b_num_samples = 50
 
 acasxu_timeout = 60
 mnistx2_timeout = 60
@@ -206,12 +206,15 @@ if __name__ == "__main__":
     assert sys.argv[1].isdigit(), f"Random seed must be an integer, got {random_seed}"
     RANDOM_SEED = sys.argv[1]
 
+    # run scripts/install.sh
+    # subprocess.run(["./scripts/install.sh"])
+
     os.environ["RANDOM_SEED"] = RANDOM_SEED
     random.seed(int(RANDOM_SEED))
 
     # run prep_benchmark
     # ./scripts/prep_benchmarks.sh random_seed
-    subprocess.run(["./scripts/prep_benchmarks.sh", str(RANDOM_SEED)])
+    # subprocess.run(["./scripts/prep_benchmarks.sh", str(RANDOM_SEED)])
 
 
     # Load instances from the specified directories

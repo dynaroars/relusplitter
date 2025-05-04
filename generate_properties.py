@@ -271,6 +271,10 @@ if __name__ == "__main__":
     # write to generated_instances.csv
     with open(GENERATED_INSTANCES_CSV, "w") as f:
         for onnx, vnnlib, timeout in final_instances:
+            assert onnx.exists(), f"Cannot find {onnx}"
+            assert vnnlib.exists(), f"Cannot find {vnnlib}"
+            assert isinstance(timeout, int), f"Timeout must be an integer, got {timeout}"
+            print(f"Writing {onnx}, {vnnlib}, {timeout} to {GENERATED_INSTANCES_CSV}")
             f.write(f"{onnx},{vnnlib},{timeout}\n")
 
 

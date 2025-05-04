@@ -129,6 +129,7 @@ class RSplitter_conv():
         masks = self.conv_get_split_masks((layer_lb, layer_ub))
         # decide kernels to split
         split_idxs = []
+        n_splits = 16   # For vnncomp again, cap number of conv splits to 16
         if n_splits == None or n_splits >= ori_oC:
             split_idxs = list(range(ori_oC))
             self.logger.info(f"Splitting all kernels")

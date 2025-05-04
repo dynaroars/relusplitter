@@ -73,7 +73,13 @@ class RSplitter_fc():
         if n_splits is None:
             n_splits = mask_size
         if mask_size == 0 or mask_size < n_splits:
-            raise INVALID_PARAMETER(f"Not enough {split_mask} neuron to split... (Requested: {n_splits}, Available: {mask_size})")
+            # randomly pick 10 ~ 35 % of the neurons to split (0.1~0.35) * masks["all"]
+            # really bad code: if no splitable neuron we just randomly pick 10-35% of the neurons to split
+            _split_mask = split_masks["all"]
+            n_splits = int(random.uniform(0.1, 0.35) * torch.sum(split_masks['all']))
+            _split_mask = adjust_mask_random_k(_split_mask, n_splits)
+
+            # raise INVALID_PARAMETER(f"Not enough {split_mask} neuron to split... (Requested: {n_splits}, Available: {mask_size})")
         if n_splits <= mask_size:
             _split_mask = adjust_mask_first_k(_split_mask, n_splits)
             

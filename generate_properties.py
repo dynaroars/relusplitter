@@ -172,7 +172,7 @@ def rsplit_gen_instance(onnx, vnnlib, benchmark, timeout, seed):
     output_fname_onnx = f"{onnx.stem}_RSPLITTER_{vnnlib.stem}.onnx"
     output_fname_vnnlib = None   # Not Used
 
-    output_path_onnx = ONNX_OUTPUT_DIR / benchmark / output_fname_onnx
+    output_path_onnx = ONNX_OUTPUT_DIR / f"{benchmark}_{output_fname_onnx}"
     output_path_vnnlib = None
 
     print(f"Generating onnx for input {onnx.stem}, {vnnlib.stem}...")
@@ -194,14 +194,14 @@ if __name__ == "__main__":
     RANDOM_SEED = sys.argv[1]
 
     # run scripts/install.sh
-    subprocess.run(["./scripts/install.sh"])
+    # subprocess.run(["./scripts/install.sh"])
 
     os.environ["RANDOM_SEED"] = RANDOM_SEED
     random.seed(int(RANDOM_SEED))
 
     # run prep_benchmark
     # ./scripts/prep_benchmarks.sh random_seed
-    subprocess.run(["./scripts/prep_benchmarks.sh", str(RANDOM_SEED)])
+    # subprocess.run(["./scripts/prep_benchmarks.sh", str(RANDOM_SEED)])
 
 
     # Load instances from the specified directories
@@ -229,14 +229,12 @@ if __name__ == "__main__":
     os.system(f"rm -rf {ONNX_OUTPUT_DIR} {VNNLIB_OUTPUT_DIR}")
     os.system(f"mkdir -p {ONNX_OUTPUT_DIR} {VNNLIB_OUTPUT_DIR}")
     for onnx, vnnlib, timeout, benchmark in selected_instances:
-        onnx_dir = ONNX_OUTPUT_DIR / benchmark
-        vnnlib_dir = VNNLIB_OUTPUT_DIR / benchmark
-        onnx_dir.mkdir(parents=True, exist_ok=True)
-        vnnlib_dir.mkdir(parents=True, exist_ok=True)
+        onnx_dir = ONNX_OUTPUT_DIR / f"{benchmark}_{onnx.stem}.onnx"
+        vnnlib_dir = VNNLIB_OUTPUT_DIR / f"{benchmark}_{vnnlib.stem}.vnnlib"
         os.system(f"cp {onnx} {onnx_dir}")
         os.system(f"cp {vnnlib} {vnnlib_dir}")
 
-    selected_instances = [(Path(ONNX_OUTPUT_DIR) /benchmark/Path(onnx).name, Path(VNNLIB_OUTPUT_DIR) /benchmark/Path(vnnlib).name, timeout, benchmark) for onnx, vnnlib, timeout, benchmark in selected_instances]
+    selected_instances = [( ONNX_OUTPUT_DIR / f"{benchmark}_{onnx.stem}.onnx", VNNLIB_OUTPUT_DIR / f"{benchmark}_{vnnlib.stem}.vnnlib", timeout, benchmark) for onnx, vnnlib, timeout, benchmark in selected_instances]
 
     for onnx, vnnlib, timeout, _ in selected_instances:
         assert onnx.exists(), f"Cannot find {onnx}"

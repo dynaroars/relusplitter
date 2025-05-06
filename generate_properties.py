@@ -39,26 +39,22 @@ os.environ["PYTHONPATH"] = os.pathsep.join(
 os.environ["MKL_SERVICE_FORCE_INTEL"] = "1"
 
 acasxu_dir = Path(INPUT_DIR) / "acasxu_converted"
-cifar_biasfield_dir = Path(INPUT_DIR) / "cifar_biasfield_vnncomp2022"
 mnist_dir = Path(INPUT_DIR) / "mnist_fc_vnncomp2022"
 oval21_dir = Path(INPUT_DIR) / "oval21-benchmark"
-resnet_a_dir = Path(INPUT_DIR) / "sri_resnet_a"
-resnet_b_dir = Path(INPUT_DIR) / "sri_resnet_b"
+cifar_biasfield_dir = Path(INPUT_DIR) / "cifar_biasfield_vnncomp2022"
 
 
-acasxu_num_samples = 50
-cifar_biasfield_num_samples = 50
-mnist_num_samples = 50
+acasxu_num_samples = 30
+mnist_num_samples = 30
 oval21_num_samples = 30
-resnet_a_num_samples = 50
-resnet_b_num_samples = 50
+cifar_biasfield_num_samples = 30
 
-acasxu_timeout = 60
-mnistx2_timeout = 60
-mnistx4x6_timeout = 60
-cifar_biasfield_timeout = 60
+acasxu_timeout = 30
+mnist_timeout = 30
 oval21_timeout = 60
-sri_resnet_timeout = 60
+cifar_biasfield_timeout = 60
+
+split_timeout_ratio = 3
 
 
 
@@ -83,33 +79,33 @@ def load_instances(benchmark_dir):
     return instances
 
 def sample_instances_acasxu(acasxu_instances, n_samples):
-    # only use prop 1-4
-    num_per_vnnlib = n_samples // 4
+    # only use prop 1,3,4
+    num_per_vnnlib = n_samples // 3
     acasxu_instances = [i for i in acasxu_instances if "prop_10" not in i[1].stem]
 
     prop1_instances = [i for i in acasxu_instances if "prop_1" in i[1].stem]
-    prop2_instances = [i for i in acasxu_instances if "prop_2" in i[1].stem]
+    # prop2_instances = [i for i in acasxu_instances if "prop_2" in i[1].stem]
     prop3_instances = [i for i in acasxu_instances if "prop_3" in i[1].stem]
     prop4_instances = [i for i in acasxu_instances if "prop_4" in i[1].stem]
     sampled_instances = []
     sampled_instances.extend(random.sample(prop1_instances, num_per_vnnlib))
-    sampled_instances.extend(random.sample(prop2_instances, num_per_vnnlib))
+    # sampled_instances.extend(random.sample(prop2_instances, num_per_vnnlib))
     sampled_instances.extend(random.sample(prop3_instances, num_per_vnnlib))
-    sampled_instances.extend(random.sample(prop4_instances, n_samples - 3 * num_per_vnnlib))
+    sampled_instances.extend(random.sample(prop4_instances, n_samples - 2 * num_per_vnnlib))
     return sampled_instances
 
 def sample_instances_cifar_biasfield(cifar_biasfield_instances, n_samples):
     return random.sample(cifar_biasfield_instances, n_samples)
 
 def sample_instances_mnist(mnist_instances, n_samples):
-    num_per_model = n_samples // 3
-    x2_instances = [i for i in mnist_instances if "x2" in i[0].stem]
+    num_per_model = n_samples // 2
+    # x2_instances = [i for i in mnist_instances if "x2" in i[0].stem]
     x4_instances = [i for i in mnist_instances if "x4" in i[0].stem]
     x6_instances = [i for i in mnist_instances if "x6" in i[0].stem]
     sampled_instances = []
-    sampled_instances.extend(random.sample(x2_instances, num_per_model))
+    # sampled_instances.extend(random.sample(x2_instances, num_per_model))
     sampled_instances.extend(random.sample(x4_instances, num_per_model))
-    sampled_instances.extend(random.sample(x6_instances, n_samples - 2 * num_per_model))
+    sampled_instances.extend(random.sample(x6_instances, n_samples - 1 * num_per_model))
     return sampled_instances
 
 def sample_instances_oval21(oval21_instances, n_samples):
@@ -123,24 +119,15 @@ def sample_instances_oval21(oval21_instances, n_samples):
     sampled_instances.extend(random.sample(wide_instances, n_samples - 2 * num_per_model))
     return sampled_instances
 
-def sample_instances_resnet_a(resnet_a_instances, n_samples):
-    return random.sample(resnet_a_instances, n_samples)
-def sample_instances_resnet_b(resnet_b_instances, n_samples):
-    return random.sample(resnet_b_instances, n_samples)
-
 def get_timeout(onnx, vnnlib):
     if "ACASXU" in str(onnx):
         return acasxu_timeout
     elif "cifar_bias_field" in str(onnx):
         return cifar_biasfield_timeout
-    elif "mnist-net_256x2" in str(onnx):
-        return mnistx2_timeout
-    elif "mnist-net_256x4" in str(onnx) or "mnist-net_256x6" in str(onnx):
-        return mnistx4x6_timeout
+    elif "mnist-net_256" in str(onnx):
+        return mnist_timeout
     elif "cifar_base_kw" in str(onnx) or "cifar_deep_kw" in str(onnx) or "cifar_wide_kw" in str(onnx):
         return oval21_timeout
-    elif "resnet_3b2_bn_mixup" in str(onnx):
-        return sri_resnet_timeout
     else:
         raise ValueError(f"Unknown timeout for {onnx}")
 
@@ -191,7 +178,7 @@ def rsplit_gen_instance(onnx, vnnlib, benchmark, timeout, seed):
     print(f"Generating onnx for input {onnx.stem}, {vnnlib.stem}...")
     run_splitter(onnx, vnnlib, mode, seed, output_path_onnx, output_path_vnnlib)
 
-    return (onnx, vnnlib, timeout), (output_path_onnx, vnnlib, 3 * timeout)
+    return (onnx, vnnlib, timeout), (output_path_onnx, vnnlib, split_timeout_ratio * timeout)
 
 
 
@@ -203,7 +190,7 @@ if __name__ == "__main__":
         print("Usage: python generate_properties.py <RANDOM_SEED>")
         sys.exit(1)
 
-    assert sys.argv[1].isdigit(), f"Random seed must be an integer, got {random_seed}"
+    assert sys.argv[1].isdigit(), f"Random seed must be an integer, got {sys.argv[1]}"
     RANDOM_SEED = sys.argv[1]
 
     # run scripts/install.sh
@@ -222,8 +209,6 @@ if __name__ == "__main__":
     cifar_biasfield_instances = load_instances(cifar_biasfield_dir)
     mnist_instances = load_instances(mnist_dir)
     oval21_instances = load_instances(oval21_dir)
-    resnet_a_instances = load_instances(resnet_a_dir)
-    resnet_b_instances = load_instances(resnet_b_dir)
 
 
     # sample seed instances from each
@@ -232,10 +217,8 @@ if __name__ == "__main__":
     cifar_biasfield_samples = sample_instances_cifar_biasfield(cifar_biasfield_instances, cifar_biasfield_num_samples)
     mnist_samples = sample_instances_mnist(mnist_instances, mnist_num_samples)
     oval21_samples = sample_instances_oval21(oval21_instances, oval21_num_samples)
-    resnet_a_samples = sample_instances_resnet_a(resnet_a_instances, resnet_a_num_samples)
-    resnet_b_samples = sample_instances_resnet_b(resnet_b_instances, resnet_b_num_samples)
 
-    selected_instances = acasxu_samples + cifar_biasfield_samples + mnist_samples + oval21_samples + resnet_a_samples + resnet_b_samples
+    selected_instances = acasxu_samples + cifar_biasfield_samples + mnist_samples + oval21_samples
     
     # write to selected_instances.csv
     with open(SELECTED_INSTANCES_CSV, "w") as f:

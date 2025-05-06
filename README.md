@@ -15,11 +15,9 @@ To generate benchmark instances:
     python generate_properties.py
     ```
 
-This benchmark uses selected instances from previous VNNCOMP iterations as seed inputs to generate more challenging instances. The networks include both fully connected (FC) and convolutional (Conv) architectures. All networks uses standard feed-forward structure, except for SRI ResNet A/B, which includes residual connections.
+This benchmark uses selected instances from previous VNNCOMP iterations as seed inputs to generate more challenging instances. The networks include both fully connected (FC) and convolutional (Conv) architectures. All networks use a standard feed-forward structure.
 
-<small>
-We are considering splitting this benchmark into two smaller benchmarks: one will only have FC networks, and the other will include only Conv networks, which may have residual connections. We think this could encourage more participation, as some tools may not work well with or may struggle to handle convolutional networks. If needed, we can also add or exclude certain benchmarks from the seed instances.
-</small>
+For each seed instance, we keep both the original seed instance and a generated instance for comparison.
 
 
 ## Seed Benchmarks Used:
@@ -29,7 +27,6 @@ The following benchmarks from previous VNNCOMP iterations were used:
     The networks in this benchmark was simplified (we merged the Matmul and Add nodes to GEMM nodes to make it compatible with higher onnx version)
 - mnist_fc (https://github.com/pat676/mnist_fc_vnncomp2022.git)
 - Oval21 (https://github.com/alessandrodepalma/oval21-benchmark.git)
-- SRI ResNet A/B (https://github.com/mnmueller/vnn_comp_22_bench_sri.git)
 - Cifar Biasfield (https://github.com/pat676/cifar_biasfield_vnncomp2022.git)
 
 

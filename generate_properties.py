@@ -19,7 +19,7 @@ SELECTED_INSTANCES_CSV = os.path.join(INPUT_DIR, "selected_instances.csv")
 OUTPUT_DIR = Path(TOOL_ROOT) / "Generated_Instances"
 ONNX_OUTPUT_DIR = Path(OUTPUT_DIR) / "onnx"
 VNNLIB_OUTPUT_DIR = Path(OUTPUT_DIR) / "vnnlib"
-GENERATED_INSTANCES_CSV = os.path.join(OUTPUT_DIR, "generated_instances.csv")
+GENERATED_INSTANCES_CSV = "instances.csv"
 
 RANDOM_SEED = None
 
@@ -246,10 +246,13 @@ if __name__ == "__main__":
         # gives two tuples
         # the timeout of original instance might be changed
         original_instance, new_instance = rsplit_gen_instance(onnx, vnnlib, benchmark, timeout, RANDOM_SEED)
+        original_instance = (original_instance[0].relative_to(OUTPUT_DIR), original_instance[1].relative_to(OUTPUT_DIR), original_instance[2])
+        new_instance = (new_instance[0].relative_to(OUTPUT_DIR), new_instance[1].relative_to(OUTPUT_DIR), new_instance[2])
         final_instances.append(original_instance)
         final_instances.append(new_instance)
 
     # write to generated_instances.csv
+    os.chdir(OUTPUT_DIR)
     with open(GENERATED_INSTANCES_CSV, "w") as f:
         for onnx, vnnlib, timeout in final_instances:
             assert onnx.exists(), f"Cannot find {onnx}"

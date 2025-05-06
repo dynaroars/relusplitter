@@ -194,14 +194,14 @@ if __name__ == "__main__":
     RANDOM_SEED = sys.argv[1]
 
     # run scripts/install.sh
-    # subprocess.run(["./scripts/install.sh"])
+    subprocess.run(["./scripts/install.sh"])
 
     os.environ["RANDOM_SEED"] = RANDOM_SEED
     random.seed(int(RANDOM_SEED))
 
     # run prep_benchmark
     # ./scripts/prep_benchmarks.sh random_seed
-    # subprocess.run(["./scripts/prep_benchmarks.sh", str(RANDOM_SEED)])
+    subprocess.run(["./scripts/prep_benchmarks.sh", str(RANDOM_SEED)])
 
 
     # Load instances from the specified directories

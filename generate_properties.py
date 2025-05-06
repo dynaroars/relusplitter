@@ -194,14 +194,14 @@ if __name__ == "__main__":
     RANDOM_SEED = sys.argv[1]
 
     # run scripts/install.sh
-    # subprocess.run(["./scripts/install.sh"])
+    subprocess.run(["./scripts/install.sh"])
 
     os.environ["RANDOM_SEED"] = RANDOM_SEED
     random.seed(int(RANDOM_SEED))
 
     # run prep_benchmark
     # ./scripts/prep_benchmarks.sh random_seed
-    # subprocess.run(["./scripts/prep_benchmarks.sh", str(RANDOM_SEED)])
+    subprocess.run(["./scripts/prep_benchmarks.sh", str(RANDOM_SEED)])
 
 
     # Load instances from the specified directories
@@ -260,17 +260,4 @@ if __name__ == "__main__":
             print(f"Writing {onnx}, {vnnlib}, {timeout} to {GENERATED_INSTANCES_CSV}")
             f.write(f"{onnx},{vnnlib},{timeout}\n")
 
-
-    # run tool to generate new instances
-    # include original instances
-    # for generated instances, use 2 * timeout
-
-    # usage: main.py split [-h] --net NET --spec SPEC [--output OUTPUT]
-    #                      [--input_shape INPUT_SHAPE [INPUT_SHAPE ...]]
-    #                      [--bounding_method BOUNDING_METHOD] [--create_baseline]
-    #                      [--closeness_check] [--atol ATOL] [--rtol RTOL] [--mode {fc,conv,all}]
-    #                      [--bias_method {normal,optimized}] [--split_idx SPLIT_IDX]
-    #                      [--mask {stable+,stable-,stable,unstable,all,unstable_n_stable+}]
-    #                      [--n_splits N_SPLITS] [--scale_factor SCALE_FACTOR SCALE_FACTOR]
-    #                      [--seed SEED] [--verify {neuralsat,abcrown,marabou,nnenum}]
 

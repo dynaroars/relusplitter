@@ -169,7 +169,7 @@ def rsplit_gen_instance(onnx, vnnlib, benchmark, timeout, seed):
     timeout = get_timeout(onnx, vnnlib)
     mode = get_split_mode(onnx, vnnlib)
 
-    output_fname_onnx = f"{onnx.stem}_[Rspliter]_{vnnlib.stem}.onnx"
+    output_fname_onnx = f"{onnx.stem}_RSPLITTER_{vnnlib.stem}.onnx"
     output_fname_vnnlib = None   # Not Used
 
     output_path_onnx = ONNX_OUTPUT_DIR / benchmark / output_fname_onnx

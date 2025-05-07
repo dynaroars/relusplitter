@@ -149,7 +149,7 @@ def run_splitter(onnx, vnnlib, mode, seed, output_onnx, output_vnnlib):
             "--output", str(output_onnx),
             "--seed", str(seed),
         ]
-    print(" ".join(cmd))
+    # print(" ".join(cmd))
     try:
         res = subprocess.run(cmd, check=True, env=os.environ, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     except subprocess.CalledProcessError as e:
@@ -175,11 +175,42 @@ def rsplit_gen_instance(onnx, vnnlib, benchmark, timeout, seed):
     output_path_onnx = ONNX_OUTPUT_DIR / f"{output_fname_onnx}"
     output_path_vnnlib = None
 
-    print(f"Generating onnx for input {onnx.stem}, {vnnlib.stem}...")
+    print(f"\t\tGenerating onnx for input {onnx.stem}, {vnnlib.stem}...")
     run_splitter(onnx, vnnlib, mode, seed, output_path_onnx, output_path_vnnlib)
 
     return (onnx, vnnlib, timeout), (output_path_onnx, vnnlib, split_timeout_ratio * timeout)
 
+
+def make_banner(text):
+    print("=" * 80)
+    print("=" * 80)
+    
+    print("""
+.______       _______  __       __    __       _______..______    __       __  .___________.___________. _______ .______      
+|   _  \     |   ____||  |     |  |  |  |     /       ||   _  \  |  |     |  | |           |           ||   ____||   _  \     
+|  |_)  |    |  |__   |  |     |  |  |  |    |   (----`|  |_)  | |  |     |  | `---|  |----`---|  |----`|  |__   |  |_)  |    
+|      /     |   __|  |  |     |  |  |  |     \   \    |   ___/  |  |     |  |     |  |        |  |     |   __|  |      /     
+|  |\  \----.|  |____ |  `----.|  `--'  | .----)   |   |  |      |  `----.|  |     |  |        |  |     |  |____ |  |\  \----.
+| _| `._____||_______||_______| \______/  |_______/    | _|      |_______||__|     |__|        |__|     |_______|| _| `._____|
+                                                                                                                              
+       ======================================================================================                             
+____    ____ .__   __. .__   __.          ______   ______   .___  ___. .______    ___    _____                                
+\   \  /   / |  \ |  | |  \ |  |         /      | /  __  \  |   \/   | |   _  \  |__ \  | ____|                               
+ \   \/   /  |   \|  | |   \|  |  ______|  ,----'|  |  |  | |  \  /  | |  |_)  |    ) | | |__                                 
+  \      /   |  . `  | |  . `  | |______|  |     |  |  |  | |  |\/|  | |   ___/    / /  |___ \                                
+   \    /    |  |\   | |  |\   |        |  `----.|  `--'  | |  |  |  | |  |       / /_   ___) |                               
+    \__/     |__| \__| |__| \__|         \______| \______/  |__|  |__| | _|      |____| |____/                                
+                                                                                                                              
+    """)
+
+    print("=" * 80)
+    print("\n")
+    print(text)
+    print(text)
+    print(text)
+    print("\n")
+    print("=" * 80)
+    print("=" * 80)
 
 
 
@@ -192,8 +223,11 @@ if __name__ == "__main__":
 
     assert sys.argv[1].isdigit(), f"Random seed must be an integer, got {sys.argv[1]}"
     RANDOM_SEED = sys.argv[1]
+    print(f"Generating instances with random seed {RANDOM_SEED}")
+
 
     # run scripts/install.sh
+    make_banner("Installing...")
     subprocess.run(["./scripts/install.sh"])
 
     os.environ["RANDOM_SEED"] = RANDOM_SEED
@@ -201,10 +235,14 @@ if __name__ == "__main__":
 
     # run prep_benchmark
     # ./scripts/prep_benchmarks.sh random_seed
+    make_banner("Preparing seed benchmarks...")
     subprocess.run(["./scripts/prep_benchmarks.sh", str(RANDOM_SEED)])
 
 
+    make_banner("Starting benchmark generation...")
+
     # Load instances from the specified directories
+    print("Loading instances...")
     acasxu_instances = load_instances(acasxu_dir)
     cifar_biasfield_instances = load_instances(cifar_biasfield_dir)
     mnist_instances = load_instances(mnist_dir)
@@ -212,13 +250,13 @@ if __name__ == "__main__":
 
 
     # sample seed instances from each
-
+    print("Sampling instances...")
     acasxu_samples = sample_instances_acasxu(acasxu_instances, acasxu_num_samples)
     cifar_biasfield_samples = sample_instances_cifar_biasfield(cifar_biasfield_instances, cifar_biasfield_num_samples)
     mnist_samples = sample_instances_mnist(mnist_instances, mnist_num_samples)
     oval21_samples = sample_instances_oval21(oval21_instances, oval21_num_samples)
 
-    selected_instances = acasxu_samples + cifar_biasfield_samples + mnist_samples + oval21_samples
+    selected_instances = acasxu_samples + mnist_samples + oval21_samples + cifar_biasfield_samples
     
     # write to selected_instances.csv
     with open(SELECTED_INSTANCES_CSV, "w") as f:
@@ -226,6 +264,7 @@ if __name__ == "__main__":
             f.write(f"{onnx},{vnnlib},{timeout}\n")
 
     # copy original instances to Generated_Instances
+    print("Moving sampled seed instances to Generated_Instances...")
     os.system(f"rm -rf {ONNX_OUTPUT_DIR} {VNNLIB_OUTPUT_DIR}")
     os.system(f"mkdir -p {ONNX_OUTPUT_DIR} {VNNLIB_OUTPUT_DIR}")
     for onnx, vnnlib, timeout, benchmark in selected_instances:
@@ -240,9 +279,13 @@ if __name__ == "__main__":
         assert onnx.exists(), f"Cannot find {onnx}"
         assert vnnlib.exists(), f"Cannot find {vnnlib}"
     
+
+    print("Generating new instances...")
     final_instances = []
     # run tool to generate new instances
-    for onnx, vnnlib, timeout, benchmark in selected_instances:
+    # for onnx, vnnlib, timeout, benchmark in selected_instances:
+    for i, (onnx, vnnlib, timeout, benchmark) in enumerate(selected_instances):
+        print(f"{i+1}/{len(selected_instances)}: Generating new instances for {onnx.stem}, {vnnlib.stem}...")
         # gives two tuples
         # the timeout of original instance might be changed
         original_instance, new_instance = rsplit_gen_instance(onnx, vnnlib, benchmark, timeout, RANDOM_SEED)
@@ -260,5 +303,8 @@ if __name__ == "__main__":
             assert isinstance(timeout, int), f"Timeout must be an integer, got {timeout}"
             print(f"Writing {onnx}, {vnnlib}, {timeout} to {GENERATED_INSTANCES_CSV}")
             f.write(f"{onnx},{vnnlib},{timeout}\n")
+
+    make_banner("Done!")
+    print(f"Generated instances are saved in {OUTPUT_DIR}")
 
 

@@ -24,8 +24,8 @@ if [ ! -d $CONDA_HOME ]; then
     rm ./conda.sh
 fi
 
-$CONDA env remove --prefix $CONDA_PREFIX
-$CONDA env create --prefix $CONDA_PREFIX -f $ENV_FILE_PATH
+$CONDA env remove --prefix $CONDA_PREFIX -y
+$CONDA env create --prefix $CONDA_PREFIX -f $ENV_FILE_PATH -y
 
 cd $TOOL_ROOT
 git submodule update --init  --recursive

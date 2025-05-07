@@ -19,7 +19,7 @@ For each seed instance, we keep both the original seed instance and a generated 
 
 
 ## Seed Benchmarks Used:
-The following benchmarks from previous VNNCOMP iterations were used:
+For each benchmark, we used the `generate_property.py` script provided by the original author to generate the seed instances (except for ACAS Xu). Specifically, the following benchmarks were used:
 
 - ACAS Xu (https://github.com/stanleybak/vnncomp2021/tree/main/benchmarks/acasxu)
     - <small> The networks in this benchmark were simplified (we merged the Matmul and Add nodes to GEMM nodes to make it compatible with higher onnx version) </small>

@@ -8,7 +8,7 @@ To generate benchmark instances:
 python3 generate_properties.py <SEED>
 ```
 
-The script will install the tool, download seed benchmarks, and generate new benchmarking instances. The resulting instances will be placed under `./Generated_Instances`. It was tested on AWS EC2 t2.large (Canonical, Ubuntu, 24.04, amd64 noble image). The Conda environment + seed instances + generated instance will take about 30 GB, so we recommend using an instance with 50 GB storage.
+The script will install the tool, prepare the seed benchmarks, and generate new benchmarking instances. The resulting instances will be placed under `./Generated_Instances`. It was tested on AWS EC2 t2.large (Canonical, Ubuntu, 24.04, amd64 noble image). The Conda environment + seed instances + generated instance will take about 30 GB, so we recommend using an instance with 50 GB storage. The script should take ~35 min to execute.
 
 
 ## Benchmark Generation

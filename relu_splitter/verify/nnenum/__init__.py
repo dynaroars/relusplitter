@@ -54,6 +54,13 @@ class NNEnum(Verifier):
 
             if veri_ans and veri_time:
                 break
+
+        # override veri time
+        # INFO     2025-05-03 00:50:25,865 (resmonitor) Process finished successfully, Duration: 2.539s, MemUsage: 0
+        # find this line and user the duration
+        for l in lines[:]:
+            if "Process finished successfully" in l:
+                veri_time = float(l.split()[-3].split("s")[0])
             
 
         return veri_ans, veri_time

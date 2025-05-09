@@ -14,6 +14,7 @@ class Marabou(Verifier):
         num_workers = prog_conf.get('num_workers', None)
         timeout = prog_conf.get('timeout', None)
         milp = prog_conf.get('milp', False)
+        snc = prog_conf.get('snc', False)
 
         if num_workers is not None:
             cmd += f" --num-workers {num_workers} "
@@ -21,13 +22,15 @@ class Marabou(Verifier):
             cmd += f" --timeout {timeout} "
         if milp == True:
             cmd += " --milp "
+        if snc == True:
+            cmd += " --snc "
         
         return cmd
 
     @classmethod
     @property
     def relavent_configs(cls):
-        return ['num_workers', 'timeout', 'milp']
+        return ['num_workers', 'timeout', 'milp', 'snc']
 
     @classmethod
     def _analyze(cls, lines):

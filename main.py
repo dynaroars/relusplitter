@@ -44,7 +44,7 @@ def get_parser():
     split_parser.add_argument('--mask', type=str, default='stable+', help='Mask for splitting',
                               choices=['stable+', 'stable-', 'stable', 'unstable', 'all', 'unstable_n_stable+'])
     split_parser.add_argument('--n_splits', type=int, default=None, help='Number of splits (strict)')
-    split_parser.add_argument('--scale_factor', type=float, nargs=2, default=[1.0,-1.0], help='Scale factor for the split')
+    split_parser.add_argument('--scale_factor', type=float, nargs=2, default=None, help='Scale factor for the split')
     
     # split_parser.add_argument('--device', type=str, default=default_device, help='Device for the model closeness check',)
     # conv parameters

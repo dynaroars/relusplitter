@@ -48,6 +48,12 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
         torch.manual_seed(random_seed)
         np.random.seed(random_seed)
 
+    def gen_scale_factors(self):
+        # scale_factors=(1.0, -1.0)
+        temp = (random.uniform(0.1, 100), random.uniform(-100, -0.1))
+        self.logger.debug(f"Generated scale factors: {temp}")
+        return temp
+
 
     def resolve_idx(self, idx, mode):
         splittable_nodes = self.get_splittable_nodes()
@@ -64,6 +70,8 @@ class ReluSplitter(RSplitter_fc, RSplitter_conv):
     def split(self, idx, mode, conf):
         if "seed" in conf:
             self.init_seeds(conf["seed"])
+        if "scale_factor" not in conf or conf["scale_factor"] is None:
+            conf["scale_factor"] = self.gen_scale_factors()
 
         n1, n2 = self.resolve_idx(idx, mode)
         assert n2.op_type == "Relu", f"Node at split location is not a ReLU node"

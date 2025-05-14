@@ -130,10 +130,10 @@ class Verifier:
         else:
             cls.logger.info(f"Verification already finished [{prog_conf['log_path']}]")
             res = cls.analyze(prog_conf)
-            if res[0] not in ["timeout", "unsat", "sat"]:
-                cls.logger.info(f"Verification result is not valid [{res[0]}], rerunning verification")
-                cls._verify(prog_conf)
-                res = cls.analyze(prog_conf)
+            # if res[0] not in ["timeout", "unsat", "sat"]:
+            #     cls.logger.info(f"Verification result is not valid [{res[0]}], rerunning verification")
+            #     cls._verify(prog_conf)
+            #     res = cls.analyze(prog_conf)
             return res
 
             

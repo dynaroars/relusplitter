@@ -21,12 +21,14 @@ For each seed instance, we keep both the original seed instance and a generated 
 ## Seed Benchmarks Used:
 For each benchmark, we used the `generate_property.py` script provided by the original author to generate the seed instances (except for ACAS Xu). Specifically, the following benchmarks were used:
 
-- ACAS Xu (https://github.com/stanleybak/vnncomp2021/tree/main/benchmarks/acasxu)
+<!-- - ACAS Xu (https://github.com/stanleybak/vnncomp2021/tree/main/benchmarks/acasxu)
     - <small> The networks in this benchmark were simplified (we merged the Matmul and Add nodes to GEMM nodes to make it compatible with higher onnx version) </small>
     - Sampled instances: 30
     - Timeout:
         - Original instances: 30s
-        - Generated instances: 90s
+        - Generated instances: 90s -->
+- ACAS Xu (https://github.com/stanleybak/vnncomp2021/tree/main/benchmarks/acasxu)
+    - removed due to onnx versioning issue.
 - mnist_fc (https://github.com/pat676/mnist_fc_vnncomp2022.git)
     - Sampled instances: 30
     - Timeout:
@@ -38,7 +40,7 @@ For each benchmark, we used the `generate_property.py` script provided by the or
         - Original instances: 60s
         - Generated instances: 180s
 - Cifar Biasfield (https://github.com/pat676/cifar_biasfield_vnncomp2022.git)
-    - Sampled instances: 30
+    - Sampled instances: 40
     - Timeout:
         - Original instances: 60s
         - Generated instances: 180s

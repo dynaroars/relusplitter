@@ -16,7 +16,8 @@ PYTHON_EXE = os.path.join(ENVS_PATH, TOOL_NAME, "bin", "python")
 INPUT_DIR = os.path.join(TOOL_ROOT, "Seed_Inputs")
 SELECTED_INSTANCES_CSV = os.path.join(INPUT_DIR, "selected_instances.csv")
 
-OUTPUT_DIR = Path(TOOL_ROOT) / "Generated_Instances"
+# OUTPUT_DIR = Path(TOOL_ROOT) / "Generated_Instances"
+OUTPUT_DIR = Path(TOOL_ROOT)
 ONNX_OUTPUT_DIR = Path(OUTPUT_DIR) / "onnx"
 VNNLIB_OUTPUT_DIR = Path(OUTPUT_DIR) / "vnnlib"
 GENERATED_INSTANCES_CSV = "instances.csv"
@@ -44,10 +45,10 @@ oval21_dir = Path(INPUT_DIR) / "oval21-benchmark"
 cifar_biasfield_dir = Path(INPUT_DIR) / "cifar_biasfield_vnncomp2022"
 
 
-acasxu_num_samples = 30
-mnist_num_samples = 30
+acasxu_num_samples = 0
+mnist_num_samples = 40
 oval21_num_samples = 30
-cifar_biasfield_num_samples = 30
+cifar_biasfield_num_samples = 40
 
 acasxu_timeout = 30
 mnist_timeout = 30

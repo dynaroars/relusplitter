@@ -7,7 +7,7 @@ from copy import copy, deepcopy
 import onnx
 import torch
 
-from onnx import helper, numpy_helper
+from onnx import helper, numpy_helper, version_converter
 from onnxruntime import InferenceSession
 from onnx2pytorch import ConvertModel
 from auto_LiRPA import BoundedModule, BoundedTensor
@@ -238,10 +238,15 @@ class WarppedOnnxModel():
         return torch.tensor(sess.run(None, {'data': x.numpy()})[0])
         # return torch.tensor(sess.run(None, {'input': x.numpy()})[0])
 
-    def save(self, fname: Path):
+    def save(self, fname: Path, downgrade=True):
         if not fname.parent.exists():
             fname.parent.mkdir(parents=True)
-        onnx.save(self._model, fname)
+
+        model = self._model
+        if downgrade:
+            model = version_converter.convert_version(model,11)
+            model.ir_version = 7
+        onnx.save(model, fname)
         return fname
     
     def generate_updated_model(self, nodes_to_replace, additional_nodes, additional_initializers, 

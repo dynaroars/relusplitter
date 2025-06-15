@@ -64,6 +64,12 @@ def check_models_closeness(original, models, input_shape, device=None, n=10, use
 def compute_model_bound(model: onnx.ModelProto, bounded_input: BoundedTensor, input_names=["input"], method="backward"):
     model = ConvertModel(model)
     model.input_names = input_names
+    
+    # Ensure input has batch size of 1
+    if bounded_input.shape[0] != 1:
+        # Reshape to add batch dimension of 1
+        bounded_input = bounded_input.reshape(1, *bounded_input.shape)
+    
     model = BoundedModule(model, bounded_input)
     lb, ub = model.compute_bounds(x=(bounded_input,), method=method)
     return lb, ub

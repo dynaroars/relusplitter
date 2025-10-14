@@ -15,7 +15,7 @@ from auto_LiRPA import BoundedModule, BoundedTensor
 from ..utils.onnx_utils import truncate_onnx_model, compute_model_bound
 from ..utils.misc import get_random_id
 
-SINGLE_INPUT_OPS = ["Relu", "MatMul", "Add"]
+SINGLE_INPUT_OPS = ["Relu", "MatMul", "Add", "Gemm"]
 
 custom_quirks = {
     'Reshape': {
@@ -162,6 +162,9 @@ class WarppedOnnxModel():
             input_shapes[input_tensor.name] = shape
         return input_shapes
 
+    def get_torch_model(self):
+        return ConvertModel(self._model, experimental=True)
+
     def get_prior_node(self, node):
         assert node.op_type in SINGLE_INPUT_OPS
         assert len(node.input) == 1
@@ -238,11 +241,57 @@ class WarppedOnnxModel():
         return torch.tensor(sess.run(None, {'data': x.numpy()})[0])
         # return torch.tensor(sess.run(None, {'input': x.numpy()})[0])
 
-    def save(self, fname: Path):
+    def save(self, fname):
+        if not isinstance(fname, Path):
+            fname = Path(fname)
         if not fname.parent.exists():
             fname.parent.mkdir(parents=True)
         onnx.save(self._model, fname)
         return fname
+
+    def generate_updated_model_new(self, nodes_to_replace, additional_nodes, additional_initializers,
+                      target_output_name,
+                      graph_name=f"bruh_split_merge",
+                      producer_name="ReluSplitter"):
+        # maybe some assertions
+        new_nodes = []
+        new_initializers = []
+        model_in = self._model.graph.input
+        model_out = self._model.graph.output
+        model_input_name = model_in[0].name
+        model_output_name = model_out[0].name
+
+        visited = set([model_input_name])
+        avaliable_nodes = [n for n in self._nodes if n not in nodes_to_replace] + additional_nodes
+        avaliable_initializers = {i.name:i for i in (self._initializers+additional_initializers)}
+        added_initializers = set()
+        while target_output_name not in visited:
+            updated = False
+            for node in avaliable_nodes:
+                if node in new_nodes:
+                    continue
+                else:
+                    if all((i in visited or i in avaliable_initializers) for i in node.input):
+                        new_nodes.append(node)
+                        initilizer_to_add = [i for i in node.input if i in avaliable_initializers and i not in added_initializers]
+                        new_initializers.extend([avaliable_initializers[i] for i in initilizer_to_add])
+                        added_initializers.update(initilizer_to_add)
+
+                        visited.update(node.output)
+                        updated = True
+                        break
+            if not updated:
+                raise ValueError(f"Can't find a node to add to the new model")
+
+        new_graph = onnx.helper.make_graph(
+            new_nodes,
+            graph_name,
+            model_in,
+            [onnx.helper.make_tensor_value_info(target_output_name, onnx.TensorProto.FLOAT, None)],
+            new_initializers
+        )
+        new_model = helper.make_model(new_graph, producer_name=producer_name, opset_imports=self.op_set)
+        return WarppedOnnxModel(new_model, force_rename=False, logger=self.logger)
     
     def generate_updated_model(self, nodes_to_replace, additional_nodes, additional_initializers, 
                       graph_name=f"bruh_split_merge",

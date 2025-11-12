@@ -58,15 +58,5 @@ basic usage
 
 ReluSplitter also provide a number of parameters for users to explore. For example: the number of split, the type of layer, or the type of neuron to split (stably active, stably inactive, unstable). Run with `-h` flag to display avaliable options.
 
-## Algorithm and Proff
-Summary
-### Algorithm
-Coming soon
-
-- [Visualized demo of the splitting technique on 1-dimensional input space](https://www.desmos.com/calculator/kthart02fb)
-
-### Proof
-Coming soon
-
 
 

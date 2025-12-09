@@ -39,6 +39,11 @@ custom_quirks = {
 default_logger = logging.getLogger(__name__)
 
 class WarppedOnnxModel():
+    @classmethod
+    def load(cls, onnx_path: Path, force_rename = False, logger=default_logger):
+        model = onnx.load(onnx_path)
+        return cls(model, force_rename=force_rename, logger=logger)
+
     def __init__(self, model: onnx.ModelProto, force_rename = False, logger=default_logger)-> None:
         self.logger = logger
         self.force_rename = force_rename
@@ -124,10 +129,21 @@ class WarppedOnnxModel():
     @property
     def _model(self):
         return deepcopy(self._model_)
+    
+    @property
+    def graph_name(self):
+        return self._model.graph.name
 
     @property
     def nodes(self):
         return copy(self._nodes)
+    
+    @property
+    def input(self):
+        return [input_tensor.name for input_tensor in self._model.graph.input]
+    @property
+    def output(self):
+        return [output_tensor.name for output_tensor in self._model.graph.output]
     
     @property
     def num_inputs(self):

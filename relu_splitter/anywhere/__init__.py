@@ -31,14 +31,16 @@ class ReluSplitter_Anywhere(Rsplitter_Gemm, Rsplitter_Conv):
         self.logger = logger
 
         self.logger.debug("Initializing Rsplitter_Gemm...")
-        self.logger.debug(f"onnx: {self.onnx_path}, spec: {self.spec_path}, input_shape: {input_shape}, bounding_method: {bounding_method}")
+        self.logger.debug(f"onnx: {self.onnx_path}, spec: {self.spec_path}, input_shape: {input_shape}")
+        self.init_model()
+        self.init_vnnlib()
 
 
     def init_vnnlib(self):
         input_bound, output_bound = read_vnnlib(str(self.spec_path))[0]
         input_lb, input_ub = torch.tensor([[[[i[0] for i in input_bound]]]]), torch.tensor([[[[i[1] for i in input_bound]]]])
         spec_num_inputs = reduce(lambda x, y: x*y, input_lb.shape)
-        model_num_inputs = self.warpped_model.num_inputs
+        model_num_inputs = self.model.num_inputs
         # reshape input bounds to match the model input shape
         input_lb, input_ub = input_lb.view(self.input_shape), input_ub.view(self.input_shape)
         assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
@@ -90,17 +92,16 @@ class ReluSplitter_Anywhere(Rsplitter_Gemm, Rsplitter_Conv):
         else:
             raise NotImplementedError(f"Splitting for op_type {op_type} is not implemented")
         
-        if conf.["equiv_chk"]:
-            raise NotImplementedError("Equivalence checking is not implemented yet")
-            equivChk_conf = {}
+        if conf.get("equiv_chk_conf", None) is not None:
+            equiv_chk_conf = conf["equiv_chk_conf"]
             closeness_results = check_models_closeness(
                 self.model,
                 [split_model, baseline_model],
                 self.input_shape,
                 device=None,
-                n=10,
-                atol=1e-5,
-                rtol=1e-5
+                n=equiv_chk_conf.get("n", 10),
+                atol=equiv_chk_conf.get("atol", 1e-6),
+                rtol=equiv_chk_conf.get("rtol", 1e-6)
             )
             (split_close, split_diff), (baseline_close, baseline_diff) = closeness_results
             

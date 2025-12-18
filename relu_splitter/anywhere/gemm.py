@@ -51,11 +51,6 @@ class Rsplitter_Gemm():
         # if create_baseline is True, create a baseline model, return will be (split_model, baseline_model)
         # if create_baseline is False, return will be the split_model ONLY
         bounding_method = conf.get("bounding_method", "backward")
-        n_split_strat = conf.get("n_split_strat", None)
-        n_splits = conf.get("n_splits", None)
-        split_strat = conf.get("split_strat", "all").lower()
-        tau_strat = conf.get("tau_strat", "random").lower()
-        scale_strat = conf.get("scale_strat", "fixed").lower()
         create_baseline = conf.get("create_baseline", False)
         candidate_selection_conf = conf.get("candidate_selection_conf", {})
         param_selection_conf = conf.get("param_conf", {})
@@ -63,14 +58,14 @@ class Rsplitter_Gemm():
         bounds = self.model.get_bound_of(self.bounded_input, gemm_node.output[0], method=bounding_method)
         split_idxs = self._decide_split_idxs_ReLU(bounds, candidate_selection_conf)
         split_dict = self._decide_split_params_ReLU(bounds, split_idxs, param_selection_conf)
-
-        if create_baseline:
-            split_model     = self._split_ReLU(split_dict)
-            baseline_model  = self._create_baseline_ReLU(split_dict)
-            return split_model, baseline_model
-
         new_model = self._split_ReLU(gemm_node ,split_dict)
-        return new_model, None
+
+        baseline_model = None
+        if create_baseline:
+            raise NotImplementedError("yo")
+            baseline_model  = self._create_baseline_ReLU(split_dict)
+
+        return new_model, baseline_model
     
     # responsible for selecting neurons to split
     def _decide_split_idxs_ReLU(self, bounds, candidate_selection_conf):
@@ -164,7 +159,7 @@ class Rsplitter_Gemm():
         gemm_2_b = torch.zeros(num_out)
 
         idx = 0
-        for i in tqdm(range(num_out), desc="Constructing new layers"):
+        for i in tqdm(range(num_out), desc="Constructing new ReLU layers"):
             if i in split_dict:
                 tau, (s_pos, s_neg) = split_dict[i]
                 # gemm_1
@@ -257,29 +252,130 @@ class Rsplitter_Gemm():
     def decide_LeakyReLU(self, leaky_conf):
         # need return a single alpha value
         self.logger.warn("using static alpha=0.01 for LeakyReLU splitting")
-        return 0.01
+        return 0.0
 
-    def split_LeakyReLU(self, split_strat, tau_strat, scale_strat, leaky_conf, create_baseline=False):
-        # if create_baseline is True, create a baseline model, return will be (split_model, baseline_model)
-        # if create_baseline is False, return will be the split_model ONLY
+    def split_LeakyReLU(self, gemm_node, conf):
+        bounding_method = conf.get("bounding_method", "backward")
+        create_baseline = conf.get("create_baseline", False)
+        candidate_selection_conf = conf.get("candidate_selection_conf", {})
+        param_selection_conf = conf.get("param_conf", {})
 
-        split_mask = None
-        taus = None
-        scales = None
-        alpha = self.decide_alpha_LeakyReLU(leaky_conf)
-        split_dict = {} # split_dict: {idx: (tau, (s_pos, s_neg))}
+        bounds = self.model.get_bound_of(self.bounded_input, gemm_node.output[0], method=bounding_method)
+        split_idxs = self._decide_split_idxs_LeakyReLU(bounds, candidate_selection_conf)
+        split_dict = self._decide_split_params_LeakyReLU(bounds, split_idxs, param_selection_conf)
+        split_alpha = self._decide_alpha_LeakyReLU(bounds, split_dict)
+        new_model = self._split_LeakyReLU(gemm_node ,split_dict, split_alpha)
 
+        baseline_model = None
         if create_baseline:
-            split_model     = self._split_LeakyReLU(split_dict)
-            baseline_model  = self._create_baseline_LeakyReLU(split_dict)
-            return split_model, baseline_model
+            raise NotImplementedError("yo")
+            baseline_model  = self._create_baseline_LeakyReLU(split_dict, alpha)
 
-        new_model = self._split_LeakyReLU(split_dict)
-        return new_model
+        return new_model, baseline_model
 
-    def _split_LeakyReLU(self, split_dict, alpha=0.01):
+    def _decide_split_idxs_LeakyReLU(self, bounds, candidate_selection_conf):
+        return self._decide_split_idxs_ReLU(bounds, candidate_selection_conf)
+
+    def _decide_split_params_LeakyReLU(self, bounds, idxs, split_conf):
+        return self._decide_split_params_ReLU(bounds, idxs, split_conf)
+
+    def _decide_alpha_LeakyReLU(self, bounds, split_dict):
+        # for now, just return a randome value between 0.01 and 0.1
+        return random.uniform(0.01, 0.1)
+
+    def _split_LeakyReLU(self, node_to_split,split_dict, alpha = 0.01):
         # split_dict: {idx: (tau, (s_pos, s_neg))}
-        pass
+        n_splits = len(split_dict)
+
+        w_o, b_o = self.model.get_gemm_wb(node_to_split)
+        # create new layers: gemm_1 -> leakyrelu -> gemm_2
+        num_out, num_in = w_o.shape
+        gemm_1_w = torch.zeros((num_out + n_splits, num_in))
+        gemm_1_b = torch.zeros((num_out + n_splits,))
+        gemm_2_w = torch.zeros((num_out, num_out + n_splits))
+        gemm_2_b = torch.zeros(num_out)
+
+        idx = 0
+        for i in tqdm(range(num_out), desc="Constructing new LeakyReLU layers"):
+            if i in split_dict:
+                tau, (s_pos, s_neg) = split_dict[i]
+                # gemm_1
+                gemm_1_w[idx]       = s_pos * w_o[i]
+                gemm_1_w[idx + 1]   = s_neg * w_o[i]
+                gemm_1_b[idx]       = -s_pos * (tau - b_o[i])
+                gemm_1_b[idx + 1]   = -s_neg * (tau - b_o[i])
+                # gemm_2
+                alpha_scaling = 1.0 / (1.0 + alpha)
+                gemm_2_w[i][idx]       = 1/s_pos * alpha_scaling
+                gemm_2_w[i][idx + 1]   = 1/s_neg * alpha_scaling
+                gemm_2_b[i]            = tau
+                
+                idx += 2
+            else:
+                # (Future work) can use some random ratio here. or even random offset
+                ratio = 1.0
+                # gemm_1
+                gemm_1_w[idx]     = w_o[i] * ratio
+                gemm_1_b[idx]     = b_o[i]                
+                # gemm_2
+                gemm_2_w[i][idx]  = 1.0 / ratio
+                gemm_2_b[i]       = 0.0
+                idx += 1
+        gemm_1_w = gemm_1_w.T
+        gemm_2_w = gemm_2_w.T
+
+        input_tname     = node_to_split.input[0]    # orginal input
+        gemm_1_output_tname  = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm1")   # intermediate output after gemm_1
+        leakyrelu_output_tname    = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_LeakyReLU")    # intermediate output after leakyrelu
+        gemm_2_output_tname  = node_to_split.output[0]                                   # final output after gemm_2, should be same as original output after gemm_2    
+        gemm1_w_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm1w")
+        gemm1_b_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm1b")
+        gemm2_w_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm2w")
+        gemm2_b_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm2b")    
+        gemm1_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_Gemm1")
+        leakyrelu_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_LeakyReLU")
+        gemm2_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_Gemm2")
+        # create nodes
+        gemm_1_node = onnx.helper.make_node(
+            "Gemm",
+            inputs=[input_tname, gemm1_w_tname, gemm1_b_tname],
+            outputs=[gemm_1_output_tname],
+            name=gemm1_nname,
+            alpha=1.0,
+            beta=1.0,
+            transB=0,
+            transA=0)
+        leakyrelu_node = onnx.helper.make_node(
+            "LeakyRelu",
+            inputs=[gemm_1_output_tname],
+            outputs=[leakyrelu_output_tname],
+            name=leakyrelu_nname,
+            alpha=alpha)
+        gemm_2_node = onnx.helper.make_node(
+            "Gemm",
+            inputs=[leakyrelu_output_tname, gemm2_w_tname, gemm2_b_tname],
+            outputs=[gemm_2_output_tname],
+            name=gemm2_nname,
+            alpha=1.0,
+            beta=1.0,
+            transB=0,
+            transA=0)
+        new_nodes = [gemm_1_node, leakyrelu_node, gemm_2_node]
+        new_initializers = [
+            onnx.helper.make_tensor(gemm1_w_tname, onnx.TensorProto.FLOAT, gemm_1_w.shape, gemm_1_w.flatten().tolist()),
+            onnx.helper.make_tensor(gemm1_b_tname, onnx.TensorProto.FLOAT, gemm_1_b.shape, gemm_1_b.flatten().tolist()),
+            onnx.helper.make_tensor(gemm2_w_tname, onnx.TensorProto.FLOAT, gemm_2_w.shape, gemm_2_w.flatten().tolist()),
+            onnx.helper.make_tensor(gemm2_b_tname, onnx.TensorProto.FLOAT, gemm_2_b.shape, gemm_2_b.flatten().tolist()),
+        ]
+        new_model = self.model.generate_updated_model(
+            nodes_to_replace=[node_to_split],
+            additional_nodes=new_nodes,
+            additional_initializers=new_initializers,
+            graph_name=f"{self.model.graph_name}_GemmSplit",
+            producer_name=TOOL_NAME
+        )
+        return new_model
+        
 
     def _create_baseline_LeakyReLU(self, split_dict, alpha=0.01):
         # split_dict: {idx: (tau, (s_pos, s_neg))}

@@ -270,7 +270,6 @@ class Rsplitter_Gemm():
         if create_baseline:
             raise NotImplementedError("yo")
             baseline_model  = self._create_baseline_LeakyReLU(split_dict, alpha)
-
         return new_model, baseline_model
 
     def _decide_split_idxs_LeakyReLU(self, bounds, candidate_selection_conf):
@@ -383,30 +382,29 @@ class Rsplitter_Gemm():
 
     #----------------------- PReLU -----------------------#
     #----------------------- PReLU -----------------------#
-    def split_PReLU(self, split_strat, tau_strat, scale_strat, slope=0.01, create_baseline=False):
-        # if create_baseline is True, create a baseline model, return will be (split_model, baseline_model)
-        # if create_baseline is False, return will be the split_model ONLY
+    def split_PReLU(self, gemm_node, conf):
+        bounding_method = conf.get("bounding_method", "backward")
+        create_baseline = conf.get("create_baseline", False)
+        candidate_selection_conf = conf.get("candidate_selection_conf", {})
+        param_selection_conf = conf.get("param_conf", {})
 
+        bounds = self.model.get_bound_of(self.bounded_input, gemm_node.output[0], method=bounding_method)
+        split_idxs = self._decide_split_idxs_PReLU(bounds, candidate_selection_conf)
+        split_dict = self._decide_split_params_PReLU(bounds, split_idxs, param_selection_conf)
+        split_slope = self._decide_slope_PReLU(bounds, split_dict)
+        new_model = self._split_PReLU(gemm_node ,split_dict, split_slope)
 
-        split_mask = None
-        taus = None
-        scales = None
-        split_dict = {}
-
-
+        baseline_model = None
         if create_baseline:
-            split_model     = self._split_PReLU(split_dict)
-            baseline_model  = self._create_baseline_PReLU(split_dict)
-            return split_model, baseline_model
-
-        new_model = self._split_PReLU(split_dict)
+            raise NotImplementedError("yo")
+            baseline_model  = self._create_baseline_PReLU(split_dict, slope)
         return new_model
     
     def _split_PReLU(self, split_dict, slope=0.01):
         # split_dict: {idx: (tau, (s_pos, s_neg))}
         pass
 
-    def _create_baseline_PReLU(self, split_dict, slope=0.01):
+    def _create_baseline_PReLU(self, node_to_split,split_dict, slope = sometensor):
         # split_dict: {idx: (tau, (s_pos, s_neg))}
         pass
 

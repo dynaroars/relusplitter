@@ -408,11 +408,19 @@ class Rsplitter_Gemm():
     
     def _decide_slope_PReLU(self, bounds, split_dict, extra_conf):
         # for now, just return a torch tensor of fixed slop 0.01
-        random_slope = random.uniform(0.01, 0.9)
-        slope = torch.tensor(random_slope)
-        return slope
+        slope_strategy = extra_conf.get("slope_strat", "single").lower()
+        if slope_strategy == "single":          # all neurons share the same slope
+            random_slope = random.uniform(0.01, 0.9)
+            slope = torch.tensor(random_slope)
+        elif slope_strategy == "per_neuron":    # each neuron has its own slope
+            layer_width = bounds[0].shape[1]
+            slope = torch.tensor([0.234 * layer_width])
+            slope = torch.randn(layer_width) * 0.9 + 0.01
+            return slope.abs()
+        else:
+            raise NotImplementedError(f"slope_strategy {slope_strategy} is not implemented yet")
     
-    def _split_PReLU(self, node_to_split, split_dict, slope=0.01):
+    def _split_PReLU(self, node_to_split, split_dict, slope):
         # split_dict: {idx: (tau, (s_pos, s_neg))}
         n_splits = len(split_dict)
 
@@ -425,7 +433,13 @@ class Rsplitter_Gemm():
         gemm_2_b = torch.zeros(num_out)
 
         idx = 0
+        actual_slope = torch.zeros((num_out + n_splits,))
         for i in tqdm(range(num_out), desc="Constructing new PReLU layers"):
+            if slope.numel() == 1:
+                    s = slope
+            else:
+                s = slope[i]
+
             if i in split_dict:
                 tau, (s_pos, s_neg) = split_dict[i]
                 # gemm_1
@@ -434,10 +448,13 @@ class Rsplitter_Gemm():
                 gemm_1_b[idx]       = -s_pos * (tau - b_o[i])
                 gemm_1_b[idx + 1]   = -s_neg * (tau - b_o[i])
                 # gemm_2
-                slope_scaling = torch.ones_like(slope) / (slope + 1.0)
+                slope_scaling = 1.0 / (s + 1.0)
                 gemm_2_w[i][idx]       = 1/s_pos * slope_scaling
                 gemm_2_w[i][idx + 1]   = 1/s_neg * slope_scaling
                 gemm_2_b[i]            = tau
+
+                actual_slope[idx] = s
+                actual_slope[idx + 1] = s
                 
                 idx += 2
             else:
@@ -449,6 +466,9 @@ class Rsplitter_Gemm():
                 # gemm_2
                 gemm_2_w[i][idx]  = 1.0 / ratio
                 gemm_2_b[i]       = 0.0
+
+                actual_slope[idx] = s
+
                 idx += 1
         gemm_1_w = gemm_1_w.T
         gemm_2_w = gemm_2_w.T
@@ -493,7 +513,7 @@ class Rsplitter_Gemm():
         new_initializers = [
             onnx.helper.make_tensor(gemm1_w_tname, onnx.TensorProto.FLOAT, gemm_1_w.shape, gemm_1_w.flatten().tolist()),
             onnx.helper.make_tensor(gemm1_b_tname, onnx.TensorProto.FLOAT, gemm_1_b.shape, gemm_1_b.flatten().tolist()),
-            onnx.helper.make_tensor(prelu_slope_tname, onnx.TensorProto.FLOAT, slope.shape, slope.flatten().tolist()),
+            onnx.helper.make_tensor(prelu_slope_tname, onnx.TensorProto.FLOAT, actual_slope.shape, actual_slope.flatten().tolist()),
             onnx.helper.make_tensor(gemm2_w_tname, onnx.TensorProto.FLOAT, gemm_2_w.shape, gemm_2_w.flatten().tolist()),
             onnx.helper.make_tensor(gemm2_b_tname, onnx.TensorProto.FLOAT, gemm_2_b.shape, gemm_2_b.flatten().tolist()),
         ]

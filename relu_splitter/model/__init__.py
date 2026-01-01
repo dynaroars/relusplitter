@@ -15,7 +15,10 @@ from auto_LiRPA import BoundedModule, BoundedTensor
 from ..utils.onnx_utils import truncate_onnx_model, compute_model_bound
 from ..utils.misc import get_random_id
 
-SINGLE_INPUT_OPS = ["Relu", "MatMul", "Add"]
+SINGLE_INPUT_OPS = [
+    "Relu", "PRelu", "LeakyRelu", "ThresholdedRelu",
+    "MatMul", "Add"
+    ]
 
 custom_quirks = {
     'Reshape': {
@@ -180,7 +183,6 @@ class WarppedOnnxModel():
 
     def get_prior_node(self, node):
         assert node.op_type in SINGLE_INPUT_OPS
-        assert len(node.input) == 1
         return self._node_produce_output[node.input[0]]
 
     def get_bound_of(self, input_bound:BoundedTensor, tensor_name: str, method: str = "forward+backward") -> Tuple[torch.Tensor, torch.Tensor]:

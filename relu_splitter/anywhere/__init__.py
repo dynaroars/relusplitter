@@ -20,6 +20,8 @@ from relu_splitter.anywhere.conv import Rsplitter_Conv
 
 class ReluSplitter_Anywhere(Rsplitter_Gemm, Rsplitter_Conv):
     supported_op_types = ["Gemm", "Conv"]
+    supported_activations = ["Relu", "LeakyRelu", "PRelu"]
+    # supported_activations = ["Relu", "LeakyRelu", "PRelu", "ThresholdedRelu"]
     ignore_split_nodes = True
     supress_warnings = False
 
@@ -64,15 +66,26 @@ class ReluSplitter_Anywhere(Rsplitter_Gemm, Rsplitter_Conv):
         if not self.supress_warnings and not self.ignore_split_nodes:
             self.logger.warning("ignore_split_nodes is set to False, splitting nodes that are already split might work suboptimally.")
         for node in self.model.nodes:
-            if self.ignore_split_nodes and TOOL_NAME in node.name:
-                continue
-            if node.op_type in self.supported_op_types:
-                splittable_nodes.append(node)
+            if node.op_type in self.supported_activations:
+                prior_node = self.model.get_prior_node(node)
+                if prior_node is not None and prior_node.op_type in self.supported_op_types:
+                    if self.ignore_split_nodes and TOOL_NAME in node.name:
+                        continue
+                    else:
+                        splittable_nodes.append((prior_node, node))
+
         return splittable_nodes
     
     def resolve_node_idx(self, op_type, idx):
+        self.logger.debug(f"Resolving node index for op_type {op_type} and idx {idx}")
+
+        splitable_nodes = self.get_splittable_nodes()
+        
+        self.logger.debug([(n[0].name, n[1].name) for n in splitable_nodes])
+        self.logger.debug([(n[0].op_type, n[1].op_type) for n in splitable_nodes])
+
         assert op_type in self.supported_op_types, f"Unsupported op_type {op_type}"
-        nodes = [node for node in self.get_splittable_nodes() if node.op_type == op_type]
+        nodes = [t for t in splitable_nodes if t[0].op_type == op_type]
         assert 0 <= idx < len(nodes), f"Index {idx} out of range for op_type {op_type} with {len(nodes)} splittable nodes"
         return nodes[idx]
     

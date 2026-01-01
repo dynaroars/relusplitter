@@ -9,20 +9,21 @@ from relu_splitter import TOOL_NAME
 
 class Rsplitter_Gemm():
 
-    def gemm_split(self, gemm_node, conf):
+    def gemm_split(self, nodes, conf):
         split_activation = conf["split_activation"].lower()
+        gemm_node, activation_node = nodes
 
         assert gemm_node.op_type == "Gemm", f"Node to split is not a Gemm node: {gemm_node.op_type}"
         assert split_activation in ["relu", "leakyrelu", "prelu", "thresholdedrelu"], f"Unsupported split activation: {split_activation}"
 
         if split_activation == "relu":
-            split_model, baseline_model = self.split_ReLU(gemm_node, conf)
+            split_model, baseline_model = self.split_ReLU(nodes, conf)
         elif split_activation == "leakyrelu":
-            split_model, baseline_model = self.split_LeakyReLU(gemm_node, conf)
+            split_model, baseline_model = self.split_LeakyReLU(nodes, conf)
         elif split_activation == "prelu":
-            split_model, baseline_model = self.split_PReLU(gemm_node, conf)
+            split_model, baseline_model = self.split_PReLU(nodes, conf)
         elif split_activation == "thresholdedrelu":
-            split_model, baseline_model = self.split_ThresholdedReLU(gemm_node, conf)
+            split_model, baseline_model = self.split_ThresholdedReLU(nodes, conf)
         else:
             raise NotImplementedError(f"Splitting for activation {split_activation} is not implemented")
         return split_model, baseline_model
@@ -47,9 +48,10 @@ class Rsplitter_Gemm():
 
     #----------------------- ReLU -----------------------#
     #----------------------- ReLU -----------------------#
-    def split_ReLU(self, gemm_node, conf):
+    def split_ReLU(self, nodes, conf):
         # if create_baseline is True, create a baseline model, return will be (split_model, baseline_model)
         # if create_baseline is False, return will be the split_model ONLY
+        gemm_node, activation_node = nodes
         bounding_method = conf.get("bounding_method", "backward")
         create_baseline = conf.get("create_baseline", False)
         candidate_selection_conf = conf.get("candidate_selection_conf", {})
@@ -109,7 +111,7 @@ class Rsplitter_Gemm():
                 raise NotImplementedError(f"strat {strat} is not implemented yet")
         else:
             self.logger.info(f"n_splits >= mask_size ({n_splits} <= {mask_size}), splitting all available neurons (Strat not applied)")
-            return torch.nonzero(mask, as_tuple=False).squeeze().tolist()
+            return torch.nonzero(mask, as_tuple=False).squeeze(1).tolist()
 
             
     # responsible for identifying the split parameters
@@ -254,7 +256,8 @@ class Rsplitter_Gemm():
         self.logger.warn("using static alpha=0.01 for LeakyReLU splitting")
         return 0.0
 
-    def split_LeakyReLU(self, gemm_node, conf):
+    def split_LeakyReLU(self, nodes, conf):
+        gemm_node, activation_node = nodes
         bounding_method = conf.get("bounding_method", "backward")
         create_baseline = conf.get("create_baseline", False)
         candidate_selection_conf = conf.get("candidate_selection_conf", {})
@@ -382,7 +385,8 @@ class Rsplitter_Gemm():
 
     #----------------------- PReLU -----------------------#
     #----------------------- PReLU -----------------------#
-    def split_PReLU(self, gemm_node, conf):
+    def split_PReLU(self, nodes, conf):
+        gemm_node, activation_node = nodes
         bounding_method = conf.get("bounding_method", "backward")
         create_baseline = conf.get("create_baseline", False)
         candidate_selection_conf = conf.get("candidate_selection_conf", {})
@@ -412,6 +416,7 @@ class Rsplitter_Gemm():
         if slope_strategy == "single":          # all neurons share the same slope
             random_slope = random.uniform(0.01, 0.9)
             slope = torch.tensor(random_slope)
+            return slope
         elif slope_strategy == "per_neuron":    # each neuron has its own slope
             layer_width = bounds[0].shape[1]
             slope = torch.tensor([0.234 * layer_width])
@@ -419,6 +424,7 @@ class Rsplitter_Gemm():
             return slope.abs()
         else:
             raise NotImplementedError(f"slope_strategy {slope_strategy} is not implemented yet")
+        
     
     def _split_PReLU(self, node_to_split, split_dict, slope):
         # split_dict: {idx: (tau, (s_pos, s_neg))}
@@ -435,7 +441,7 @@ class Rsplitter_Gemm():
         idx = 0
         actual_slope = torch.zeros((num_out + n_splits,))
         for i in tqdm(range(num_out), desc="Constructing new PReLU layers"):
-            if slope.numel() == 1:
+            if isinstance(slope, float) or slope.ndim == 0:
                     s = slope
             else:
                 s = slope[i]

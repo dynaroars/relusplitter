@@ -267,7 +267,7 @@ class Rsplitter_Gemm():
         split_idxs = self._decide_split_idxs_LeakyReLU(bounds, candidate_selection_conf)
         split_dict = self._decide_split_params_LeakyReLU(bounds, split_idxs, param_selection_conf)
         split_alpha = self._decide_alpha_LeakyReLU(bounds, split_dict, conf)
-        new_model = self._split_LeakyReLU(gemm_node ,split_dict, split_alpha)
+        new_model = self._split_LeakyReLU(nodes ,split_dict, split_alpha)
 
         baseline_model = None
         if create_baseline:
@@ -285,11 +285,30 @@ class Rsplitter_Gemm():
         # for now, just return a randome value between 0.01 and 0.1
         return random.uniform(0.01, 0.1)
 
-    def _split_LeakyReLU(self, node_to_split,split_dict, alpha = 0.01):
+    def _split_LeakyReLU(self, nodes, split_dict, alpha = 0.01):
+        node_to_split, activation_node = nodes
+
         # split_dict: {idx: (tau, (s_pos, s_neg))}
         n_splits = len(split_dict)
 
         w_o, b_o = self.model.get_gemm_wb(node_to_split)
+        # adhoc
+        assert activation_node.op_type == "LeakyRelu", f"Activation node is not LeakyReLU: {activation_node.op_type}"
+        activation_alpha = activation_node.attribute[0].f
+        print(f"Activation node alpha: {activation_alpha}")
+        # alpha * new_activation_alpha == activation_alpha.f
+        if activation_node.op_type == "LeakyRelu":
+            last_leakyrelu_alpha = activation_alpha / alpha
+        elif activation_node.op_type == "PRelu":
+            last_prelu_slope = activation_alpha / alpha
+        elif activation_node.op_type == "Relu":
+            pass
+        else:
+            raise NotImplementedError(f"Activation node type {activation_node.op_type} not supported")
+        print( f"Split LeakyReLU alpha: {alpha}, last alpha {last_leakyrelu_alpha}, product: {alpha * last_leakyrelu_alpha}" )
+        print( f"Last LeakyReLU alpha: {activation_alpha}" )
+        # end adhoc
+
         # create new layers: gemm_1 -> leakyrelu -> gemm_2
         num_out, num_in = w_o.shape
         gemm_1_w = torch.zeros((num_out + n_splits, num_in))
@@ -301,6 +320,11 @@ class Rsplitter_Gemm():
         for i in tqdm(range(num_out), desc="Constructing new LeakyReLU layers"):
             if i in split_dict:
                 tau, (s_pos, s_neg) = split_dict[i]
+                # TODO: big big issue here. Post 1st leaky this is 100% original output (strait line)
+                # and for non-split neuron, the negative half is scaled by alpha (kinky line)
+                # they cannot share alpha.
+                # split neurons has equivalent alpha = 2nd leaky alpha
+                # non-split neurons has equivalent alpha = original original alpha = 1st leaky alpha * 2nd leaky alpha
                 # gemm_1
                 gemm_1_w[idx]       = s_pos * w_o[i]
                 gemm_1_w[idx + 1]   = s_neg * w_o[i]
@@ -329,7 +353,8 @@ class Rsplitter_Gemm():
         input_tname     = node_to_split.input[0]    # orginal input
         gemm_1_output_tname  = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm1")   # intermediate output after gemm_1
         leakyrelu_output_tname    = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_LeakyReLU")    # intermediate output after leakyrelu
-        gemm_2_output_tname  = node_to_split.output[0]                                   # final output after gemm_2, should be same as original output after gemm_2    
+        gemm_2_output_tname  = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm2")              # final output after gemm_2, should be same as original output after gemm_2  
+        last_activation_output_tname = activation_node.output[0]                          # final output after last activation, should be same as original output  
         gemm1_w_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm1w")
         gemm1_b_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm1b")
         gemm2_w_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm2w")
@@ -362,7 +387,19 @@ class Rsplitter_Gemm():
             beta=1.0,
             transB=0,
             transA=0)
-        new_nodes = [gemm_1_node, leakyrelu_node, gemm_2_node]
+        
+        last_activation_node = None
+        if activation_node.op_type == "LeakyRelu":
+            last_activation_node = onnx.helper.make_node(
+                "LeakyRelu",
+                inputs=[gemm_2_output_tname],
+                outputs=[last_activation_output_tname],
+                name=self.model.gen_node_name(prefix=f"{TOOL_NAME}_LastLeakyReLU"),
+                alpha=last_leakyrelu_alpha)
+        else:
+            raise NotImplementedError(f"Activation node type {activation_node.op_type} not supported")
+
+        new_nodes = [gemm_1_node, leakyrelu_node, gemm_2_node, last_activation_node]
         new_initializers = [
             onnx.helper.make_tensor(gemm1_w_tname, onnx.TensorProto.FLOAT, gemm_1_w.shape, gemm_1_w.flatten().tolist()),
             onnx.helper.make_tensor(gemm1_b_tname, onnx.TensorProto.FLOAT, gemm_1_b.shape, gemm_1_b.flatten().tolist()),
@@ -370,7 +407,7 @@ class Rsplitter_Gemm():
             onnx.helper.make_tensor(gemm2_b_tname, onnx.TensorProto.FLOAT, gemm_2_b.shape, gemm_2_b.flatten().tolist()),
         ]
         new_model = self.model.generate_updated_model(
-            nodes_to_replace=[node_to_split],
+            nodes_to_replace=[node_to_split, activation_node],
             additional_nodes=new_nodes,
             additional_initializers=new_initializers,
             graph_name=f"{self.model.graph_name}_GemmSplit",

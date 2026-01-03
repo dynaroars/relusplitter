@@ -13,7 +13,7 @@ class Rsplitter_Gemm():
         split_activation = conf["split_activation"].lower()
 
         assert gemm_node.op_type == "Gemm", f"Node to split is not a Gemm node: {gemm_node.op_type}"
-        assert split_activation in ["relu", "leakyrelu", "prelu", "thresholdedrelu"], f"Unsupported split activation: {split_activation}"
+        assert split_activation in ["relu", "leakyrelu", "prelu"], f"Unsupported split activation: {split_activation}"
 
         split_model, baseline_model = self._gemm_split(gemm_node, conf)
 
@@ -41,7 +41,6 @@ class Rsplitter_Gemm():
         activation_params = {
             "leakyrelu_alpha": self._decide_leakyrelu_alpha(additional_activation_conf),
             "prelu_slope": self._decide_prelu_slope(additional_activation_conf),
-            "thresholdedrelu_alpha": self._decide_thresholdedrelu_alpha(additional_activation_conf),
         }
         new_model = self._split_general(gemm_node ,split_dict, split_activation, activation_params)
 
@@ -151,13 +150,6 @@ class Rsplitter_Gemm():
     
     def _decide_prelu_slope(self, additional_activation_conf):
         return additional_activation_conf.get("prelu_slope", 0.25)
-    
-    def _decide_thresholdedrelu_alpha(self, additional_activation_conf):
-        return additional_activation_conf.get("thresholdedrelu_alpha", 1.0)
-
-
-
-
 
 
     # actually split
@@ -169,8 +161,6 @@ class Rsplitter_Gemm():
             split_model = self._split_LeakyReLU(node_to_split, split_dict, alpha=params["leakyrelu_alpha"])
         elif split_activation == "prelu":
             split_model = self._split_PReLU(node_to_split, split_dict, slope=params["prelu_slope"])
-        elif split_activation == "thresholdedrelu":
-            split_model = self._split_ThresholdedReLU(node_to_split, split_dict, alpha=params["thresholdedrelu_alpha"])
         else:
             raise NotImplementedError(f"split_activation {split_activation} is not implemented yet")
         return split_model
@@ -354,9 +344,90 @@ class Rsplitter_Gemm():
 
         if isinstance(slope, float) or slope.ndim == 0:
             slope = torch.full((num_out,), slope)
-        if isinstance(slope, list):
+        if isinstance(slope, torch.Tensor):
             assert slope.ndim == 1 and slope.shape[0] == num_out
         else:
-            raise ValueError(f"slope must be a float or a list of floats with length {num_out}, got {slope}")
+            raise ValueError(f"Slope is not a valid float or 1D tensor: {slope}")
         
         
+        gemm_1_w = torch.zeros((split_layer_width, num_in))
+        gemm_1_b = torch.zeros((split_layer_width,))
+        gemm_2_w = torch.zeros((num_out, split_layer_width))
+        gemm_2_b = torch.zeros(num_out)
+        actual_slope = torch.zeros((split_layer_width,))
+        free_neurons = [i for i in range(split_layer_width)]
+        random.shuffle(free_neurons)
+        for i in tqdm(range(num_out), desc="Constructing new PReLU layers"):
+            idx1, idx2 = free_neurons.pop(), free_neurons.pop()
+            tau, (s_pos, s_neg) = split_dict[i]
+            # gemm_1
+            gemm_1_w[idx1]       = s_pos * w_o[i]
+            gemm_1_w[idx2]   = s_neg * w_o[i]
+            gemm_1_b[idx1]       = -s_pos * (tau - b_o[i])
+            gemm_1_b[idx2]   = -s_neg * (tau - b_o[i])
+            # prelu
+            curr_slope = slope[i]
+            actual_slope[idx1] = curr_slope
+            actual_slope[idx2] = curr_slope
+            # gemm_2
+            slope_scaling = 1.0 / (1.0 + curr_slope)
+            gemm_2_w[i][idx1]       = (1/s_pos) * slope_scaling
+            gemm_2_w[i][idx2]   = (1/s_neg) * slope_scaling
+            gemm_2_b[i]            = tau
+
+        gemm_1_w = gemm_1_w.T
+        gemm_2_w = gemm_2_w.T
+
+        input_tname     = node_to_split.input[0]    # orginal input
+        gemm_1_output_tname  = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm1")   # intermediate output after gemm_1
+        prelu_output_tname    = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_PReLU")    # intermediate output after relu
+        prelu_slope_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_PReLUslope")
+        gemm_2_output_tname  = node_to_split.output[0]                                   # final output after gemm_2, should be same as original output
+        gemm1_w_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm1w")
+        gemm1_b_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm1b")
+        gemm2_w_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm2w")
+        gemm2_b_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm2b")
+        gemm1_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_Gemm1")
+        prelu_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_PReLU")
+        gemm2_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_Gemm2")
+        # create nodes
+        gemm_1_node = onnx.helper.make_node(
+            "Gemm",
+            inputs=[input_tname, gemm1_w_tname, gemm1_b_tname],
+            outputs=[gemm_1_output_tname],
+            name=gemm1_nname,
+            alpha=1.0,
+            beta=1.0,
+            transB=0,
+            transA=0)
+        prelu_node = onnx.helper.make_node(
+            "PRelu",
+            inputs=[gemm_1_output_tname, prelu_slope_tname],
+            outputs=[prelu_output_tname],
+            name=prelu_nname)
+        gemm_2_node = onnx.helper.make_node(
+            "Gemm",
+            inputs=[prelu_output_tname, gemm2_w_tname, gemm2_b_tname],
+            outputs=[gemm_2_output_tname],
+            name=gemm2_nname,
+            alpha=1.0,
+            beta=1.0,
+            transB=0,
+            transA=0)
+        new_nodes = [gemm_1_node, prelu_node, gemm_2_node]
+        new_initializers = [
+            onnx.helper.make_tensor(gemm1_w_tname, onnx.TensorProto.FLOAT, gemm_1_w.shape, gemm_1_w.flatten().tolist()),
+            onnx.helper.make_tensor(gemm1_b_tname, onnx.TensorProto.FLOAT, gemm_1_b.shape, gemm_1_b.flatten().tolist()),
+            onnx.helper.make_tensor(gemm2_w_tname, onnx.TensorProto.FLOAT, gemm_2_w.shape, gemm_2_w.flatten().tolist()),
+            onnx.helper.make_tensor(gemm2_b_tname, onnx.TensorProto.FLOAT, gemm_2_b.shape, gemm_2_b.flatten().tolist()),
+            onnx.helper.make_tensor(prelu_slope_tname, onnx.TensorProto.FLOAT, actual_slope.shape, actual_slope.flatten().tolist()),
+        ]
+        new_model = self.model.generate_updated_model(
+            nodes_to_replace=[node_to_split],
+            additional_nodes=new_nodes,
+            additional_initializers=new_initializers,
+            graph_name=f"{self.model.graph_name}_GemmSplit_PReLU",
+            producer_name=TOOL_NAME
+        )
+        return new_model
+    

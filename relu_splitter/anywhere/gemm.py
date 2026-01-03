@@ -83,8 +83,11 @@ class Rsplitter_Gemm():
             random.shuffle(idxs)
         else:
             raise NotImplementedError(f"sorting_strat {sorting_strat} is not implemented yet")
+        
+        split_idxs = idxs[:n_splits]
+        self.logger.info(f"Split idxs: {split_idxs}")
+        return split_idxs
 
-        return idxs[:n_splits]
 
     #     split_mask = candidate_selection_conf.get("split_mask", "stable").lower()
     #     n_splits = candidate_selection_conf.get("n_splits", None)
@@ -239,41 +242,32 @@ class Rsplitter_Gemm():
     # actually split
     def _split_ReLU(self, node_to_split,split_dict):
         # split_dict: {idx: (tau, (s_pos, s_neg))}
-        n_splits = len(split_dict)
 
         w_o, b_o = self.model.get_gemm_wb(node_to_split)
-        # create new layers: gemm_1 -> relu -> gemm_2
         num_out, num_in = w_o.shape
-        gemm_1_w = torch.zeros((num_out + n_splits, num_in))
-        gemm_1_b = torch.zeros((num_out + n_splits,))
-        gemm_2_w = torch.zeros((num_out, num_out + n_splits))
+        split_layer_width = 2 * num_out
+
+        gemm_1_w = torch.zeros((split_layer_width, num_in))
+        gemm_1_b = torch.zeros((split_layer_width,))
+        gemm_2_w = torch.zeros((num_out, split_layer_width))
         gemm_2_b = torch.zeros(num_out)
 
-        idx = 0
+        free_neurons = [i for i in range(split_layer_width)]
+        random.shuffle(free_neurons)
+
         for i in tqdm(range(num_out), desc="Constructing new ReLU layers"):
-            if i in split_dict:
-                tau, (s_pos, s_neg) = split_dict[i]
-                # gemm_1
-                gemm_1_w[idx]       = s_pos * w_o[i]
-                gemm_1_w[idx + 1]   = s_neg * w_o[i]
-                gemm_1_b[idx]       = -s_pos * (tau - b_o[i])
-                gemm_1_b[idx + 1]   = -s_neg * (tau - b_o[i])
-                # gemm_2
-                gemm_2_w[i][idx]       = 1/s_pos
-                gemm_2_w[i][idx + 1]   = 1/s_neg
-                gemm_2_b[i]            = tau
-                
-                idx += 2
-            else:
-                # (Future work) can use some random ratio here. or even random offset
-                ratio = 1.0
-                # gemm_1
-                gemm_1_w[idx]     = w_o[i] * ratio
-                gemm_1_b[idx]     = b_o[i]                
-                # gemm_2
-                gemm_2_w[i][idx]  = 1.0 / ratio
-                gemm_2_b[i]       = 0.0
-                idx += 1
+            idx1, idx2 = free_neurons.pop(), free_neurons.pop()
+            tau, (s_pos, s_neg) = split_dict[i]
+            # gemm_1
+            gemm_1_w[idx1]       = s_pos * w_o[i]
+            gemm_1_w[idx2]   = s_neg * w_o[i]
+            gemm_1_b[idx1]       = -s_pos * (tau - b_o[i])
+            gemm_1_b[idx2]   = -s_neg * (tau - b_o[i])
+            # gemm_2
+            gemm_2_w[i][idx1]       = 1/s_pos
+            gemm_2_w[i][idx2]   = 1/s_neg
+            gemm_2_b[i]            = tau
+            
         gemm_1_w = gemm_1_w.T
         gemm_2_w = gemm_2_w.T
 

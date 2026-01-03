@@ -9,21 +9,20 @@ from relu_splitter import TOOL_NAME
 
 class Rsplitter_Gemm():
 
-    def gemm_split(self, nodes, conf):
+    def gemm_split(self, gemm_node, conf):
         split_activation = conf["split_activation"].lower()
-        gemm_node, activation_node = nodes
 
         assert gemm_node.op_type == "Gemm", f"Node to split is not a Gemm node: {gemm_node.op_type}"
         assert split_activation in ["relu", "leakyrelu", "prelu", "thresholdedrelu"], f"Unsupported split activation: {split_activation}"
 
         if split_activation == "relu":
-            split_model, baseline_model = self.split_ReLU(nodes, conf)
-        elif split_activation == "leakyrelu":
-            split_model, baseline_model = self.split_LeakyReLU(nodes, conf)
+            split_model, baseline_model = self.split_ReLU(gemm_node, conf)
+        # elif split_activation == "leakyrelu":
+        #     split_model, baseline_model = self.split_LeakyReLU(nodes, conf)
         elif split_activation == "prelu":
-            split_model, baseline_model = self.split_PReLU(nodes, conf)
-        elif split_activation == "thresholdedrelu":
-            split_model, baseline_model = self.split_ThresholdedReLU(nodes, conf)
+            split_model, baseline_model = self.split_PReLU(gemm_node, conf)
+        # elif split_activation == "thresholdedrelu":
+        #     split_model, baseline_model = self.split_ThresholdedReLU(nodes, conf)
         else:
             raise NotImplementedError(f"Splitting for activation {split_activation} is not implemented")
         return split_model, baseline_model
@@ -51,16 +50,18 @@ class Rsplitter_Gemm():
     def split_ReLU(self, nodes, conf):
         # if create_baseline is True, create a baseline model, return will be (split_model, baseline_model)
         # if create_baseline is False, return will be the split_model ONLY
-        gemm_node, activation_node = nodes
-        bounding_method = conf.get("bounding_method", "backward")
+        bounding_method_tight = conf.get("bounding_method_tight", "backward")
+        bounding_method_loose = conf.get("bounding_method_loose", "ibp")
         create_baseline = conf.get("create_baseline", False)
         candidate_selection_conf = conf.get("candidate_selection_conf", {})
         param_selection_conf = conf.get("param_conf", {})
 
-        bounds = self.model.get_bound_of(self.bounded_input, gemm_node.output[0], method=bounding_method)
-        split_idxs = self._decide_split_idxs_ReLU(bounds, candidate_selection_conf)
-        split_dict = self._decide_split_params_ReLU(bounds, split_idxs, param_selection_conf)
-        new_model = self._split_ReLU(gemm_node ,split_dict)
+        tight_bounds = self.model.get_bound_of(self.bounded_input, nodes.output[0], method=bounding_method_tight)
+        loose_bounds = self.model.get_bound_of(self.bounded_input, nodes.output[0], method=bounding_method_loose)
+
+        split_idxs = self._decide_split_idxs_ReLU(tight_bounds, loose_bounds, candidate_selection_conf)
+        split_dict = self._decide_split_params_ReLU(tight_bounds, loose_bounds, split_idxs, param_selection_conf)
+        new_model = self._split_ReLU(nodes ,split_dict)
 
         baseline_model = None
         if create_baseline:
@@ -70,81 +71,169 @@ class Rsplitter_Gemm():
         return new_model, baseline_model
     
     # responsible for selecting neurons to split
-    def _decide_split_idxs_ReLU(self, bounds, candidate_selection_conf):
-        split_mask = candidate_selection_conf.get("split_mask", "stable").lower()
-        n_splits = candidate_selection_conf.get("n_splits", None)
-        strict = candidate_selection_conf.get("strict", False)
-        strat = candidate_selection_conf.get("strat", "random").lower()
+    def _decide_split_idxs_ReLU(self, tight_bounds, loose_bounds, candidate_selection_conf):
+        sorting_strat = candidate_selection_conf.get("sorting_strat", "random")
+        n_splits = candidate_selection_conf.get("n_splits", 0)
 
-        masks = self.gemm_get_split_masks_general(bounds, cutoff=0)
-        self.logger.info(f"============= Split Mask Sumamry =============")
-        self.logger.info(f"stable+: {torch.sum(masks['stable+'])}\t"
-                            f"stable-: {torch.sum(masks['stable-'])}")
-        self.logger.info(f"unstable: {torch.sum(masks['unstable'])}\t"
-                            f"all: {torch.sum(masks['all'])}")
-        
-        mask = masks[split_mask]
-        mask_size = torch.sum(mask).item()
+        layer_width = tight_bounds[0].shape[1]
+        idxs = list(range(layer_width))
 
-        if strict:
-            assert n_splits is not None, "n_splits must be specified with strict=True"
-            assert n_splits <= mask_size, f"n_splits {n_splits} exceeds the available neurons to split {mask_size}"
-
-        if n_splits is None:
-            n_splits = mask_size
-            self.logger.info(f"n_splits is not specified, set to maximum available neurons to split: {n_splits}")
-
-        if n_splits < mask_size:
-            self.logger.info(f"n_splits < mask_size ({n_splits} < {mask_size}), applying strat {strat} to select neurons to split")
-            if strat == "random":
-                split_idxs = torch.nonzero(mask, as_tuple=False).squeeze().tolist()
-                split_idxs = random.sample(split_idxs, n_splits)
-                return split_idxs
-            elif strat == "max_interval":
-                output_lb, output_ub = bounds
-                unstable_idxs = torch.nonzero(mask, as_tuple=False).squeeze().tolist()
-                interval_sizes = [output_ub[i] - output_lb[i] for i in unstable_idxs]
-                sorted_intervals = sorted(zip(unstable_idxs, interval_sizes), key=lambda x: x[1], reverse=True)
-                split_idxs = [idx for idx, size in sorted_intervals[:n_splits]]
-                return split_idxs
-            else:
-                raise NotImplementedError(f"strat {strat} is not implemented yet")
+        assert 0 <= n_splits <= layer_width, f"n_splits {n_splits} must be between 0 and layer width {layer_width}, got {n_splits}"
+        if sorting_strat == "random":
+            random.shuffle(idxs)
         else:
-            self.logger.info(f"n_splits >= mask_size ({n_splits} <= {mask_size}), splitting all available neurons (Strat not applied)")
-            return torch.nonzero(mask, as_tuple=False).squeeze(1).tolist()
+            raise NotImplementedError(f"sorting_strat {sorting_strat} is not implemented yet")
+
+        return idxs[:n_splits]
+
+    #     split_mask = candidate_selection_conf.get("split_mask", "stable").lower()
+    #     n_splits = candidate_selection_conf.get("n_splits", None)
+    #     strict = candidate_selection_conf.get("strict", False)
+    #     strat = candidate_selection_conf.get("strat", "random").lower()
+
+    #     masks = self.gemm_get_split_masks_general(bounds, cutoff=0)
+    #     self.logger.info(f"============= Split Mask Sumamry =============")
+    #     self.logger.info(f"stable+: {torch.sum(masks['stable+'])}\t"
+    #                         f"stable-: {torch.sum(masks['stable-'])}")
+    #     self.logger.info(f"unstable: {torch.sum(masks['unstable'])}\t"
+    #                         f"all: {torch.sum(masks['all'])}")
+        
+    #     mask = masks[split_mask]
+    #     mask_size = torch.sum(mask).item()
+
+    #     if strict:
+    #         assert n_splits is not None, "n_splits must be specified with strict=True"
+    #         assert n_splits <= mask_size, f"n_splits {n_splits} exceeds the available neurons to split {mask_size}"
+
+    #     if n_splits is None:
+    #         n_splits = mask_size
+    #         self.logger.info(f"n_splits is not specified, set to maximum available neurons to split: {n_splits}")
+
+    #     if n_splits < mask_size:
+    #         self.logger.info(f"n_splits < mask_size ({n_splits} < {mask_size}), applying strat {strat} to select neurons to split")
+    #         if strat == "random":
+    #             split_idxs = torch.nonzero(mask, as_tuple=False).squeeze().tolist()
+    #             split_idxs = random.sample(split_idxs, n_splits)
+    #             return split_idxs
+    #         elif strat == "max_interval":
+    #             output_lb, output_ub = bounds
+    #             unstable_idxs = torch.nonzero(mask, as_tuple=False).squeeze().tolist()
+    #             interval_sizes = [output_ub[i] - output_lb[i] for i in unstable_idxs]
+    #             sorted_intervals = sorted(zip(unstable_idxs, interval_sizes), key=lambda x: x[1], reverse=True)
+    #             split_idxs = [idx for idx, size in sorted_intervals[:n_splits]]
+    #             return split_idxs
+    #         else:
+    #             raise NotImplementedError(f"strat {strat} is not implemented yet")
+    #     else:
+    #         self.logger.info(f"n_splits >= mask_size ({n_splits} <= {mask_size}), splitting all available neurons (Strat not applied)")
+    #         return torch.nonzero(mask, as_tuple=False).squeeze(1).tolist()
 
             
     # responsible for identifying the split parameters
-    def _decide_split_params_ReLU(self, bounds, idxs, split_conf):
-        tau_strat = split_conf.get("tau_strat", "random").lower()
-        scale_strat = split_conf.get("scale_strat", "fixed").lower()
-        if scale_strat == "fixed":
+    def _decide_split_params_ReLU(self, tight_bounds, loose_bounds, split_idxs, split_conf):
+        # if idx in split_idxs, use tight_bounds to decide tau
+        # if idx not in split_idxs, use loose_bounds to decide tau
+        split_tau_strat = split_conf.get("split_tau_strat", "midpoint").lower()
+        split_scale_strat = split_conf.get("split_scale_strat", "fixed").lower()
+        if split_scale_strat == "fixed":
             fixed_scales = split_conf.get("fixed_scales", (1.0, -1.0))
-        if scale_strat == "random":
+        if split_scale_strat == "random":
             s_pos_range = split_conf.get("s_pos_range", (0.1, 100.0))
             s_neg_range = split_conf.get("s_neg_range", (-100.0, -0.1))
-        
+
+        stable_tau_strat = split_conf.get("stable_tau_strat", "random").lower() # random, BigTau, SmallTau
+        stable_tau_margin = split_conf.get("stable_tau_margin", (10.0, 50.0))
+        stable_scale_strat = split_conf.get("stable_scale_strat", "fixed").lower()
+        if stable_scale_strat == "fixed":
+            stable_fixed_scales = split_conf.get("stable_fixed_scales", (1.0, -1.0))
+        if stable_scale_strat == "random":
+            stable_s_pos_range = split_conf.get("stable_s_pos_range", (0.1, 100.0))
+            stable_s_neg_range = split_conf.get("stable_s_neg_range", (-100.0, -0.1))
+
+
         split_dict = {}
-        for i in idxs:
-            # decide tau
-            if tau_strat == "random":
-                # print(bounds[0][i])
-                # print(bounds[1][i])
-                tau = random.uniform(bounds[0][0,i].item(), bounds[1][0,i].item())
-            elif tau_strat == "midpoint":
-                tau = (bounds[0][i].item() + bounds[1][i].item()) / 2.0
-            else:
-                raise NotImplementedError(f"tau_strat {tau_strat} is not implemented yet")
-            # decide scales
-            if scale_strat == "fixed":
-                s_pos, s_neg = fixed_scales
-            elif scale_strat == "random":
-                s_pos = random.uniform(s_pos_range[0], s_pos_range[1])
-                s_neg = random.uniform(s_neg_range[0], s_neg_range[1])
-            else:
-                raise NotImplementedError(f"scale_strat {scale_strat} is not implemented yet")
-            split_dict[i] = (tau, (s_pos, s_neg))
+        layer_width = tight_bounds[0].shape[1]
+        for i in range(layer_width):
+            if i in split_idxs: # destabilized neuron
+                lb, ub = tight_bounds[0][0,i].item(), tight_bounds[1][0,i].item()
+                if split_tau_strat == "random":
+                    tau = random.uniform(lb, ub)
+                elif split_tau_strat == "midpoint":
+                    tau = (lb+ub) / 2.0
+                else:
+                    raise NotImplementedError(f"split_tau_strat {split_tau_strat} is not implemented yet")
+                # decide scales
+                if split_scale_strat == "fixed":
+                    s_pos, s_neg = fixed_scales
+                elif split_scale_strat == "random":
+                    s_pos = random.uniform(s_pos_range[0], s_pos_range[1])
+                    s_neg = random.uniform(s_neg_range[0], s_neg_range[1])
+                else:
+                    raise NotImplementedError(f"split_scale_strat {split_scale_strat} is not implemented yet")
+                split_dict[i] = (tau, (s_pos, s_neg))
+                
+            else:   # Not destabilized neuron
+                lb, ub = loose_bounds[0][0,i].item(), loose_bounds[1][0,i].item()
+                _bigtau_tmp = abs(min(0, lb))
+                bigtau = random.uniform(_bigtau_tmp + stable_tau_margin[0], _bigtau_tmp + stable_tau_margin[1])
+                _smalltau_tmp = abs(max(0, ub))
+                smalltau = -random.uniform(_smalltau_tmp + stable_tau_margin[0], _smalltau_tmp + stable_tau_margin[1])
+                rand_tau = random.choice([bigtau, smalltau])
+                if stable_tau_strat == "random":
+                    tau = rand_tau
+                elif stable_tau_strat == "BigTau":
+                    tau = bigtau
+                elif stable_tau_strat == "SmallTau":
+                    tau = smalltau
+                else:
+                    raise NotImplementedError(f"stable_tau_strat {stable_tau_strat} is not implemented yet")
+                # decide scales
+                if stable_scale_strat == "fixed":
+                    s_pos, s_neg = stable_fixed_scales
+                elif stable_scale_strat == "random":
+                    s_pos = random.uniform(stable_s_pos_range[0], stable_s_pos_range[1])
+                    s_neg = random.uniform(stable_s_neg_range[0], stable_s_neg_range[1])
+                else:
+                    raise NotImplementedError(f"stable_scale_strat {stable_scale_strat} is not implemented yet")
+                split_dict[i] = (tau, (s_pos, s_neg))
         return split_dict
+
+
+                    
+                
+                
+                
+
+
+        # tau_strat = split_conf.get("tau_strat", "random").lower()
+        # scale_strat = split_conf.get("scale_strat", "fixed").lower()
+        # if scale_strat == "fixed":
+        #     fixed_scales = split_conf.get("fixed_scales", (1.0, -1.0))
+        # if scale_strat == "random":
+        #     s_pos_range = split_conf.get("s_pos_range", (0.1, 100.0))
+        #     s_neg_range = split_conf.get("s_neg_range", (-100.0, -0.1))
+        
+        # split_dict = {}
+        # for i in idxs:
+        #     # decide tau
+        #     if tau_strat == "random":
+        #         # print(bounds[0][i])
+        #         # print(bounds[1][i])
+        #         tau = random.uniform(bounds[0][0,i].item(), bounds[1][0,i].item())
+        #     elif tau_strat == "midpoint":
+        #         tau = (bounds[0][i].item() + bounds[1][i].item()) / 2.0
+        #     else:
+        #         raise NotImplementedError(f"tau_strat {tau_strat} is not implemented yet")
+        #     # decide scales
+        #     if scale_strat == "fixed":
+        #         s_pos, s_neg = fixed_scales
+        #     elif scale_strat == "random":
+        #         s_pos = random.uniform(s_pos_range[0], s_pos_range[1])
+        #         s_neg = random.uniform(s_neg_range[0], s_neg_range[1])
+        #     else:
+        #         raise NotImplementedError(f"scale_strat {scale_strat} is not implemented yet")
+        #     split_dict[i] = (tau, (s_pos, s_neg))
+        # return split_dict
 
 
     # actually split

@@ -36,24 +36,24 @@ class Rsplitter_Gemm():
         tight_bounds = self.model.get_bound_of(self.bounded_input, gemm_node.output[0], method=bounding_method_tight)
         loose_bounds = self.model.get_bound_of(self.bounded_input, gemm_node.output[0], method=bounding_method_loose)
 
-        split_idxs = self._decide_split_idxs(tight_bounds, loose_bounds, conf)
-        split_dict = self._decide_split_params(tight_bounds, loose_bounds, split_idxs, param_selection_conf)
+        split_idxs = self._decide_split_idxs_gemm(tight_bounds, loose_bounds, conf)
+        split_dict = self._decide_split_params_gemm(tight_bounds, loose_bounds, split_idxs, param_selection_conf)
         activation_params = {
-            "leakyrelu_alpha": self._decide_leakyrelu_alpha(additional_activation_conf),
-            "prelu_slope": self._decide_prelu_slope(additional_activation_conf),
+            "leakyrelu_alpha": self._decide_leakyrelu_alpha_gemm(additional_activation_conf),
+            "prelu_slope": self._decide_prelu_slope_gemm(additional_activation_conf),
         }
-        new_model = self._split_general(gemm_node ,split_dict, split_activation, activation_params)
+        new_model = self._split_general_gemm(gemm_node ,split_dict, split_activation, activation_params)
 
         baseline_model = None
         if create_baseline:
             baseline_idxs = []
-            baseline_dict = self._decide_split_params(tight_bounds, loose_bounds, baseline_idxs, param_selection_conf)
-            baseline_model = self._split_general(gemm_node ,baseline_dict, split_activation, activation_params)
+            baseline_dict = self._decide_split_params_gemm(tight_bounds, loose_bounds, baseline_idxs, param_selection_conf)
+            baseline_model = self._split_general_gemm(gemm_node ,baseline_dict, split_activation, activation_params)
 
         return new_model, baseline_model
     
     # responsible for selecting neurons to split
-    def _decide_split_idxs(self, tight_bounds, loose_bounds, conf):
+    def _decide_split_idxs_gemm(self, tight_bounds, loose_bounds, conf):
         sorting_strat = conf.get("sorting_strat", "random")
         n_splits = conf.get("n_splits", 0)
         seed = conf.get("seed", None)
@@ -63,6 +63,7 @@ class Rsplitter_Gemm():
             rnd = random
 
         layer_width = tight_bounds[0].shape[1]
+        print(tight_bounds[0].shape)
         idxs = list(range(layer_width))
 
         assert 0 <= n_splits <= layer_width, f"n_splits {n_splits} must be between 0 and layer width {layer_width}, got {n_splits}"
@@ -75,7 +76,7 @@ class Rsplitter_Gemm():
         self.logger.info(f"Split idxs: {split_idxs}")
         return split_idxs
             
-    def _decide_split_params(self, tight_bounds, loose_bounds, split_idxs, split_conf):
+    def _decide_split_params_gemm(self, tight_bounds, loose_bounds, split_idxs, split_conf):
         # if idx in split_idxs, use tight_bounds to decide tau (so split more likely to work)
         # if idx not in split_idxs, use loose_bounds to decide tau (stronger gaurantee of stability)
         split_tau_strat = split_conf.get("split_tau_strat", "midpoint").lower()
@@ -145,27 +146,27 @@ class Rsplitter_Gemm():
         return split_dict
 
 
-    def _decide_leakyrelu_alpha(self, additional_activation_conf):
+    def _decide_leakyrelu_alpha_gemm(self, additional_activation_conf):
         return additional_activation_conf.get("leakyrelu_alpha", 0.01)
     
-    def _decide_prelu_slope(self, additional_activation_conf):
+    def _decide_prelu_slope_gemm(self, additional_activation_conf):
         return additional_activation_conf.get("prelu_slope", 0.25)
 
 
     # actually split
         
-    def _split_general(self, node_to_split, split_dict, split_activation, params):
+    def _split_general_gemm(self, node_to_split, split_dict, split_activation, params):
         if split_activation == "relu":
-            split_model = self._split_ReLU(node_to_split, split_dict)
+            split_model = self._split_ReLU_gemm(node_to_split, split_dict)
         elif split_activation == "leakyrelu":
-            split_model = self._split_LeakyReLU(node_to_split, split_dict, alpha=params["leakyrelu_alpha"])
+            split_model = self._split_LeakyReLU_gemm(node_to_split, split_dict, alpha=params["leakyrelu_alpha"])
         elif split_activation == "prelu":
-            split_model = self._split_PReLU(node_to_split, split_dict, slope=params["prelu_slope"])
+            split_model = self._split_PReLU_gemm(node_to_split, split_dict, slope=params["prelu_slope"])
         else:
             raise NotImplementedError(f"split_activation {split_activation} is not implemented yet")
         return split_model
 
-    def _split_ReLU(self, node_to_split,split_dict):
+    def _split_ReLU_gemm(self, node_to_split,split_dict):
         # split_dict: {idx: (tau, (s_pos, s_neg))}
 
         w_o, b_o = self.model.get_gemm_wb(node_to_split)
@@ -253,7 +254,7 @@ class Rsplitter_Gemm():
         return new_model
 
 
-    def _split_LeakyReLU(self, node_to_split,split_dict, alpha = 0.01):
+    def _split_LeakyReLU_gemm(self, node_to_split,split_dict, alpha = 0.01):
         w_o, b_o = self.model.get_gemm_wb(node_to_split)
         num_out, num_in = w_o.shape
         split_layer_width = 2 * num_out
@@ -336,7 +337,7 @@ class Rsplitter_Gemm():
         )
         return new_model
     
-    def _split_PReLU(self, node_to_split,split_dict, slope = 0.25):
+    def _split_PReLU_gemm(self, node_to_split,split_dict, slope = 0.25):
         # slope is either a float or a list of floats (per-channel/per-neuron)
         w_o, b_o = self.model.get_gemm_wb(node_to_split)
         num_out, num_in = w_o.shape

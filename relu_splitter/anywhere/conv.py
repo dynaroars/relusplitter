@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from relu_splitter import TOOL_NAME
 
+
 class Rsplitter_Conv():
     def conv_split(self, conv_node, conf):
         split_activation = conf["split_activation"].lower()
@@ -81,8 +82,8 @@ class Rsplitter_Conv():
         if conv_scale_strat == "fixed":
             fixed_scale = param_selection_conf.get("conv_fixed_scale", (1.0, -1.0))
         if conv_scale_strat == "random":
-            s_pos_range = param_selection_conf.get("conv_random_scale_range", (0.1, 100.0))
-            s_neg_range = param_selection_conf.get("conv_random_scale_range", (-0.1, -100.0))
+            s_pos_range = param_selection_conf.get("s_pos_range", (0.1, 100.0))
+            s_neg_range = param_selection_conf.get("s_neg_range", (-0.1, -100.0))
 
         stable_tau_strat = param_selection_conf.get("stable_tau_strat", "random").lower() # random, BigTau, SmallTau
         stable_tau_margin = param_selection_conf.get("stable_tau_margin", (10.0, 50.0))
@@ -136,8 +137,6 @@ class Rsplitter_Conv():
             split_dict[idx] = (tau, (s_pos, s_neg))
         return split_dict
 
-
-    
     def _decide_leakyrelu_alpha_conv(self, additional_activation_conf):
         return additional_activation_conf.get("leakyrelu_alpha", 0.01)
     
@@ -156,7 +155,6 @@ class Rsplitter_Conv():
         return split_model
     
     def _split_ReLU_conv(self, node_to_split, split_dict):
-
 
         ori_dilations = node_to_split.attribute[1].ints
         if ori_dilations == []:
@@ -179,73 +177,290 @@ class Rsplitter_Conv():
         free_kernels = [i for i in range(split_layer_kernel_count)]
         random.shuffle(free_kernels)
 
-        for i in tqdm(range(ori_oC), desc="Creating split Conv-ReLU-Conv layers"):
-            idx1, idx2 = free_kernels.pop(), free_kernels.pop()
+        for i in range(ori_oC):
             tau, (s_pos, s_neg) = split_dict[i]
-            # conv_1
-            conv1_w[idx1] = s_pos * ori_w[i]
-            conv1_w[idx2] = s_neg * ori_w[i]
-            conv1_b[idx1] = -s_pos * (tau-ori_b[i])
-            conv1_b[idx2] = -s_neg * (tau-ori_b[i])
-            # conv_2
-            conv2_w[i, idx1, 0, 0] = 1.0 / s_pos
-            conv2_w[i, idx2, 0, 0] = 1.0 / s_neg
+            # first conv layer
+            idx1 = free_kernels.pop()
+            idx2 = free_kernels.pop()
+            
+            conv1_w[idx1] =  s_pos * ori_w[i]
+            conv1_w[idx2] =  s_neg * ori_w[i]
+            conv1_b[idx1] =  -s_pos * (tau - ori_b[i])
+            conv1_b[idx2] =  -s_neg * (tau - ori_b[i])
+            # # set merge w & b
+            conv2_w[i, idx1, 0, 0] = 1.0/s_pos
+            conv2_w[i, idx2, 0, 0] = 1.0/s_neg
             conv2_b[i] = tau
+        
+        conv1_input_tname = node_to_split.input[0]
+        conv1_output_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv1")
+        relu_output_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_ReLU")
+        conv2_output_tname = node_to_split.output[0]
 
-        input_tname = node_to_split.input[0]
-        conv_1_output_tname  = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv1")   # intermediate output after gemm_1
-        relu_output_tname    = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_ReLU")     # intermediate output after ReLU
-        conv_2_output_tname  = node_to_split.output[0]                                        # final output
+        conv1_w_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv1_w")
+        conv1_b_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv1_b")
+        conv2_w_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv2_w")
+        conv2_b_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv2_b")
 
-        conv_1_w_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv1w")
-        conv_1_b_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv1b")
-        conv_2_w_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv2w")
-        conv_2_b_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv2b")
+        conv1_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_Conv1")
+        relu_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_ReLU")
+        conv2_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_Conv2")
 
-        conv_1_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_Conv1")
-        relu_nname   = self.model.gen_node_name(prefix=f"{TOOL_NAME}_ReLU")
-        conv_2_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_Conv2")
-
-        conv_1_node = onnx.helper.make_node(
-            "Conv",
-            inputs=[input_tname, conv_1_w_tname, conv_1_b_tname],
-            outputs=[conv_1_output_tname],
-            name=conv_1_nname,
+        conv1_node = onnx.helper.make_node(
+            'Conv',
+            inputs=[conv1_input_tname, conv1_w_tname, conv1_b_tname],
+            outputs=[conv1_output_tname],
+            name=conv1_nname,
             dilations=ori_dilations,
             kernel_shape=ori_kernel_shape,
             pads=ori_pads,
             strides=ori_strides
         )
         relu_node = onnx.helper.make_node(
-            "Relu",
-            inputs=[conv_1_output_tname],
+            'Relu',
+            inputs=[conv1_output_tname],
             outputs=[relu_output_tname],
             name=relu_nname
         )
-        conv_2_node = onnx.helper.make_node(
-            "Conv",
-            inputs=[relu_output_tname, conv_2_w_tname, conv_2_b_tname],
-            outputs=[conv_2_output_tname],
-            name=conv_2_nname,
+        conv2_node = onnx.helper.make_node(
+            'Conv',
+            inputs=[relu_output_tname, conv2_w_tname, conv2_b_tname],
+            outputs=[conv2_output_tname],
+            name=conv2_nname,
+            dilations=[1,1],
+            kernel_shape=[1,1],
+            pads=[0,0,0,0],
+            strides=[1,1]
+        )
+        
+        new_nodes = [conv1_node, relu_node, conv2_node]
+        new_initializers = [
+            onnx.helper.make_tensor(conv1_w_tname, onnx.TensorProto.FLOAT, conv1_w.shape, conv1_w.flatten().tolist()),
+            onnx.helper.make_tensor(conv1_b_tname, onnx.TensorProto.FLOAT, conv1_b.shape, conv1_b.flatten().tolist()),
+            onnx.helper.make_tensor(conv2_w_tname, onnx.TensorProto.FLOAT, conv2_w.shape, conv2_w.flatten().tolist()),
+            onnx.helper.make_tensor(conv2_b_tname, onnx.TensorProto.FLOAT, conv2_b.shape, conv2_b.flatten().tolist()),
+        ]
+
+        new_model = self.model.generate_updated_model(
+            nodes_to_replace=[node_to_split],
+            additional_nodes=new_nodes,
+            additional_initializers=new_initializers,
+            graph_name=f"{self.model.graph_name}_ConvSplit_ReLU",
+            producer_name=TOOL_NAME
+        )
+
+        return new_model
+
+
+    def _split_LeakyReLU_conv(self, node_to_split, split_dict, alpha):
+        
+        ori_dilations = node_to_split.attribute[1].ints
+        if ori_dilations == []:
+            ori_dilations = [1,1]
+        ori_kernel_shape = node_to_split.attribute[2].ints
+        ori_pads = node_to_split.attribute[3].ints
+        ori_strides = node_to_split.attribute[4].ints
+
+        ori_w, ori_b = self.model.get_conv_wb(node_to_split)
+        assert ori_w.dim() == 4, f"Conv weight dimension is not 4: {ori_w.dim()}"
+        ori_oC, ori_iC, ori_kH, ori_kW = ori_w.shape
+
+        split_layer_kernel_count = 2 * ori_oC
+
+        conv1_w = torch.zeros((split_layer_kernel_count, ori_iC, ori_kH, ori_kW))
+        conv1_b = torch.zeros((split_layer_kernel_count,))
+        conv2_w = torch.zeros((ori_oC, split_layer_kernel_count, 1, 1))
+        conv2_b = torch.zeros((ori_oC,))
+
+        free_kernels = [i for i in range(split_layer_kernel_count)]
+        random.shuffle(free_kernels)
+
+        alpha_scaling = 1.0 / (1.0 + alpha)
+
+        for i in tqdm(range(ori_oC), desc="Creating split Conv with LeakyReLU"):
+            tau, (s_pos, s_neg) = split_dict[i]
+            # first conv layer
+            idx1, idx2 = free_kernels.pop(), free_kernels.pop()
+            
+            conv1_w[idx1] =  s_pos * ori_w[i]
+            conv1_w[idx2] =  s_neg * ori_w[i]
+            conv1_b[idx1] =  -s_pos * (tau - ori_b[i])
+            conv1_b[idx2] =  -s_neg * (tau - ori_b[i])
+            # # set merge w & b
+            conv2_w[i, idx1, 0, 0] = (1.0/s_pos) * alpha_scaling
+            conv2_w[i, idx2, 0, 0] = (1.0/s_neg) * alpha_scaling
+            conv2_b[i] = tau
+        
+        conv1_input_tname = node_to_split.input[0]
+        conv1_output_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv1")
+        leakyrelu_output_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_LeakyReLU")
+        conv2_output_tname = node_to_split.output[0]
+
+        conv1_w_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv1_w")
+        conv1_b_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv1_b")
+        conv2_w_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv2_w")
+        conv2_b_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv2_b")
+
+        conv1_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_Conv1")
+        leakyrelu_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_LeakyReLU")
+        conv2_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_Conv2")
+
+        conv1_node = onnx.helper.make_node(
+            'Conv',
+            inputs=[conv1_input_tname, conv1_w_tname, conv1_b_tname],
+            outputs=[conv1_output_tname],
+            name=conv1_nname,
+            dilations=ori_dilations,
+            kernel_shape=ori_kernel_shape,
+            pads=ori_pads,
+            strides=ori_strides
+        )
+        leakyrelu_node = onnx.helper.make_node(
+            'LeakyRelu',
+            inputs=[conv1_output_tname],
+            outputs=[leakyrelu_output_tname],
+            name=leakyrelu_nname,
+            alpha=alpha
+        )
+        conv2_node = onnx.helper.make_node(
+            'Conv',
+            inputs=[leakyrelu_output_tname, conv2_w_tname, conv2_b_tname],
+            outputs=[conv2_output_tname],
+            name=conv2_nname,
             dilations=[1,1],
             kernel_shape=[1,1],
             pads=[0,0,0,0],
             strides=[1,1]
         )
 
-        new_nodes = [conv_1_node, relu_node, conv_2_node]
+        new_nodes = [conv1_node, leakyrelu_node, conv2_node]
         new_initializers = [
-            onnx.helper.make_tensor(conv_1_w_tname, onnx.TensorProto.FLOAT, conv1_w.shape, conv1_w.flatten().tolist()),
-            onnx.helper.make_tensor(conv_1_b_tname, onnx.TensorProto.FLOAT, conv1_b.shape, conv1_b.flatten().tolist()),
-            onnx.helper.make_tensor(conv_2_w_tname, onnx.TensorProto.FLOAT, conv2_w.shape, conv2_w.flatten().tolist()),
-            onnx.helper.make_tensor(conv_2_b_tname, onnx.TensorProto.FLOAT, conv2_b.shape, conv2_b.flatten().tolist())
+            onnx.helper.make_tensor(conv1_w_tname, onnx.TensorProto.FLOAT, conv1_w.shape, conv1_w.flatten().tolist()),
+            onnx.helper.make_tensor(conv1_b_tname, onnx.TensorProto.FLOAT, conv1_b.shape, conv1_b.flatten().tolist()),
+            onnx.helper.make_tensor(conv2_w_tname, onnx.TensorProto.FLOAT, conv2_w.shape, conv2_w.flatten().tolist()),
+            onnx.helper.make_tensor(conv2_b_tname, onnx.TensorProto.FLOAT, conv2_b.shape, conv2_b.flatten().tolist()),
         ]
+
         new_model = self.model.generate_updated_model(
             nodes_to_replace=[node_to_split],
             additional_nodes=new_nodes,
             additional_initializers=new_initializers,
-            graph_name=f"{self.model.graph_name}_ConvSplit",
+            graph_name=f"{self.model.graph_name}_ConvSplit_LeakyReLU",
             producer_name=TOOL_NAME
         )
         return new_model
+    
+    def _split_PReLU_conv(self, node_to_split, split_dict, slope):
+        ori_dilations = node_to_split.attribute[1].ints
+        if ori_dilations == []:
+            ori_dilations = [1,1]
+        ori_kernel_shape = node_to_split.attribute[2].ints
+        ori_pads = node_to_split.attribute[3].ints
+        ori_strides = node_to_split.attribute[4].ints
+
+        ori_w, ori_b = self.model.get_conv_wb(node_to_split)
+        assert ori_w.dim() == 4, f"Conv weight dimension is not 4: {ori_w.dim()}"
+        ori_oC, ori_iC, ori_kH, ori_kW = ori_w.shape
+
+        split_layer_kernel_count = 2 * ori_oC
+
+        if isinstance(slope, float) or slope.ndim == 0:
+            slope = torch.full((ori_oC,), slope)
+        if isinstance(slope, torch.Tensor):
+            assert slope.ndim == 1 and slope.shape[0] == ori_oC
+        else:
+            raise ValueError(f"Slope is not a valid float or 1D tensor: {slope}")
+
+        conv1_w = torch.zeros((split_layer_kernel_count, ori_iC, ori_kH, ori_kW))
+        conv1_b = torch.zeros((split_layer_kernel_count,))
+        conv2_w = torch.zeros((ori_oC, split_layer_kernel_count, 1, 1))
+        conv2_b = torch.zeros((ori_oC,))
+        actual_slope = torch.zeros((split_layer_kernel_count,))
+
+        free_kernels = [i for i in range(split_layer_kernel_count)]
+        random.shuffle(free_kernels)
+
+
+        for i in tqdm(range(ori_oC), desc="Creating split Conv with LeakyReLU"):
+            tau, (s_pos, s_neg) = split_dict[i]
+            # first conv layer
+            idx1, idx2 = free_kernels.pop(), free_kernels.pop()
             
+            conv1_w[idx1] =  s_pos * ori_w[i]
+            conv1_w[idx2] =  s_neg * ori_w[i]
+            conv1_b[idx1] =  -s_pos * (tau - ori_b[i])
+            conv1_b[idx2] =  -s_neg * (tau - ori_b[i])
+            actual_slope[idx1] = slope[i]
+            actual_slope[idx2] = slope[i]
+            # # set merge w & b
+            slope_scaling = 1.0 / (1.0 + slope[i])
+            conv2_w[i, idx1, 0, 0] = (1.0/s_pos) * slope_scaling
+            conv2_w[i, idx2, 0, 0] = (1.0/s_neg) * slope_scaling
+            conv2_b[i] = tau
+        
+        conv1_input_tname = node_to_split.input[0]
+        conv1_output_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv1")
+        leakyrelu_output_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_LeakyReLU")
+        conv2_output_tname = node_to_split.output[0]
+
+        conv1_w_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv1_w")
+        conv1_b_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv1_b")
+        conv2_w_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv2_w")
+        conv2_b_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Conv2_b")
+        prelu_slope_tname = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_PReLU_slope")
+
+        conv1_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_Conv1")
+        leakyrelu_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_LeakyReLU")
+        conv2_nname = self.model.gen_node_name(prefix=f"{TOOL_NAME}_Conv2")
+
+        conv1_node = onnx.helper.make_node(
+            'Conv',
+            inputs=[conv1_input_tname, conv1_w_tname, conv1_b_tname],
+            outputs=[conv1_output_tname],
+            name=conv1_nname,
+            dilations=ori_dilations,
+            kernel_shape=ori_kernel_shape,
+            pads=ori_pads,
+            strides=ori_strides
+        )
+        # leakyrelu_node = onnx.helper.make_node(
+        #     'LeakyRelu',
+        #     inputs=[conv1_output_tname],
+        #     outputs=[leakyrelu_output_tname],
+        #     name=leakyrelu_nname,
+        #     alpha=alpha
+        # )
+        prelu_node = onnx.helper.make_node(
+            'PRelu',
+            inputs=[conv1_output_tname, prelu_slope_tname],
+            outputs=[leakyrelu_output_tname],
+            name=leakyrelu_nname,
+        )
+        conv2_node = onnx.helper.make_node(
+            'Conv',
+            inputs=[leakyrelu_output_tname, conv2_w_tname, conv2_b_tname],
+            outputs=[conv2_output_tname],
+            name=conv2_nname,
+            dilations=[1,1],
+            kernel_shape=[1,1],
+            pads=[0,0,0,0],
+            strides=[1,1]
+        )
+
+        new_nodes = [conv1_node, prelu_node, conv2_node]
+        new_initializers = [
+            onnx.helper.make_tensor(conv1_w_tname, onnx.TensorProto.FLOAT, conv1_w.shape, conv1_w.flatten().tolist()),
+            onnx.helper.make_tensor(conv1_b_tname, onnx.TensorProto.FLOAT, conv1_b.shape, conv1_b.flatten().tolist()),
+            onnx.helper.make_tensor(conv2_w_tname, onnx.TensorProto.FLOAT, conv2_w.shape, conv2_w.flatten().tolist()),
+            onnx.helper.make_tensor(conv2_b_tname, onnx.TensorProto.FLOAT, conv2_b.shape, conv2_b.flatten().tolist()),
+            onnx.helper.make_tensor(prelu_slope_tname, onnx.TensorProto.FLOAT, actual_slope.shape, actual_slope.flatten().tolist()),
+        ]
+
+        new_model = self.model.generate_updated_model(
+            nodes_to_replace=[node_to_split],
+            additional_nodes=new_nodes,
+            additional_initializers=new_initializers,
+            graph_name=f"{self.model.graph_name}_ConvSplit_LeakyReLU",
+            producer_name=TOOL_NAME
+        )
+        return new_model

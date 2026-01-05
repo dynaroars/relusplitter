@@ -1,4 +1,5 @@
 # standard libs
+import os
 import random
 from functools import reduce
 
@@ -16,6 +17,13 @@ from relu_splitter.model import WarppedOnnxModel
 from relu_splitter.utils.logger import default_logger
 from relu_splitter.anywhere.gemm import Rsplitter_Gemm
 from relu_splitter.anywhere.conv import Rsplitter_Conv
+
+# Ensure deterministic behavior (Mainly for Conv)
+os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"  # or ":16:8" if needed
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+torch.use_deterministic_algorithms(True)
+torch.backends.cudnn.enabled = False
 
 
 class ReluSplitter_Anywhere(Rsplitter_Gemm, Rsplitter_Conv):

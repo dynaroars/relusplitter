@@ -164,6 +164,9 @@ class Rsplitter_Gemm():
             split_model = self._split_PReLU_gemm(node_to_split, split_dict, slope=params["prelu_slope"])
         else:
             raise NotImplementedError(f"split_activation {split_activation} is not implemented yet")
+        # b1 = self.model.get_bound_of(self.bounded_input, conv_node.output[0], method="backward")  # update bounds
+        # b2 = split_model.get_bound_of(self.bounded_input, conv_node.output[0], method="backward")  # update bounds
+        # print(f"Bound diff after conv split: lb diff {torch.abs(b1[0]-b2[0]).max().item()}, ub diff {torch.abs(b1[1]-b2[1]).max().item()}")
         return split_model
 
     def _split_ReLU_gemm(self, node_to_split,split_dict):

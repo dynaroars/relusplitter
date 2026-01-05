@@ -54,32 +54,32 @@ class Rsplitter_Gemm():
     
     # responsible for selecting neurons to split
     def _decide_split_idxs_gemm(self, tight_bounds, loose_bounds, conf):
-        sorting_strat = conf.get("sorting_strat", "random")
-        n_splits = conf.get("n_splits", 0)
-        seed = conf.get("seed", None)
-        if seed is not None: # create a seperate random generator to avoid messing up global random state
-            rnd = random.Random(seed)
-        else:
-            rnd = random
+        sorting_strat = conf.get("sorting_strat")   # random
+        n_splits = conf.get("n_splits")
+        seed = conf.get("seed")
 
         layer_width = tight_bounds[0].shape[1]
         print(tight_bounds[0].shape)
         idxs = list(range(layer_width))
 
+        rnd = random.Random(seed)
+        if n_splits == None:
+            n_splits = layer_width
         assert 0 <= n_splits <= layer_width, f"n_splits {n_splits} must be between 0 and layer width {layer_width}, got {n_splits}"
+
         if sorting_strat == "random":
             rnd.shuffle(idxs)
         else:
             raise NotImplementedError(f"sorting_strat {sorting_strat} is not implemented yet")
         
         split_idxs = idxs[:n_splits]
-        self.logger.info(f"Split idxs: {split_idxs}")
+        self.logger.info(f"Splitting gemm neurons: {split_idxs}...")
         return split_idxs
             
     def _decide_split_params_gemm(self, tight_bounds, loose_bounds, split_idxs, split_conf):
         # if idx in split_idxs, use tight_bounds to decide tau (so split more likely to work)
         # if idx not in split_idxs, use loose_bounds to decide tau (stronger gaurantee of stability)
-        split_tau_strat = split_conf.get("split_tau_strat", "midpoint").lower()
+        gemm_tau_strat = split_conf.get("gemm_tau_strat", "midpoint").lower()
         split_scale_strat = split_conf.get("split_scale_strat", "fixed").lower()
         if split_scale_strat == "fixed":
             fixed_scales = split_conf.get("fixed_scales", (1.0, -1.0))
@@ -102,12 +102,12 @@ class Rsplitter_Gemm():
         for i in range(layer_width):
             if i in split_idxs: # destabilized neuron
                 lb, ub = tight_bounds[0][0,i].item(), tight_bounds[1][0,i].item()
-                if split_tau_strat == "random":
+                if gemm_tau_strat == "random":
                     tau = random.uniform(lb, ub)
-                elif split_tau_strat == "midpoint":
+                elif gemm_tau_strat == "midpoint":
                     tau = (lb+ub) / 2.0
                 else:
-                    raise NotImplementedError(f"split_tau_strat {split_tau_strat} is not implemented yet")
+                    raise NotImplementedError(f"gemm_tau_strat {gemm_tau_strat} is not implemented yet")
                 # decide scales
                 if split_scale_strat == "fixed":
                     s_pos, s_neg = fixed_scales
@@ -116,7 +116,6 @@ class Rsplitter_Gemm():
                     s_neg = random.uniform(s_neg_range[0], s_neg_range[1])
                 else:
                     raise NotImplementedError(f"split_scale_strat {split_scale_strat} is not implemented yet")
-                split_dict[i] = (tau, (s_pos, s_neg))
                 
             else:   # Not destabilized neuron
                 lb, ub = loose_bounds[0][0,i].item(), loose_bounds[1][0,i].item()
@@ -141,8 +140,8 @@ class Rsplitter_Gemm():
                     s_neg = random.uniform(stable_s_neg_range[0], stable_s_neg_range[1])
                 else:
                     raise NotImplementedError(f"stable_scale_strat {stable_scale_strat} is not implemented yet")
-                split_dict[i] = (tau, (s_pos, s_neg))
             self.logger.debug(f"Decided split params for neuron {i}: tau={tau}, s_pos={s_pos}, s_neg={s_neg}, destabilized={'Yes' if i in split_idxs else 'No'}")
+            split_dict[i] = (tau, (s_pos, s_neg))
         return split_dict
 
 

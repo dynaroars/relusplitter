@@ -55,25 +55,25 @@ class Rsplitter_Conv():
         return new_model, baseline_model
     
     def _decide_split_idxs_conv(self, tight_bounds, loose_bounds, conf):
-        sorting_strat = conf.get("sorting_strat", "random")
-        n_splits = conf.get("n_splits", 0)
-        seed = conf.get("seed", None)
-        if seed is not None: # create a seperate random generator to avoid messing up global random state
-            rnd = random.Random(seed)
-        else:
-            rnd = random
+        sorting_strat = conf.get("sorting_strat")   # random
+        n_splits = conf.get("n_splits")
+        seed = conf.get("seed")
 
         layer_width = tight_bounds[0].shape[0]  # number of kernels
         idxs = list(range(layer_width))
 
+        rnd = random.Random(seed)
+        if n_splits == None:
+            n_splits = layer_width
         assert 0 <= n_splits <= layer_width, f"n_splits {n_splits} must be between 0 and layer width {layer_width}, got {n_splits}"
+
         if sorting_strat == "random":
             rnd.shuffle(idxs)
         else:
             raise NotImplementedError(f"sorting_strat {sorting_strat} is not implemented yet")
         
         split_idxs = idxs[:n_splits]
-        self.logger.info(f"Split idxs: {split_idxs}")
+        self.logger.info(f"Splitting conv filters: {split_idxs}...")
         return split_idxs
 
     def _decide_split_params_conv(self, tight_bounds, loose_bounds, split_idxs, param_selection_conf):
@@ -155,8 +155,7 @@ class Rsplitter_Conv():
                     s_neg = random.uniform(stable_s_neg_range[0], stable_s_neg_range[1])
                 else:
                     raise NotImplementedError(f"stable_scale_strat {stable_scale_strat} is not implemented yet")
-                self.logger.debug(f"smallest lb: {loose_kernel_lb.min().item()}, largest ub: {loose_kernel_ub.max().item()}, bigtau: {bigtau}, smalltau: {smalltau}")
-                self.logger.debug(f"Kernel {idx} not split, tau: {tau}, s_pos: {s_pos}, s_neg: {s_neg}")
+            self.logger.debug(f"Decided split params for kernel {idx}: tau={tau}, s_pos={s_pos}, s_neg={s_neg}, destabilized={'Yes' if idx in split_idxs else 'No'} ")
             split_dict[idx] = (tau, (s_pos, s_neg))
         return split_dict
 

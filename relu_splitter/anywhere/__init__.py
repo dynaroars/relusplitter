@@ -27,9 +27,8 @@ torch.backends.cudnn.enabled = False
 
 
 class ReluSplitter_Anywhere(Rsplitter_Gemm, Rsplitter_Conv):
-    supported_op_types = ["Gemm", "Conv"]
-    supported_activations = ["Relu", "LeakyRelu", "PRelu"]
-    # supported_activations = ["Relu", "LeakyRelu", "PRelu", "ThresholdedRelu"]
+    supported_op_types = ["gemm", "conv"]
+    supported_activations = ["relu", "relu", "prelu"]
     ignore_split_nodes = True
     supress_warnings = False
 
@@ -74,7 +73,7 @@ class ReluSplitter_Anywhere(Rsplitter_Gemm, Rsplitter_Conv):
         if not self.supress_warnings and not self.ignore_split_nodes:
             self.logger.warning("ignore_split_nodes is set to False, splitting nodes that are already split might work suboptimally.")
         for node in self.model.nodes:
-            if node.op_type in self.supported_op_types:
+            if node.op_type.lower() in self.supported_op_types:
                 if self.ignore_split_nodes and TOOL_NAME in node.name:
                     continue
                 else:
@@ -83,11 +82,14 @@ class ReluSplitter_Anywhere(Rsplitter_Gemm, Rsplitter_Conv):
         return splittable_nodes
     
     def resolve_node_idx(self, op_type, idx):
-        self.logger.debug(f"Resolving node index for op_type {op_type} and idx {idx}")
+        if op_type.lower() == "all":
+            op_types = self.supported_op_types.copy()
+        else:
+            op_types = [op_type.lower()]
 
         splitable_nodes = self.get_splittable_nodes()
 
-        nodes = [t for t in splitable_nodes if t.op_type == op_type]
+        nodes = [t for t in splitable_nodes if t.op_type.lower() in op_types]
         assert 0 <= idx < len(nodes), f"Index {idx} out of range for op_type {op_type} with {len(nodes)} splittable nodes"
         return nodes[idx]
     
@@ -95,17 +97,17 @@ class ReluSplitter_Anywhere(Rsplitter_Gemm, Rsplitter_Conv):
         return True
 
     def split(self, op_type, idx, conf):
-        assert op_type in self.supported_op_types, f"Unsupported op_type {op_type}"
         if "seed" in conf:
             self.init_seeds(conf["seed"])
 
         node = self.resolve_node_idx(op_type, idx)
-        if op_type == "Gemm":
+        node_op_type = node.op_type
+        if node_op_type == "Gemm":
             split_model, baseline_model = self.gemm_split(node, conf)
-        elif op_type == "Conv":
+        elif node_op_type == "Conv":
             split_model, baseline_model = self.conv_split(node, conf)
         else:
-            raise NotImplementedError(f"Splitting for op_type {op_type} is not implemented")
+            raise NotImplementedError(f"Splitting for op_type {node_op_type} is not implemented")
         
         if conf.get("equiv_chk_conf", None) is not None:
             equiv_chk_conf = conf["equiv_chk_conf"]

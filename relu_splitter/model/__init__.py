@@ -195,8 +195,8 @@ class WarppedOnnxModel():
     def get_conv_wb(self, node):
         assert node.op_type == "Conv"
         _, w, b = node.input
-        w = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[w]) )
-        b = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[b]) )
+        w = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[w]).copy() )
+        b = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[b]).copy() )
         return w,b
 
     def get_gemm_wb(self, node):
@@ -210,8 +210,8 @@ class WarppedOnnxModel():
         transB = attr_dict['transB'].i if 'transB' in attr_dict else 0
 
         _, w, b = node.input
-        w = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[w]) )
-        b = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[b]) )
+        w = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[w]).copy() )
+        b = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[b]).copy() )
 
         if transB == 0:
             w = w.t()
@@ -373,4 +373,3 @@ class WarppedOnnxModel():
     def ort_sess(self):
         return InferenceSession(self._model.SerializeToString())
         
-    

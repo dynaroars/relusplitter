@@ -131,9 +131,32 @@ class Rsplitter_Conv():
                     s_neg = random.uniform(s_neg_range[0], s_neg_range[1])
                 else:
                     raise NotImplementedError(f"conv_scale_strat {conv_scale_strat} is not implemented yet")
+                self.logger.debug(f"Kernel {idx} split, tau: {tau}, s_pos: {s_pos}, s_neg: {s_neg}")
             else:   # no split
-                tau = 10.0  # default tau for no split
-                s_pos, s_neg = 1.0, -1.0
+                # decide stable tau
+                _bigtau_tmp = abs(min(loose_kernel_lb.min().item(), 0.0))
+                bigtau = random.uniform(_bigtau_tmp + stable_tau_margin[0], _bigtau_tmp + stable_tau_margin[1])
+                _smalltau_tmp = abs(max(loose_kernel_ub.max().item(), 0.0))
+                smalltau = -random.uniform(stable_tau_margin[0], stable_tau_margin[1]) - _smalltau_tmp
+                random_tau = random.choice([bigtau, smalltau])
+                if stable_tau_strat == "bigtau":
+                    tau = bigtau
+                elif stable_tau_strat == "smalltau":
+                    tau = smalltau
+                elif stable_tau_strat == "random":
+                    tau = random_tau
+                else:
+                    raise NotImplementedError(f"stable_tau_strat {stable_tau_strat} is not implemented yet")
+                # decide stable scales
+                if stable_scale_strat == "fixed":
+                    s_pos, s_neg = stable_fixed_scales
+                elif stable_scale_strat == "random":
+                    s_pos = random.uniform(stable_s_pos_range[0], stable_s_pos_range[1])
+                    s_neg = random.uniform(stable_s_neg_range[0], stable_s_neg_range[1])
+                else:
+                    raise NotImplementedError(f"stable_scale_strat {stable_scale_strat} is not implemented yet")
+                self.logger.debug(f"smallest lb: {loose_kernel_lb.min().item()}, largest ub: {loose_kernel_ub.max().item()}, bigtau: {bigtau}, smalltau: {smalltau}")
+                self.logger.debug(f"Kernel {idx} not split, tau: {tau}, s_pos: {s_pos}, s_neg: {s_neg}")
             split_dict[idx] = (tau, (s_pos, s_neg))
         return split_dict
 
@@ -423,13 +446,6 @@ class Rsplitter_Conv():
             pads=ori_pads,
             strides=ori_strides
         )
-        # leakyrelu_node = onnx.helper.make_node(
-        #     'LeakyRelu',
-        #     inputs=[conv1_output_tname],
-        #     outputs=[leakyrelu_output_tname],
-        #     name=leakyrelu_nname,
-        #     alpha=alpha
-        # )
         prelu_node = onnx.helper.make_node(
             'PRelu',
             inputs=[conv1_output_tname, prelu_slope_tname],

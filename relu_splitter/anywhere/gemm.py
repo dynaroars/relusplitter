@@ -127,9 +127,9 @@ class Rsplitter_Gemm():
                 rand_tau = random.choice([bigtau, smalltau])
                 if stable_tau_strat == "random":
                     tau = rand_tau
-                elif stable_tau_strat == "BigTau":
+                elif stable_tau_strat == "bigtau":
                     tau = bigtau
-                elif stable_tau_strat == "SmallTau":
+                elif stable_tau_strat == "smalltau":
                     tau = smalltau
                 else:
                     raise NotImplementedError(f"stable_tau_strat {stable_tau_strat} is not implemented yet")

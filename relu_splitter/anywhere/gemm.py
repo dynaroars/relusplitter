@@ -59,7 +59,7 @@ class Rsplitter_Gemm():
         seed = conf.get("seed")
 
         layer_width = tight_bounds[0].shape[1]
-        print(tight_bounds[0].shape)
+        self.logger.debug(f"Bound shape: lb {tight_bounds[0].shape}, ub {tight_bounds[1].shape}")
         idxs = list(range(layer_width))
 
         rnd = random.Random(seed)
@@ -196,8 +196,8 @@ class Rsplitter_Gemm():
             gemm_2_w[i][idx2]   = 1/s_neg
             gemm_2_b[i]            = tau
             
-        gemm_1_w = gemm_1_w.T
-        gemm_2_w = gemm_2_w.T
+        # gemm_1_w = gemm_1_w.T
+        # gemm_2_w = gemm_2_w.T
 
         input_tname     = node_to_split.input[0]    # orginal input
         gemm_1_output_tname  = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm1")   # intermediate output after gemm_1
@@ -221,7 +221,7 @@ class Rsplitter_Gemm():
             name=gemm1_nname,
             alpha=1.0,
             beta=1.0,
-            transB=0,
+            transB=1,
             transA=0)
         relu_node = onnx.helper.make_node(
             "Relu",
@@ -235,7 +235,7 @@ class Rsplitter_Gemm():
             name=gemm2_nname,
             alpha=1.0,
             beta=1.0,
-            transB=0,
+            transB=1,
             transA=0)
 
         new_nodes = [gemm_1_node, relu_node, gemm_2_node]
@@ -284,8 +284,8 @@ class Rsplitter_Gemm():
             gemm_2_w[i][idx2]   = (1/s_neg) * alpha_scaling
             gemm_2_b[i]            = tau
             
-        gemm_1_w = gemm_1_w.T
-        gemm_2_w = gemm_2_w.T
+        # gemm_1_w = gemm_1_w.T
+        # gemm_2_w = gemm_2_w.T
 
         input_tname     = node_to_split.input[0]    # orginal input
         gemm_1_output_tname  = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm1")   # intermediate output after gemm_1
@@ -306,7 +306,7 @@ class Rsplitter_Gemm():
             name=gemm1_nname,
             alpha=1.0,
             beta=1.0,
-            transB=0,
+            transB=1,
             transA=0)
         leakyrelu_node = onnx.helper.make_node(
             "LeakyRelu",
@@ -321,7 +321,7 @@ class Rsplitter_Gemm():
             name=gemm2_nname,
             alpha=1.0,
             beta=1.0,
-            transB=0,
+            transB=1,
             transA=0)
         new_nodes = [gemm_1_node, leakyrelu_node, gemm_2_node]
         new_initializers = [
@@ -378,8 +378,8 @@ class Rsplitter_Gemm():
             gemm_2_w[i][idx2]   = (1/s_neg) * slope_scaling
             gemm_2_b[i]            = tau
 
-        gemm_1_w = gemm_1_w.T
-        gemm_2_w = gemm_2_w.T
+        # gemm_1_w = gemm_1_w.T
+        # gemm_2_w = gemm_2_w.T
 
         input_tname     = node_to_split.input[0]    # orginal input
         gemm_1_output_tname  = self.model.gen_tensor_name(prefix=f"{TOOL_NAME}_Gemm1")   # intermediate output after gemm_1
@@ -401,7 +401,7 @@ class Rsplitter_Gemm():
             name=gemm1_nname,
             alpha=1.0,
             beta=1.0,
-            transB=0,
+            transB=1,
             transA=0)
         prelu_node = onnx.helper.make_node(
             "PRelu",
@@ -415,7 +415,7 @@ class Rsplitter_Gemm():
             name=gemm2_nname,
             alpha=1.0,
             beta=1.0,
-            transB=0,
+            transB=1,
             transA=0)
         new_nodes = [gemm_1_node, prelu_node, gemm_2_node]
         new_initializers = [

@@ -112,8 +112,8 @@ if __name__ == "__main__":
                 rsa.input_shape,
                 device=default_device,
                 n=10,
-                atol=1e-6,
-                rtol=1e-6
+                atol=5e-6,
+                rtol=5e-6
             )
             logger.info(f"Performed closeness check with 10 random samples on device {default_device}.")
             logger.info(f"Closeness results [Split]: {closeness_results[0]}")

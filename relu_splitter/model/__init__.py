@@ -186,8 +186,6 @@ class WarppedOnnxModel():
         return self._node_produce_output[node.input[0]]
 
     def get_bound_of(self, input_bound:BoundedTensor, tensor_name: str, method: str = "forward+backward") -> Tuple[torch.Tensor, torch.Tensor]:
-        # trunated_model = truncate_onnx_model(self._model, tensor_name)
-        # return compute_model_bound(trunated_model, input_bound, method=method)
         trunated_model = self.truncate_model_at(tensor_name)
         input_names = [input_tensor.name for input_tensor in trunated_model.onnx.graph.input]
         return compute_model_bound(trunated_model._model, input_bound, input_names=input_names, method=method)

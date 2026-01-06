@@ -65,11 +65,8 @@ def compute_model_bound(model: onnx.ModelProto, bounded_input: BoundedTensor, in
     model = ConvertModel(model)
     model.input_names = input_names
     
-    # Ensure input has batch size of 1
-    if bounded_input.shape[0] != 1:
-        # Reshape to add batch dimension of 1
-        bounded_input = bounded_input.reshape(1, *bounded_input.shape)
-    
+    assert bounded_input.ndim >= 2 and bounded_input.shape[0] == 1, f"Input must have batch size of 1, but got shape {bounded_input.shape}"
+
     model = BoundedModule(model, bounded_input)
     lb, ub = model.compute_bounds(x=(bounded_input,), method=method)
     return lb, ub

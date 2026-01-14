@@ -63,8 +63,7 @@ if __name__ == "__main__":
     logger.setLevel(args.verbosity)
 
     if args.command == 'info':
-        rsa = ReluSplitter_Anywhere(args.net, None)
-        rsa.display_model_info()
+        ReluSplitter_Anywhere.info(args.net)
 
     elif args.command == 'split':
         rsa = ReluSplitter_Anywhere(args.net, args.spec, input_shape=args.input_shape)

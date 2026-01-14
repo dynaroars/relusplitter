@@ -31,6 +31,48 @@ class ReluSplitter_Anywhere(Rsplitter_Gemm, Rsplitter_Conv):
     supported_activations = ["relu", "relu", "prelu"]
     ignore_split_nodes = True
     supress_warnings = False
+    logger = default_logger
+
+    @classmethod
+    def info(cls, network):
+        model = WarppedOnnxModel.load(network)
+        print("="*20 + " Model Info " + "="*20)
+        print(f"Model: {network}")
+        try:
+            print(f"Model input shapes: {model.input_shapes}")
+        except Exception as e:
+            print(f"Error getting model info: {e}")
+
+        # report splittable nodes
+        splittable_nodes = cls.get_splittable_nodes_cls(model)
+        print("-"*80)
+        print(f"{'idx':10} | {'name':30} | {'op_type':10} | {'layer_size':20}")
+        print("-"*80)
+        for idx, node in enumerate(splittable_nodes):
+            layer_size = None
+            if node.op_type.lower() == "gemm":
+                w,b = model.get_gemm_wb(node)
+                layer_size = b.shape
+            elif node.op_type.lower() == "conv":
+                w,b = model.get_conv_wb(node)
+                layer_size = b.shape
+            is_split = TOOL_NAME in node.name
+            # print a neat table
+            print(f"{idx:10} | {node.name:30} | {node.op_type:10} | {str(layer_size):20}")
+
+    @classmethod
+    def get_splittable_nodes_cls(cls, warpped_model):
+        splittable_nodes = []
+        if not cls.supress_warnings and not cls.ignore_split_nodes:
+            cls.logger.warning("ignore_split_nodes is set to False, splitting nodes that are already split might work suboptimally.")
+        for node in warpped_model.nodes:
+            if node.op_type.lower() in cls.supported_op_types:
+                if cls.ignore_split_nodes and TOOL_NAME in node.name:
+                    continue
+                else:
+                    splittable_nodes.append(node)
+
+        return splittable_nodes
 
     def __init__(self, network, spec, input_shape=None, logger=default_logger):
         # gemm_node: the node to split (IT CAN BE ANY GEMM NODE IN THE MODEL)
@@ -75,29 +117,15 @@ class ReluSplitter_Anywhere(Rsplitter_Gemm, Rsplitter_Conv):
         np.random.seed(random_seed)
 
     def get_splittable_nodes(self):
-        splittable_nodes = []
-        if not self.supress_warnings and not self.ignore_split_nodes:
-            self.logger.warning("ignore_split_nodes is set to False, splitting nodes that are already split might work suboptimally.")
-        for node in self.model.nodes:
-            if node.op_type.lower() in self.supported_op_types:
-                if self.ignore_split_nodes and TOOL_NAME in node.name:
-                    continue
-                else:
-                    splittable_nodes.append(node)
-
-        return splittable_nodes
+        return self.get_splittable_nodes_cls(self.model)
     
     def resolve_node_idx(self, op_type, idx):
-        if op_type.lower() == "all":
-            op_types = self.supported_op_types.copy()
-        else:
-            op_types = [op_type.lower()]
-
         splitable_nodes = self.get_splittable_nodes()
-
-        nodes = [t for t in splitable_nodes if t.op_type.lower() in op_types]
-        assert 0 <= idx < len(nodes), f"Index {idx} out of range for op_type {op_type} with {len(nodes)} splittable nodes"
-        return nodes[idx]
+        if op_type.lower() == "all":
+            return splitable_nodes[idx]
+        else:
+            assert splitable_nodes[idx].op_type.lower() == op_type.lower(), f"Node at index {idx} is of type {splitable_nodes[idx].op_type}, expected {op_type}"
+            return splitable_nodes[idx]
     
     def check_equivChk_conf(self, conf):
         return True
@@ -108,6 +136,7 @@ class ReluSplitter_Anywhere(Rsplitter_Gemm, Rsplitter_Conv):
 
         node = self.resolve_node_idx(op_type, idx)
         node_op_type = node.op_type
+        self.logger.info(f"Splitting node {node.name} of type {node_op_type} at index {idx} with config: {conf}")
         if node_op_type == "Gemm":
             split_model, baseline_model = self.gemm_split(node, conf)
         elif node_op_type == "Conv":

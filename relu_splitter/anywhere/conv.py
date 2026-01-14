@@ -197,7 +197,7 @@ class Rsplitter_Conv():
         free_kernels = [i for i in range(split_layer_kernel_count)]
         random.shuffle(free_kernels)
 
-        for i in range(ori_oC):
+        for i in tqdm(range(ori_oC), desc="Creating split Conv with ReLU"):
             tau, (s_pos, s_neg) = split_dict[i]
             # first conv layer
             idx1 = free_kernels.pop()

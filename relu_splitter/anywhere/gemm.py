@@ -54,7 +54,7 @@ class Rsplitter_Gemm():
     
     # responsible for selecting neurons to split
     def _decide_split_idxs_gemm(self, tight_bounds, loose_bounds, conf):
-        sorting_strat = conf.get("sorting_strat")   # random
+        sorting_strat = conf.get("candidiate_strat")   # random
         n_splits = conf.get("n_splits")
         seed = conf.get("seed")
 
@@ -69,6 +69,9 @@ class Rsplitter_Gemm():
 
         if sorting_strat == "random":
             rnd.shuffle(idxs)
+        elif sorting_strat == "bound_width":
+            # sort by bound width (ub - lb)
+            idxs.sort(key=lambda i: (loose_bounds[1][0,i] - loose_bounds[0][0,i]).item(), reverse=True)
         else:
             raise NotImplementedError(f"sorting_strat {sorting_strat} is not implemented yet")
         
@@ -79,22 +82,17 @@ class Rsplitter_Gemm():
     def _decide_split_params_gemm(self, tight_bounds, loose_bounds, split_idxs, split_conf):
         # if idx in split_idxs, use tight_bounds to decide tau (so split more likely to work)
         # if idx not in split_idxs, use loose_bounds to decide tau (stronger gaurantee of stability)
-        gemm_tau_strat = split_conf.get("gemm_tau_strat", "midpoint").lower()
-        split_scale_strat = split_conf.get("split_scale_strat", "fixed").lower()
+        gemm_tau_strat = split_conf.get("gemm_tau_strat").lower()
+        split_scale_strat = split_conf.get("split_scale_strat").lower()
         if split_scale_strat == "fixed":
-            fixed_scales = split_conf.get("fixed_scales", (1.0, -1.0))
+            fixed_scales = split_conf.get("fixed_scales")
         if split_scale_strat == "random":
-            s_pos_range = split_conf.get("s_pos_range", (0.1, 100.0))
-            s_neg_range = split_conf.get("s_neg_range", (-100.0, -0.1))
+            scale_range = split_conf.get("random_scale_range")
+            s_pos_range = (scale_range[0], scale_range[1])
+            s_neg_range = (-scale_range[1], -scale_range[0])
 
-        stable_tau_strat = split_conf.get("stable_tau_strat", "random").lower() # random, BigTau, SmallTau
-        stable_tau_margin = split_conf.get("stable_tau_margin", (10.0, 50.0))
-        stable_scale_strat = split_conf.get("stable_scale_strat", "fixed").lower()
-        if stable_scale_strat == "fixed":
-            stable_fixed_scales = split_conf.get("stable_fixed_scales", (1.0, -1.0))
-        if stable_scale_strat == "random":
-            stable_s_pos_range = split_conf.get("stable_s_pos_range", (0.1, 100.0))
-            stable_s_neg_range = split_conf.get("stable_s_neg_range", (-100.0, -0.1))
+        stable_tau_strat = split_conf.get("stable_tau_strat").lower() # random, BigTau, SmallTau
+        stable_tau_margin = split_conf.get("stable_tau_margin")
 
 
         split_dict = {}
@@ -126,30 +124,32 @@ class Rsplitter_Gemm():
                 rand_tau = random.choice([bigtau, smalltau])
                 if stable_tau_strat == "random":
                     tau = rand_tau
-                elif stable_tau_strat == "bigtau":
+                elif stable_tau_strat == "big":
                     tau = bigtau
-                elif stable_tau_strat == "smalltau":
+                elif stable_tau_strat == "small":
                     tau = smalltau
                 else:
                     raise NotImplementedError(f"stable_tau_strat {stable_tau_strat} is not implemented yet")
                 # decide scales
-                if stable_scale_strat == "fixed":
-                    s_pos, s_neg = stable_fixed_scales
-                elif stable_scale_strat == "random":
-                    s_pos = random.uniform(stable_s_pos_range[0], stable_s_pos_range[1])
-                    s_neg = random.uniform(stable_s_neg_range[0], stable_s_neg_range[1])
+                if split_scale_strat == "fixed":
+                    s_pos, s_neg = fixed_scales
+                elif split_scale_strat == "random":
+                    s_pos = random.uniform(s_pos_range[0], s_pos_range[1])
+                    s_neg = random.uniform(s_neg_range[0], s_neg_range[1])
                 else:
-                    raise NotImplementedError(f"stable_scale_strat {stable_scale_strat} is not implemented yet")
+                    raise NotImplementedError(f"split_scale_strat {split_scale_strat} is not implemented yet")
             self.logger.debug(f"Decided split params for neuron {i}: tau={tau}, s_pos={s_pos}, s_neg={s_neg}, destabilized={'Yes' if i in split_idxs else 'No'}")
             split_dict[i] = (tau, (s_pos, s_neg))
         return split_dict
 
 
     def _decide_leakyrelu_alpha_gemm(self, additional_activation_conf):
-        return additional_activation_conf.get("leakyrelu_alpha", 0.01)
+        return additional_activation_conf.get("leakyrelu_alpha")
     
     def _decide_prelu_slope_gemm(self, additional_activation_conf):
-        return additional_activation_conf.get("prelu_slope", 0.25)
+        range = additional_activation_conf.get("prelu_slope_range")
+        return random.uniform(range[0], range[1])
+        # return additional_activation_conf.get("prelu_slope", 0.25)
 
 
     # actually split

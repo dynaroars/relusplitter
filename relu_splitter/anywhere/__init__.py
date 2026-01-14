@@ -39,7 +39,7 @@ class ReluSplitter_Anywhere(Rsplitter_Gemm, Rsplitter_Conv):
         self.spec_path = spec
         self.logger = logger
 
-        self.logger.debug("Initializing Rsplitter_Gemm...")
+        self.logger.debug("Initializing Rsplitter...")
         self.logger.debug(f"onnx: {self.onnx_path}, spec: {self.spec_path}, input_shape: {input_shape}")
         self.init_model()
         self.init_vnnlib()
@@ -51,7 +51,11 @@ class ReluSplitter_Anywhere(Rsplitter_Gemm, Rsplitter_Conv):
         spec_num_inputs = reduce(lambda x, y: x*y, input_lb.shape)
         model_num_inputs = self.model.num_inputs
         input_lb, input_ub = input_lb.view(self.input_shape), input_ub.view(self.input_shape)               # reshape input bounds to match the model input shape
-        input_lb, input_ub = input_lb.reshape(1, *input_lb.shape), input_ub.reshape(1, *input_ub.shape)     # add batch dimension of 1  or lirpa will cry
+        # input_lb, input_ub = input_lb.reshape(1, *input_lb.shape), input_ub.reshape(1, *input_ub.shape)     # add batch dimension of 1  or lirpa will cry
+        # add batch dimension of 1 if not already present
+        if input_lb.shape[0] != 1:
+            input_lb, input_ub = input_lb.reshape(1, *input_lb.shape), input_ub.reshape(1, *input_ub.shape)
+        
 
         assert torch.all(input_lb <= input_ub), "Input lower bound is greater than upper bound"
         assert model_num_inputs == spec_num_inputs, f"Spec number of inputs does not match model inputs {spec_num_inputs} != {model_num_inputs}"

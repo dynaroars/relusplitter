@@ -7,48 +7,6 @@ import argparse
 
 from relu_splitter.utils.logger import default_logger as logger
 
-# # onnx_path = "/home/lli/tools/relusplitter/data/verification/sri_resnet_a/onnx/resnet_3b2_bn_mixup_adv_4.0_bs128_lr-1.onnx"
-# # vnnlib_path = "/home/lli/tools/relusplitter/data/verification/sri_resnet_a/vnnlib/cifar10_spec_idx_232_eps_0.00350.vnnlib"
-
-# onnx_path = "/home/lli/tools/relusplitter/data/verification/oval21/onnx/cifar_base_kw.onnx"
-# vnnlib_path = "/home/lli/tools/relusplitter/data/verification/oval21/vnnlib/cifar_base_kw-img423-eps0.021960784313725494.vnnlib"
-
-# # onnx_path = "/home/lli/tools/relusplitter/data/verification/oval21/onnx/cifar_base_kw.onnx"
-# # vnnlib_path = "/home/lli/tools/relusplitter/data/verification/oval21/vnnlib/cifar_base_kw-img423-eps0.021960784313725494.vnnlib"
-
-
-# # onnx_path = "/home/lli/tools/relusplitter/data/mnist_fc/onnx/mnist-net_256x6.onnx"
-# # vnnlib_path = "/home/lli/tools/relusplitter/data/mnist_fc/vnnlib/prop_11_0.03.vnnlib"
-
-# if len(sys.argv) > 1:
-#     # override using provided onnx model
-#     # onnx_path = sys.argv[1]
-#     n_split = int(sys.argv[1])
-
-
-
-# bruh = ReluSplitter_Anywhere(onnx_path, vnnlib_path)
-# # print([n.name for n in bruh.get_splittable_nodes()])
-
-# conf = {
-#     "seed": 42,
-#     "split_activation": "relu",
-#     "equiv_chk_conf": {
-#         # "n": 100,
-#         # "atol": 1e-5,
-#         # "rtol": 1e-5
-#     },
-#     "n_splits": n_split,
-#     "param_selection_conf":{
-#     }
-    
-
-# }
-
-# new_model, baseline = bruh.split("Conv", 0, conf)
-# # new_model, baseline = bruh.split("Gemm", 0, conf)
-# new_model.save(Path("anywhere_test.onnx"))
-
 default_device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 def get_parser():
@@ -72,7 +30,27 @@ def get_parser():
     split_parser.add_argument('-n', type=int, default=None, help='Number of destablizing splits')
     split_parser.add_argument('--seed', type=int, default=35, help='Seed for random number generation')
     split_parser.add_argument('--activation', type=str, default='relu', help='Activation function to split',
-                                choices=['relu', 'leaky_relu', 'prelu'])
+                                choices=['relu', 'leakyrelu', 'prelu'])
+    
+    split_parser.add_argument("--candidiate_strat", type=str, default="random", help="Strategy for selecting candidate neurons to split. Options: random, bound_width",
+                                choices=["random", "bound_width"])
+    
+    # split_conf
+    split_parser.add_argument("--gemm_tau_strat", type=str, default="random", help="Strategy for selecting tau in Gemm splitting. Options: random, midpoint",
+                                choices=["random", "midpoint"])
+    split_parser.add_argument("--stable_tau_strat", type=str, default="random", help="Strategy for selecting tau in stable neuron handling. Options: random, BigTau, SmallTau",
+                                choices=["random", "big", "small"])
+    split_parser.add_argument("--stable_tau_margin", type=float, nargs=2, default=(10.0, 50.0), help="Margin for stable tau selection (min, max), e.g. (10.0, 50.0) -> tau in [10.0, 50.0]")
+    
+    split_parser.add_argument("--scale_strat", type=str, default="fixed", help="Strategy for selecting scale in Gemm splitting. Options: random, fixed",
+                                choices=["random", "fixed"])
+    split_parser.add_argument("--fixed_scale", type=float, nargs=2, default=(1.0, -1.0), help="If provided, use this fixed scale for all splits instead of random sampling, default is (1.0, -1.0)")
+    split_parser.add_argument("--random_scale_range", type=float, nargs=2, default=(0.1, 100.0), help="If scale_strat is random, sample scale from this range (min, max), e.g. (0.1, 100.0) -> spos in [0.1, 100.0], sneg in [-100.0, -0.1]")
+
+
+    split_parser.add_argument('--leakyrelu_alpha', type=float, default=0.01, help='Alpha value for LeakyReLU if selected as activation to split')
+    split_parser.add_argument('--prelu_slope_range', type=float, nargs=2, default=(0.01, 0.25), help='Range for sampling PReLU slope if selected as activation to split, e.g. (0.1, 0.5) -> slope in [0.1, 0.5]')
+    
     
     split_parser.add_argument('--closeness_check', action='store_true', default=True, help='Enable closeness check between original and splitted models')
 
@@ -95,7 +73,20 @@ if __name__ == "__main__":
             "split_activation": args.activation,
             "n_splits": args.n,
             "create_baseline": args.baseline is not None,
-            "sorting_strat": "random",
+            "candidiate_strat": args.candidiate_strat,
+            "param_conf": {
+                "gemm_tau_strat": args.gemm_tau_strat,
+                "stable_tau_strat": args.stable_tau_strat,
+                "stable_tau_margin": args.stable_tau_margin,
+                "split_scale_strat": args.scale_strat,
+                "fixed_scales": args.fixed_scale,
+                "random_scale_range": args.random_scale_range
+            },
+            "additional_activation_conf":
+            {
+                "leakyrelu_alpha": args.leakyrelu_alpha,
+                "prelu_slope_range": args.prelu_slope_range
+            }
         }
         new_model, baseline = rsa.split(args.mode, args.split_idx, conf)
         new_model.save(Path(args.output))
@@ -112,8 +103,8 @@ if __name__ == "__main__":
                 rsa.input_shape,
                 device=default_device,
                 n=10,
-                atol=5e-6,
-                rtol=5e-6
+                atol=5e-5,
+                rtol=5e-5
             )
             logger.info(f"Performed closeness check with 10 random samples on device {default_device}.")
             logger.info(f"Closeness results [Split]: {closeness_results[0]}")

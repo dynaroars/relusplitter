@@ -55,7 +55,7 @@ class Rsplitter_Conv():
         return new_model, baseline_model
     
     def _decide_split_idxs_conv(self, tight_bounds, loose_bounds, conf):
-        sorting_strat = conf.get("sorting_strat")   # random
+        sorting_strat = conf.get("candidiate_strat")   # random
         n_splits = conf.get("n_splits")
         seed = conf.get("seed")
 
@@ -70,7 +70,7 @@ class Rsplitter_Conv():
         if sorting_strat == "random":
             rnd.shuffle(idxs)
         else:
-            raise NotImplementedError(f"sorting_strat {sorting_strat} is not implemented yet")
+            raise NotImplementedError(f"sorting_strat {sorting_strat} is not implemented for CONV yet")
         
         split_idxs = idxs[:n_splits]
         self.logger.info(f"Splitting conv filters: {split_idxs}...")
@@ -78,21 +78,16 @@ class Rsplitter_Conv():
 
     def _decide_split_params_conv(self, tight_bounds, loose_bounds, split_idxs, param_selection_conf):
         conv_tau_strat = param_selection_conf.get("conv_tau_strat", "naive_sliding_window")
-        conv_scale_strat = param_selection_conf.get("conv_scale_strat", "fixed")
+        conv_scale_strat = param_selection_conf.get("split_scale_strat")
         if conv_scale_strat == "fixed":
-            fixed_scale = param_selection_conf.get("conv_fixed_scale", (1.0, -1.0))
+            fixed_scale = param_selection_conf.get("fixed_scales")
         if conv_scale_strat == "random":
-            s_pos_range = param_selection_conf.get("s_pos_range", (0.1, 100.0))
-            s_neg_range = param_selection_conf.get("s_neg_range", (-0.1, -100.0))
+            scale_range = param_selection_conf.get("random_scale_range")
+            s_pos_range = (scale_range[0], scale_range[1])
+            s_neg_range = (-scale_range[1], -scale_range[0])
 
-        stable_tau_strat = param_selection_conf.get("stable_tau_strat", "random").lower() # random, BigTau, SmallTau
-        stable_tau_margin = param_selection_conf.get("stable_tau_margin", (10.0, 50.0))
-        stable_scale_strat = param_selection_conf.get("stable_scale_strat", "fixed").lower()
-        if stable_scale_strat == "fixed":
-            stable_fixed_scales = param_selection_conf.get("stable_fixed_scales", (1.0, -1.0))
-        if stable_scale_strat == "random":
-            stable_s_pos_range = param_selection_conf.get("stable_s_pos_range", (0.1, 100.0))
-            stable_s_neg_range = param_selection_conf.get("stable_s_neg_range", (-100.0, -0.1))
+        stable_tau_strat = param_selection_conf.get("stable_tau_strat").lower() # random, BigTau, SmallTau
+        stable_tau_margin = param_selection_conf.get("stable_tau_margin")
 
         n_kernels = tight_bounds[0].shape[0]
 
@@ -139,22 +134,22 @@ class Rsplitter_Conv():
                 _smalltau_tmp = abs(max(loose_kernel_ub.max().item(), 0.0))
                 smalltau = -random.uniform(stable_tau_margin[0], stable_tau_margin[1]) - _smalltau_tmp
                 random_tau = random.choice([bigtau, smalltau])
-                if stable_tau_strat == "bigtau":
+                if stable_tau_strat == "big":
                     tau = bigtau
-                elif stable_tau_strat == "smalltau":
+                elif stable_tau_strat == "small":
                     tau = smalltau
                 elif stable_tau_strat == "random":
                     tau = random_tau
                 else:
                     raise NotImplementedError(f"stable_tau_strat {stable_tau_strat} is not implemented yet")
                 # decide stable scales
-                if stable_scale_strat == "fixed":
-                    s_pos, s_neg = stable_fixed_scales
-                elif stable_scale_strat == "random":
-                    s_pos = random.uniform(stable_s_pos_range[0], stable_s_pos_range[1])
-                    s_neg = random.uniform(stable_s_neg_range[0], stable_s_neg_range[1])
+                if conv_scale_strat == "fixed":
+                    s_pos, s_neg = fixed_scale
+                elif conv_scale_strat == "random":
+                    s_pos = random.uniform(s_pos_range[0], s_pos_range[1])
+                    s_neg = random.uniform(s_neg_range[0], s_neg_range[1])
                 else:
-                    raise NotImplementedError(f"stable_scale_strat {stable_scale_strat} is not implemented yet")
+                    raise NotImplementedError(f"conv_scale_strat {conv_scale_strat} is not implemented yet")
             self.logger.debug(f"Decided split params for kernel {idx}: tau={tau}, s_pos={s_pos}, s_neg={s_neg}, destabilized={'Yes' if idx in split_idxs else 'No'} ")
             split_dict[idx] = (tau, (s_pos, s_neg))
         return split_dict
@@ -400,7 +395,7 @@ class Rsplitter_Conv():
         conv1_b = torch.zeros((split_layer_kernel_count,))
         conv2_w = torch.zeros((ori_oC, split_layer_kernel_count, 1, 1))
         conv2_b = torch.zeros((ori_oC,))
-        actual_slope = torch.zeros((split_layer_kernel_count,))
+        actual_slope = torch.zeros((split_layer_kernel_count,1,1))
 
         free_kernels = [i for i in range(split_layer_kernel_count)]
         random.shuffle(free_kernels)
@@ -415,8 +410,8 @@ class Rsplitter_Conv():
             conv1_w[idx2] =  s_neg * ori_w[i]
             conv1_b[idx1] =  -s_pos * (tau - ori_b[i])
             conv1_b[idx2] =  -s_neg * (tau - ori_b[i])
-            actual_slope[idx1] = slope[i]
-            actual_slope[idx2] = slope[i]
+            actual_slope[idx1,0,0] = slope[i]
+            actual_slope[idx2,0,0] = slope[i]
             # # set merge w & b
             slope_scaling = 1.0 / (1.0 + slope[i])
             conv2_w[i, idx1, 0, 0] = (1.0/s_pos) * slope_scaling

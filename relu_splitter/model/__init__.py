@@ -15,7 +15,10 @@ from auto_LiRPA import BoundedModule, BoundedTensor
 from ..utils.onnx_utils import truncate_onnx_model, compute_model_bound
 from ..utils.misc import get_random_id
 
-SINGLE_INPUT_OPS = ["Relu", "MatMul", "Add"]
+SINGLE_INPUT_OPS = [
+    "Relu", "PRelu", "LeakyRelu", "ThresholdedRelu",
+    "MatMul", "Add"
+    ]
 
 custom_quirks = {
     'Reshape': {
@@ -39,6 +42,11 @@ custom_quirks = {
 default_logger = logging.getLogger(__name__)
 
 class WarppedOnnxModel():
+    @classmethod
+    def load(cls, onnx_path: Path, force_rename = False, logger=default_logger):
+        model = onnx.load(onnx_path)
+        return cls(model, force_rename=force_rename, logger=logger)
+
     def __init__(self, model: onnx.ModelProto, force_rename = False, logger=default_logger)-> None:
         self.logger = logger
         self.force_rename = force_rename
@@ -124,10 +132,21 @@ class WarppedOnnxModel():
     @property
     def _model(self):
         return deepcopy(self._model_)
+    
+    @property
+    def graph_name(self):
+        return self._model.graph.name
 
     @property
     def nodes(self):
         return copy(self._nodes)
+    
+    @property
+    def input(self):
+        return [input_tensor.name for input_tensor in self._model.graph.input]
+    @property
+    def output(self):
+        return [output_tensor.name for output_tensor in self._model.graph.output]
     
     @property
     def num_inputs(self):
@@ -164,12 +183,9 @@ class WarppedOnnxModel():
 
     def get_prior_node(self, node):
         assert node.op_type in SINGLE_INPUT_OPS
-        assert len(node.input) == 1
         return self._node_produce_output[node.input[0]]
 
     def get_bound_of(self, input_bound:BoundedTensor, tensor_name: str, method: str = "forward+backward") -> Tuple[torch.Tensor, torch.Tensor]:
-        # trunated_model = truncate_onnx_model(self._model, tensor_name)
-        # return compute_model_bound(trunated_model, input_bound, method=method)
         trunated_model = self.truncate_model_at(tensor_name)
         input_names = [input_tensor.name for input_tensor in trunated_model.onnx.graph.input]
         return compute_model_bound(trunated_model._model, input_bound, input_names=input_names, method=method)
@@ -177,8 +193,8 @@ class WarppedOnnxModel():
     def get_conv_wb(self, node):
         assert node.op_type == "Conv"
         _, w, b = node.input
-        w = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[w]) )
-        b = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[b]) )
+        w = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[w]).copy() )
+        b = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[b]).copy() )
         return w,b
 
     def get_gemm_wb(self, node):
@@ -192,8 +208,8 @@ class WarppedOnnxModel():
         transB = attr_dict['transB'].i if 'transB' in attr_dict else 0
 
         _, w, b = node.input
-        w = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[w]) )
-        b = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[b]) )
+        w = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[w]).copy() )
+        b = torch.from_numpy( numpy_helper.to_array(self._initializers_mapping[b]).copy() )
 
         if transB == 0:
             w = w.t()
@@ -355,4 +371,3 @@ class WarppedOnnxModel():
     def ort_sess(self):
         return InferenceSession(self._model.SerializeToString())
         
-    

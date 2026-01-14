@@ -8,7 +8,7 @@ import numpy as np
 from onnx2pytorch import ConvertModel
 from onnxruntime import InferenceSession
 
-from .logger import logger
+from relu_splitter.utils.logger import default_logger as logger
 
 
 def get_random_id(len=8):

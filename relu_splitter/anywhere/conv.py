@@ -88,6 +88,7 @@ class Rsplitter_Conv():
 
         stable_tau_strat = param_selection_conf.get("stable_tau_strat").lower() # random, BigTau, SmallTau
         stable_tau_margin = param_selection_conf.get("stable_tau_margin")
+        cap_tau = param_selection_conf.get("cap_tau")
 
         n_kernels = tight_bounds[0].shape[0]
 
@@ -150,6 +151,9 @@ class Rsplitter_Conv():
                     s_neg = random.uniform(s_neg_range[0], s_neg_range[1])
                 else:
                     raise NotImplementedError(f"conv_scale_strat {conv_scale_strat} is not implemented yet")
+            if abs(tau) > cap_tau:
+                self.logger.warning(f"Tau value {tau} for kernel {idx} exceeds cap {cap_tau}.")
+                tau = max(min(tau, cap_tau), -cap_tau)
             self.logger.debug(f"Decided split params for kernel {idx}: tau={tau}, s_pos={s_pos}, s_neg={s_neg}, destabilized={'Yes' if idx in split_idxs else 'No'} ")
             split_dict[idx] = (tau, (s_pos, s_neg))
         return split_dict

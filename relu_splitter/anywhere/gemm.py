@@ -93,6 +93,7 @@ class Rsplitter_Gemm():
 
         stable_tau_strat = split_conf.get("stable_tau_strat").lower() # random, BigTau, SmallTau
         stable_tau_margin = split_conf.get("stable_tau_margin")
+        cap_tau = split_conf.get("cap_tau")
 
 
         split_dict = {}
@@ -138,6 +139,9 @@ class Rsplitter_Gemm():
                     s_neg = random.uniform(s_neg_range[0], s_neg_range[1])
                 else:
                     raise NotImplementedError(f"split_scale_strat {split_scale_strat} is not implemented yet")
+            if abs(tau) > cap_tau:
+                self.logger.warning(f"Tau value {tau} for neuron {i} exceeds cap {cap_tau}.")
+                tau = max(min(tau, cap_tau), -cap_tau)
             self.logger.debug(f"Decided split params for neuron {i}: tau={tau}, s_pos={s_pos}, s_neg={s_neg}, destabilized={'Yes' if i in split_idxs else 'No'}")
             split_dict[i] = (tau, (s_pos, s_neg))
         return split_dict

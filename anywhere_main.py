@@ -45,7 +45,7 @@ def get_parser():
     split_parser.add_argument("--stable_tau_strat", type=str, default="random", help="Strategy for selecting tau in stable neuron handling. Options: random, BigTau, SmallTau",
                                 choices=["random", "big", "small"])
     split_parser.add_argument("--stable_tau_margin", type=float, nargs=2, default=(0.0, 5.0), help="Margin for stable tau selection (min, max), e.g. (10.0, 50.0) -> tau in [10.0, 50.0]")
-    split_parser.add_argument("--cap_tau", type=float, default=50, help="Cap for tau value to avoid numerical instability in splitting")
+    split_parser.add_argument("--cap_tau", type=float, default=25.0, help="Cap for tau value to avoid numerical instability in splitting")
 
     split_parser.add_argument("--scale_strat", type=str, default="fixed", help="Strategy for selecting scale in Gemm splitting. Options: random, fixed",
                                 choices=["random", "fixed"])

@@ -108,8 +108,8 @@ class ReluSplitter_Anywhere(Rsplitter_Gemm, Rsplitter_Conv):
     def init_model(self):
         self.model = WarppedOnnxModel.load(self.onnx_path)
         self.input_shape = list(self.model.input_shapes.values())[0]
-        assert len(self.model.input) == 1, f"Model has more than one input {model.graph.input}"
-        assert len(self.model.output) == 1, f"Model has more than one output {model.graph.output}"
+        assert len(self.model.input) == 1, f"Model has more than one input {self.model.graph.input}"
+        assert len(self.model.output) == 1, f"Model has more than one output {self.model.graph.output}"
 
     def init_seeds(self, random_seed):
         random.seed(random_seed)

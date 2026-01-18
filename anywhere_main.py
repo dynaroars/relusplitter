@@ -36,12 +36,17 @@ def get_parser():
                                 choices=["random", "bound_width"])
     
     # split_conf
+    # if error raise when splitting on conv, try set '--bounding_method_tight ibp'. 
+    split_parser.add_argument("--bounding_method_tight", type=str, default="backward", help="Bounding method for tight bounds in stable neuron handling. Options: backward, ibp")
+    split_parser.add_argument("--bounding_method_loose", type=str, default="ibp", help="Bounding method for loose bounds in stable neuron handling. Options: backward, ibp")
+
     split_parser.add_argument("--gemm_tau_strat", type=str, default="random", help="Strategy for selecting tau in Gemm splitting. Options: random, midpoint",
                                 choices=["random", "midpoint"])
     split_parser.add_argument("--stable_tau_strat", type=str, default="random", help="Strategy for selecting tau in stable neuron handling. Options: random, BigTau, SmallTau",
                                 choices=["random", "big", "small"])
-    split_parser.add_argument("--stable_tau_margin", type=float, nargs=2, default=(10.0, 50.0), help="Margin for stable tau selection (min, max), e.g. (10.0, 50.0) -> tau in [10.0, 50.0]")
-    
+    split_parser.add_argument("--stable_tau_margin", type=float, nargs=2, default=(0.0, 5.0), help="Margin for stable tau selection (min, max), e.g. (10.0, 50.0) -> tau in [10.0, 50.0]")
+    split_parser.add_argument("--cap_tau", type=float, default=25.0, help="Cap for tau value to avoid numerical instability in splitting")
+
     split_parser.add_argument("--scale_strat", type=str, default="fixed", help="Strategy for selecting scale in Gemm splitting. Options: random, fixed",
                                 choices=["random", "fixed"])
     split_parser.add_argument("--fixed_scale", type=float, nargs=2, default=(1.0, -1.0), help="If provided, use this fixed scale for all splits instead of random sampling, default is (1.0, -1.0)")
@@ -73,10 +78,13 @@ if __name__ == "__main__":
             "n_splits": args.n,
             "create_baseline": args.baseline is not None,
             "candidiate_strat": args.candidiate_strat,
+            "bounding_method_tight": args.bounding_method_tight,
+            "bounding_method_loose": args.bounding_method_loose,
             "param_conf": {
                 "gemm_tau_strat": args.gemm_tau_strat,
                 "stable_tau_strat": args.stable_tau_strat,
                 "stable_tau_margin": args.stable_tau_margin,
+                "cap_tau": args.cap_tau,
                 "split_scale_strat": args.scale_strat,
                 "fixed_scales": args.fixed_scale,
                 "random_scale_range": args.random_scale_range
